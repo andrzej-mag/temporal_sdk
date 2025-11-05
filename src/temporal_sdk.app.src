@@ -1,0 +1,22 @@
+{application, temporal_sdk, [
+    {description, "Temporal Erlang SDK"},
+    {vsn, "0.1.0"},
+    {mod, {temporal_sdk_app, []}},
+    {env, []},
+    {modules, []},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib,
+        os_mon,
+        gun,
+        opentelemetry_api,
+        opentelemetry_api_experimental,
+        telemetry,
+        uuid
+    ]},
+    %% hex.pm package metadata
+    {licenses, ["Business Source License"]},
+    {links, [{"GitHub", "https://github.com/andrzej-mag/temporal_sdk"}]},
+    {files, ["include", "src", "rebar.config", "LICENSE*", "README*"]}
+]}.

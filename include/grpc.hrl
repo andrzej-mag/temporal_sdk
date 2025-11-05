@@ -1,0 +1,1 @@
+-define(TEMPORAL_GRPC_MSG_TAG, temporal_grpc_response).

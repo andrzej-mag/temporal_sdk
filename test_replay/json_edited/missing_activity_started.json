@@ -1,0 +1,205 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventTime": "2025-06-01T08:13:42.466078440Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "taskId": "1074743",
+      "workflowExecutionStartedEventAttributes": {
+        "attempt": 1,
+        "firstExecutionRunId": "01972a8d-c0c2-712d-ae48-23e63ee54233",
+        "firstWorkflowTaskBackoff": "0s",
+        "identity": "wkst/nonode@nohost/test_replay_cluster/<0.1572.0>",
+        "input": {},
+        "originalExecutionRunId": "01972a8d-c0c2-712d-ae48-23e63ee54233",
+        "taskQueue": {
+          "kind": "TASK_QUEUE_KIND_NORMAL",
+          "name": "test_replay"
+        },
+        "workflowId": "test_replay/temporal_sdk_test_replay_edited_tests/gen_missing_activity_started",
+        "workflowTaskTimeout": "10s",
+        "workflowType": {
+          "name": "temporal_sdk_test_replay_edited_tests/gen_missing_activity_started/0/workflow"
+        }
+      }
+    },
+    {
+      "eventId": "2",
+      "eventTime": "2025-06-01T08:13:42.466134586Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1074744",
+      "workflowTaskScheduledEventAttributes": {
+        "attempt": 1,
+        "startToCloseTimeout": "10s",
+        "taskQueue": {
+          "kind": "TASK_QUEUE_KIND_NORMAL",
+          "name": "test_replay"
+        }
+      }
+    },
+    {
+      "eventId": "3",
+      "eventTime": "2025-06-01T08:13:42.473864570Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1074754",
+      "workflowTaskStartedEventAttributes": {
+        "historySizeBytes": "396",
+        "identity": "wkst/nonode@nohost/test_replay_cluster/test_replay_workflow/workflow/3",
+        "requestId": "a25d9241-359e-4b95-8c98-7b8ab0c9d614",
+        "scheduledEventId": "2"
+      }
+    },
+    {
+      "eventId": "4",
+      "eventTime": "2025-06-01T08:13:42.573531371Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1074764",
+      "workflowTaskCompletedEventAttributes": {
+        "identity": "wkst/nonode@nohost/test_replay_cluster/test_replay_workflow/workflow/3",
+        "scheduledEventId": "2",
+        "startedEventId": "3",
+        "workerVersion": {}
+      }
+    },
+    {
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "main/test_replay_activity/0",
+        "activityType": {
+          "name": "test_replay_activity"
+        },
+        "header": {
+          "fields": {
+            "sdk_data": {
+              "data": "g3QAAAABdwxvdGVsX2NvbnRleHR0AAAAAA==",
+              "metadata": {
+                "encoding": "YmluYXJ5L3BsYWlu"
+              }
+            }
+          }
+        },
+        "heartbeatTimeout": "0s",
+        "input": {
+          "payloads": [
+            {
+              "data": "WzExNSwxMTYsMTE0LDEwNSwxMTAsMTAzXQ==",
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              }
+            },
+            {
+              "data": "YmluYXJ5",
+              "metadata": {
+                "encoding": "YmluYXJ5L3BsYWlu"
+              }
+            },
+            {
+              "data": "MTIz",
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              }
+            }
+          ]
+        },
+        "retryPolicy": {
+          "backoffCoefficient": 2,
+          "initialInterval": "1s",
+          "maximumInterval": "100s"
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "600s",
+        "taskQueue": {
+          "kind": "TASK_QUEUE_KIND_NORMAL",
+          "name": "test_replay"
+        },
+        "workflowTaskCompletedEventId": "4"
+      },
+      "eventId": "5",
+      "eventTime": "2025-06-01T08:13:42.573560666Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1074765"
+    },
+    {
+      "activityTaskCompletedEventAttributes": {
+        "identity": "wkst/nonode@nohost/test_replay_cluster/temporal_sdk_tests/test_replay/activity/8",
+        "result": {
+          "payloads": [
+            {
+              "data": "WzExNSwxMTYsMTE0LDEwNSwxMTAsMTAzXQ==",
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              }
+            },
+            {
+              "data": "YmluYXJ5",
+              "metadata": {
+                "encoding": "YmluYXJ5L3BsYWlu"
+              }
+            },
+            {
+              "data": "MTIz",
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              }
+            }
+          ]
+        },
+        "scheduledEventId": "5",
+        "startedEventId": "6"
+      },
+      "eventId": "7",
+      "eventTime": "2025-06-01T08:13:42.694966317Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+      "taskId": "1074772"
+    },
+    {
+      "eventId": "8",
+      "eventTime": "2025-06-01T08:13:42.694975093Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1074773",
+      "workflowTaskScheduledEventAttributes": {
+        "attempt": 1,
+        "startToCloseTimeout": "10s",
+        "taskQueue": {
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "name": "nonode@nohost/<0.1457.0>/01972a8d-c0c2-712d-ae48-23e63ee54233",
+          "normalName": "test_replay"
+        }
+      }
+    },
+    {
+      "eventId": "9",
+      "eventTime": "2025-06-01T08:13:42.696594132Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1074777",
+      "workflowTaskStartedEventAttributes": {
+        "historySizeBytes": "1466",
+        "identity": "wkst/nonode@nohost/test_replay_cluster/test_replay_workflow/workflow/3",
+        "requestId": "67af454b-f641-4b2a-9250-b85e4a81bf6d",
+        "scheduledEventId": "8"
+      }
+    },
+    {
+      "eventId": "10",
+      "eventTime": "2025-06-01T08:13:42.700038266Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1074781",
+      "workflowTaskCompletedEventAttributes": {
+        "identity": "wkst/nonode@nohost/test_replay_cluster/test_replay_workflow/workflow/3",
+        "scheduledEventId": "8",
+        "startedEventId": "9",
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "11",
+      "eventTime": "2025-06-01T08:13:42.700072140Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED",
+      "taskId": "1074782",
+      "workflowExecutionCompletedEventAttributes": {
+        "result": {},
+        "workflowTaskCompletedEventId": "10"
+      }
+    }
+  ]
+}

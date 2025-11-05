@@ -1,0 +1,423 @@
+-module(temporal_sdk_test_replay_activity_eager_execution_tests).
+
+-ifdef(TEST).
+
+-include_lib("eunit/include/eunit.hrl").
+-include("test_replay/include/temporal_sdk_test_replay_fixtures.hrl").
+
+-define(TESTS, [
+    fun noevent/0,
+    fun not_awaited/0,
+    fun base/0,
+    fun base_nde_1/0,
+    fun base_nde_2/0,
+    fun noawait_fail/0,
+    fun complete/0,
+    fun complete_nde/0,
+    fun complete_prohibited_nde/0,
+    fun cancel/0,
+    fun cancel_nde/0,
+    fun cancel_prohibited_nde/0,
+    fun fail/0,
+    fun fail_nde/0,
+    fun fail_prohibited_nde/0,
+    fun duplicate_id/0,
+    fun throw_1/0,
+    fun throw_2/0,
+    fun throw_12/0,
+    fun throw_21/0,
+    fun throw_nde_1/0,
+    fun throw_nde_2/0,
+    fun loop/0,
+    fun loop_nde_1/0,
+    fun loop_nde_2/0,
+    fun a_cancel_1/0,
+    fun a_cancel_2/0,
+    fun a_cancel_3/0,
+    fun a_cancel_3_nde1/0,
+    fun a_cancel_3_nde2/0,
+    % fun a_cancel_4/0,
+    % fun a_cancel_5/0,
+    fun a_cancel_6/0,
+    fun a_cancel_loop/0,
+    fun invalid_mod/0,
+    {timeout, 7, fun long_fail_await/0},
+    {timeout, 7, fun a_a/0},
+    {timeout, 7, fun a_a_err/0},
+    {timeout, 7, fun a_err_a/0},
+    {timeout, 7, fun err_a_a/0},
+    {timeout, 7, fun a_failing_1/0},
+    {timeout, 7, fun a_failing_2/0},
+    {timeout, 7, fun a_failing_3/0},
+    {timeout, 7, fun large_data/0}
+]).
+
+-define(OPTS, [eager_execution]).
+-define(LPATH, [json, activity_eager_execution]).
+
+base_test_() -> ?FIXTURE(?CONFIGS, {inparallel, 10, {timeout, 10, ?TESTS}}).
+
+noevent() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        {noevent, noevent} = await({marker, none, invalid})
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+not_awaited() ->
+    EFn = fun(_Context, _Input) ->
+        start_activity(?A_TYPE, ?DATA, ?OPTS)
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+base() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS])
+    end,
+    ?assertReplayEqualF({completed, []}, EFn, ?LPATH).
+
+base_nde_1() ->
+    EFn = fun(_Context, _Input) ->
+        ok
+    end,
+    ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [base]).
+
+base_nde_2() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        start_activity(?A_TYPE, [], ?OPTS)
+    end,
+    ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [base]).
+
+noawait_fail() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        start_activity(?A_TYPE, ?DATA, ?OPTS),
+        ?THROW_ON_REPLAY
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+complete() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        complete_workflow_execution([])
+    end,
+    ?assertReplayEqualF({completed, []}, EFn, ?LPATH).
+
+complete_nde() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        start_activity(?A_TYPE, [], ?OPTS),
+        complete_workflow_execution([])
+    end,
+    ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [complete]).
+
+complete_prohibited_nde() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        complete_workflow_execution(?DATA),
+        case IsReplaying of
+            false -> start_activity(?A_TYPE, [], ?OPTS);
+            true -> set_workflow_result(?DATA)
+        end
+    end,
+    ?assertReplayEqual({completed, ?DATA}, EFn, ?LPATH ++ [complete]).
+
+cancel() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        cancel_workflow_execution([])
+    end,
+    ?assertReplayEqualF({canceled, []}, EFn, ?LPATH).
+
+cancel_nde() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        start_activity(?A_TYPE, [], ?OPTS),
+        cancel_workflow_execution([])
+    end,
+    ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [cancel]).
+
+cancel_prohibited_nde() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        cancel_workflow_execution(?DATA),
+        case IsReplaying of
+            false -> start_activity(?A_TYPE, [], ?OPTS);
+            true -> set_workflow_result(?DATA)
+        end
+    end,
+    ?assertReplayEqual({canceled, ?DATA}, EFn, ?LPATH ++ [cancel]).
+
+fail() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        fail_workflow_execution(#{source => "Src", message => "Msg", stack_trace => "ST"})
+    end,
+    ?assertReplayMatchF(
+        {failed, #{source := "Src", message := "Msg", stack_trace := "ST"}},
+        EFn,
+        ?LPATH
+    ).
+
+fail_nde() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        start_activity(?A_TYPE, [], ?OPTS),
+        fail_workflow_execution(#{source => "Src", message => "Msg", stack_trace => "ST"})
+    end,
+    ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [fail]).
+
+fail_prohibited_nde() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        fail_workflow_execution(#{source => "Src", message => "Msg", stack_trace => "ST"}),
+        case IsReplaying of
+            false -> start_activity(?A_TYPE, [], ?OPTS);
+            true -> set_workflow_result(?DATA)
+        end
+    end,
+    ?assertReplayMatch(
+        {failed, #{source := "Src", message := "Msg", stack_trace := "ST"}},
+        EFn,
+        ?LPATH ++ [fail]
+    ).
+
+duplicate_id() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := [1]} = start_activity(?A_TYPE, [1], [wait, {activity_id, test_a}] ++ ?OPTS),
+        #{result := [1]} = start_activity(?A_TYPE, [2], [wait, {activity_id, test_a}] ++ ?OPTS),
+        #{result := [?DATA]} = start_activity(?A_TYPE, [?DATA], [wait | ?OPTS]),
+        A = start_activity(?A_TYPE, [3], [{activity_id, test_a} | ?OPTS]),
+        #{result := [?DATA]} = start_activity(?A_TYPE, [?DATA], [wait | ?OPTS]),
+        #{result := [3], history := [#{result := [2]}, #{result := [1]}]} = wait(A)
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+throw_1() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        ?THROW_ON_REPLAY
+    end,
+    ?assertReplayEqualF({completed, []}, EFn, ?LPATH).
+
+throw_2() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        ?THROW_ON_REPLAY,
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS])
+    end,
+    ?assertReplayEqualF({completed, []}, EFn, ?LPATH).
+
+throw_12() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS])
+    end,
+    ?assertReplayEqual({completed, []}, EFn, ?LPATH ++ [throw_2]).
+
+throw_21() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS])
+    end,
+    ?assertReplayEqual({completed, []}, EFn, ?LPATH ++ [throw_1]).
+
+throw_nde_1() ->
+    EFn = fun(_Context, _Input) ->
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS]),
+        start_activity(?A_TYPE, [], ?OPTS)
+    end,
+    ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [throw_1]).
+
+throw_nde_2() ->
+    EFn = fun(_Context, _Input) ->
+        start_activity(?A_TYPE, [], ?OPTS),
+        #{result := ?DATA} = start_activity(?A_TYPE, ?DATA, [wait | ?OPTS])
+    end,
+    ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [throw_2]).
+
+loop() ->
+    EFn = fun(_Context, _Input) ->
+        Seq = lists:seq(1, ?LOOP_SIZE),
+        AL = [start_activity(?A_TYPE, [I], ?OPTS) || I <- Seq],
+        Seq = lists:map(fun(#{result := [R]}) -> R end, wait_all(AL))
+    end,
+    ?assertReplayEqualF({completed, []}, EFn, ?LPATH).
+
+loop_nde_1() ->
+    EFn = fun(_Context, _Input) ->
+        start_activity(?A_TYPE, [], ?OPTS),
+        Seq = lists:seq(1, ?LOOP_SIZE),
+        AL = [start_activity(?A_TYPE, [I], ?OPTS) || I <- Seq],
+        Seq = lists:map(fun(#{result := [R]}) -> R end, wait_all(AL))
+    end,
+    ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [loop]).
+
+loop_nde_2() ->
+    EFn = fun(_Context, _Input) ->
+        Seq = lists:seq(1, ?LOOP_SIZE),
+        AL = [start_activity(?A_TYPE, [I], ?OPTS) || I <- Seq],
+        Seq = lists:map(fun(#{result := [R]}) -> R end, wait_all(AL)),
+        start_activity(?A_TYPE, [], ?OPTS)
+    end,
+    ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [loop]).
+
+a_cancel_1() ->
+    EFn = fun(_Context, _Input) ->
+        A = start_activity(?A_TYPE, ?DATA, [{heartbeat_timeout, 1_000} | ?OPTS]),
+        cancel_activity(A),
+        #{cancel_requested := true, state := canceled} = wait(A)
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+a_cancel_2() ->
+    EFn = fun(_Context, _Input) ->
+        A = start_activity(?A_TYPE, ["ok", 10_000], [{heartbeat_timeout, 1_000} | ?OPTS]),
+        #{state := cmd} = wait(setelement(1, A, activity_cmd)),
+        #{state := cmd} = wait(setelement(1, A, activity_cmd), 100),
+        #{state := scheduled} = wait(setelement(1, A, activity_schedule), 100),
+        {noevent, #{state := scheduled}} = await(A, 100),
+        #{state := scheduled} = wait(setelement(1, A, activity_schedule)),
+        cancel_activity(A),
+        #{state := canceled} = wait(A)
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+a_cancel_3() ->
+    EFn = fun(_Context, _Input) ->
+        A1 = start_activity(?A_TYPE, [], ?OPTS),
+        A2 = start_activity(?A_TYPE, ["ok", 10_000], [{heartbeat_timeout, 1_000} | ?OPTS]),
+        [#{state := completed}, #{state := scheduled}] = wait_all([
+            A1, setelement(1, A2, activity_schedule)
+        ]),
+        cancel_activity(A2),
+        #{state := canceled} = wait(A2)
+    end,
+    ?assertReplayEqualF({completed, []}, EFn, ?LPATH).
+
+a_cancel_3_nde1() ->
+    EFn = fun(_Context, _Input) ->
+        A1 = start_activity(?A_TYPE, [], ?OPTS),
+        A2 = start_activity(?A_TYPE, ["ok", 1_000], [{heartbeat_timeout, 1_000} | ?OPTS]),
+        [#{state := completed}, #{state := completed}] = wait(A1, A2)
+    end,
+    ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [a_cancel_3]).
+
+a_cancel_3_nde2() ->
+    EFn = fun(_Context, _Input) ->
+        A1 = start_activity(?A_TYPE, [], ?OPTS),
+        _A2 = start_activity(?A_TYPE, ["ok", 10_000], [{heartbeat_timeout, 1_000} | ?OPTS]),
+        #{state := completed} = wait(A1),
+        A3 = start_activity(?A_TYPE, [], ?OPTS),
+        #{state := completed} = wait(A3)
+    end,
+    ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [a_cancel_3]).
+
+a_cancel_6() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        A1 = start_activity(?A_TYPE, [], ?OPTS),
+        A2 = start_activity(?A_TYPE, ["ok", 10_000], [{heartbeat_timeout, 1_000} | ?OPTS]),
+        #{state := completed} = wait(A1),
+        ?THROW_ON_REPLAY,
+        cancel_activity(A2),
+        #{state := canceled} = wait(A2)
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+a_cancel_loop() ->
+    EFn = fun(_Context, _Input) ->
+        Seq = lists:seq(1, ?LOOP_SIZE),
+        AL1 = [start_activity(?A_TYPE, [I], ?OPTS) || I <- Seq],
+        AL2 = [
+            start_activity(?A_TYPE, [I, 10_000], [{heartbeat_timeout, 1_000} | ?OPTS])
+         || I <- Seq
+        ],
+        Seq = lists:map(fun(#{result := [R]}) -> R end, wait_all(AL1)),
+        [cancel_activity(A) || A <- AL2],
+        [] = lists:filter(fun(#{state := canceled}) -> false end, wait_all(AL2))
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+invalid_mod() ->
+    EFn = fun(_Context, _Input) ->
+        try start_activity(invalid_activity, [], [{task_queue, "invalid_task_queue"} | ?OPTS]) of
+            Err -> ?logError(error, Err)
+        catch
+            error:_ -> ?assert(true)
+        end
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+long_fail_await() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        A = start_activity(?A_TYPE, ["ok", 100], ?OPTS),
+        ?THROW_ON_REPLAY,
+        #{state := completed} = wait(A)
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+a_a() ->
+    EFn = fun(_Context, _Input) ->
+        #{state := completed} = start_activity(?A_TYPE, [], [wait | ?OPTS]),
+        #{state := completed} = start_activity(?A_TYPE, [], [wait | ?OPTS])
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+a_a_err() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        #{state := completed} = start_activity(?A_TYPE, [], [wait | ?OPTS]),
+        #{state := completed} = start_activity(?A_TYPE, [], [wait | ?OPTS]),
+        ?THROW_ON_REPLAY
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+a_err_a() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        #{state := completed} = start_activity(?A_TYPE, [], [wait | ?OPTS]),
+        ?THROW_ON_REPLAY,
+        #{state := completed} = start_activity(?A_TYPE, [], [wait | ?OPTS])
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+err_a_a() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        ?THROW_ON_REPLAY,
+        #{state := completed} = start_activity(?A_TYPE, [], [wait | ?OPTS]),
+        #{state := completed} = start_activity(?A_TYPE, [], [wait | ?OPTS])
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+a_failing_1() ->
+    EFn = fun(_Context, _Input) ->
+        A = start_activity(?A_TYPE, ["ok", 50, 2]),
+        #{attempt := 2, state := completed} = wait(A)
+    end,
+    ?assertReplayEqualF({completed, []}, EFn, ?LPATH).
+
+a_failing_2() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        A = start_activity(?A_TYPE, ["ok", 50, 2]),
+        Pid = self(),
+        case IsReplaying of
+            false -> timer:apply_after(30, fun() -> exit(Pid, test_error) end);
+            true -> ok
+        end,
+        #{attempt := 2, state := completed} = wait(A)
+    end,
+    ?assertReplayEqual({completed, []}, EFn, ?LPATH ++ [a_failing_1]).
+
+a_failing_3() ->
+    EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
+        A = start_activity(?A_TYPE, ["ok", 500, 2]),
+        wait(setelement(1, A, activity_schedule), 100),
+        ?THROW_ON_REPLAY,
+        #{attempt := 2, state := completed} = wait(A)
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+large_data() ->
+    EFn = fun(_Context, _Input) ->
+        LargeData = binary:copy(~"X", 2_000_000),
+        A = start_activity(?A_TYPE, [LargeData], ?OPTS),
+        #{result := _} = wait(A)
+    end,
+    ?assertReplayEqual({completed, []}, EFn).
+
+-endif.
