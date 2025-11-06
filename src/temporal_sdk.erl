@@ -11,7 +11,7 @@ programming language.
 
 ## Quick Start
 
-Add `temporal_sdk` to your application dependencies list:
+Add `temporal_sdk` to your application runtime dependencies list:
 
 ```erlang
 %% rebar3.config
@@ -27,8 +27,8 @@ Add `temporal_sdk` to your application dependencies list:
 ]}.
 ```
 
-Configure `temporal_sdk` to start activity and workflow workers during application startup
-(see `m:temporal_sdk_node`, `m:temporal_sdk_cluster` and `m:temporal_sdk_worker`):
+Configure activity and workflow runtime workers
+(see: `m:temporal_sdk_node`, `m:temporal_sdk_cluster` and `m:temporal_sdk_worker`):
 
 ```erlang
 %% sys.config
@@ -44,11 +44,12 @@ Configure `temporal_sdk` to start activity and workflow workers during applicati
 ].
 ```
 
-Above SDK configuration assumes that Temporal server is available on `localhost:7233`.
+The above `temporal_sdk` configuration assumes that the Temporal server is available on the
+`localhost:7233`.
 Refer to [temporal_sdk_samples](https://github.com/andrzej-mag/temporal_sdk_samples#requirements)
 repository for Temporal CLI dev server setup instructions.
 
-Define `hello_world_activity` (see `m:temporal_sdk_activity`):
+Define `hello_world_activity` (see: `m:temporal_sdk_activity`):
 
 ```erlang
 %% hello_world_activity.erl
@@ -61,7 +62,7 @@ Define `hello_world_activity` (see `m:temporal_sdk_activity`):
 execute(_Context, [String]) -> [string:uppercase(String)].
 ```
 
-Define `hello_world_workflow` (see `m:temporal_sdk_workflow`):
+Define `hello_world_workflow` (see: `m:temporal_sdk_workflow`):
 
 ```erlang
 %% hello_world_workflow.erl

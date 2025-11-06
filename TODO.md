@@ -39,6 +39,7 @@ Gradually add more `temporal_sdk_samples`:
 * benchmark dynamic task worker start/terminate
 * parallel executions
 * telemetry logs, metrics and traces/otel
+* TLS/mTLS config example
 
 Activity, workflow and nexus tasks: node_execution.
 
