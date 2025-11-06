@@ -16,7 +16,7 @@
         uuid
     ]},
     %% hex.pm package metadata
-    {licenses, ["Business Source License"]},
+    {licenses, ["BUSL-1.1"]},
     {links, [{"GitHub", "https://github.com/andrzej-mag/temporal_sdk"}]},
     {files, ["include", "src", "rebar.config", "LICENSE*", "README*"]}
 ]}.
