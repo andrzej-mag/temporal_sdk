@@ -1,7 +1,7 @@
 Individual Contributor License Agreement
 
-Thank you for your interest in contributing to the Temporal Erlang SDK project
-("Project") owned and managed by Andrzej Magdziarz ("We" or "Us").
+Thank you for your interest in contributing to the Temporal Erlang and Elixir
+SDK project ("Project") owned and managed by Andrzej Magdziarz ("We" or "Us").
 
 This Contributor agreement ("Agreement") documents the rights granted by
 Contributors to Us.

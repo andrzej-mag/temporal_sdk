@@ -1,6 +1,6 @@
 {application, temporal_sdk, [
-    {description, "Temporal Erlang SDK"},
-    {vsn, "0.1.0"},
+    {description, "Temporal Erlang and Elixir SDK"},
+    {vsn, "0.1.1"},
     {mod, {temporal_sdk_app, []}},
     {env, []},
     {modules, []},
@@ -14,9 +14,5 @@
         opentelemetry_api_experimental,
         telemetry,
         uuid
-    ]},
-    %% hex.pm package metadata
-    {licenses, ["BUSL-1.1"]},
-    {links, [{"GitHub", "https://github.com/andrzej-mag/temporal_sdk"}]},
-    {files, ["include", "src", "rebar.config", "LICENSE*", "README*"]}
+    ]}
 ]}.

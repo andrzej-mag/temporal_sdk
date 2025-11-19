@@ -520,19 +520,14 @@ serializer(_Cluster, _MsgName, _Key, Term) ->
     TemporalTypeName :: unicode:chardata()
 ) -> {ok, module()} | {error, {Reason :: string(), Details :: map()}}.
 temporal_name_to_erlang(Cluster, TemporalTypeName) ->
-    % eqwalizer:ignore
-    N1 = string:lowercase(TemporalTypeName),
-    N2 = string:replace(N1, "-", "_", all),
-    % eqwalizer:ignore
-    N3 = string:replace(N2, ".", "_", all),
-    case temporal_sdk_utils_unicode:characters_to_binary(N3) of
+    case temporal_sdk_utils_unicode:characters_to_binary(TemporalTypeName) of
         {ok, Name} ->
             try
                 {ok, binary_to_existing_atom(Name)}
             catch
                 error:badarg:_Stacktrace ->
                     {error,
-                        {"Undefined Erlang module for Temporal activity or workflow type name.", #{
+                        {"Undefined module for given Temporal activity or workflow type name.", #{
                             cluster => Cluster,
                             temporal_type_name => TemporalTypeName,
                             erlang_name => Name
@@ -540,7 +535,7 @@ temporal_name_to_erlang(Cluster, TemporalTypeName) ->
             end;
         Err ->
             {error,
-                {"Failed to convert Temporal activity or workflow type name to Erlang module.", #{
+                {"Failed to convert Temporal activity or workflow type name to module name.", #{
                     error => Err,
                     cluster => Cluster,
                     temporal_type_name => TemporalTypeName

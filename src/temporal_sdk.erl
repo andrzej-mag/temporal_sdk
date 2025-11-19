@@ -2,36 +2,53 @@
 
 % elp:ignore W0012 W0040
 -moduledoc """
+Common workflow services module.
+
 [Temporal](https://temporal.io/) is a distributed, scalable, durable, and highly available
 orchestration engine used to execute asynchronous, long-running business logic in a scalable
 and resilient way.
 
-Temporal Erlang SDK is the framework for authoring workflows and activities using the Erlang
-programming language.
+Temporal Erlang and Elixir SDK is a framework for authoring workflows and activities using the
+Erlang and Elixir programming languages.
 
 ## Quick Start
 
 Add `temporal_sdk` to your application runtime dependencies list:
 
+<!-- tabs-open -->
+### Erlang
 ```erlang
 %% rebar3.config
 {deps, [
     temporal_sdk
 ]}.
 
-%% my_application.app.src
-{application, my_application, [
+%% src/hello_world.app.src
+{application, hello_world, [
     {applications, [
         temporal_sdk
     ]}
 ]}.
 ```
 
-Configure activity and workflow runtime workers
+### Elixir
+```elixir
+# mix.exs
+  defp deps do
+    [
+      {:temporal_sdk, ">= 0.0.0"}
+    ]
+  end
+```
+<!-- tabs-close -->
+
+Configure activity and workflow runtime [workers](https://docs.temporal.io/workers)
 (see: `m:temporal_sdk_node`, `m:temporal_sdk_cluster` and `m:temporal_sdk_worker`):
 
+<!-- tabs-open -->
+### Erlang
 ```erlang
-%% sys.config
+%% config/sys.config
 [
     {temporal_sdk, [
         {clusters, [
@@ -44,15 +61,31 @@ Configure activity and workflow runtime workers
 ].
 ```
 
+### Elixir
+```elixir
+# config/config.exs
+config :temporal_sdk,
+  clusters: [
+    cluster_1: [
+      activities: [%{:task_queue => "default"}],
+      workflows: [%{:task_queue => "default"}]
+    ]
+  ]
+```
+<!-- tabs-close -->
+
 The above `temporal_sdk` configuration assumes that the Temporal server is available on the
 `localhost:7233`.
 Refer to [temporal_sdk_samples](https://github.com/andrzej-mag/temporal_sdk_samples#requirements)
 repository for Temporal CLI dev server setup instructions.
 
-Define `hello_world_activity` (see: `m:temporal_sdk_activity`):
+Implement Temporal [activity definition](https://docs.temporal.io/activity-definition)
+(see: `m:temporal_sdk_activity`):
 
+<!-- tabs-open -->
+### Erlang
 ```erlang
-%% hello_world_activity.erl
+%% src/hello_world_activity.erl
 -module(hello_world_activity).
 
 -export([execute/2]).
@@ -62,10 +95,25 @@ Define `hello_world_activity` (see: `m:temporal_sdk_activity`):
 execute(_Context, [String]) -> [string:uppercase(String)].
 ```
 
-Define `hello_world_workflow` (see: `m:temporal_sdk_workflow`):
+### Elixir
+```elixir
+# lib/hello_world_activity.ex
+defmodule HelloWorld.Activity do
+  use TemporalSdk.Activity
 
+  @impl true
+  def execute(_context, [string]), do: [String.upcase(string)]
+end
+```
+<!-- tabs-close -->
+
+Implement Temporal [workflow definition](https://docs.temporal.io/workflow-definition)
+(see: `m:temporal_sdk_workflow`):
+
+<!-- tabs-open -->
+### Erlang
 ```erlang
-%% hello_world_workflow.erl
+%% src/hello_world_workflow.erl
 -module(hello_world_workflow).
 
 -export([execute/2, start/0]).
@@ -84,21 +132,51 @@ start() ->
     ]).
 ```
 
-Start `rebar3 shell` and run `hello_world_workflow` workflow execution:
+### Elixir
+```elixir
+# lib/hello_world_workflow.ex
+defmodule HelloWorld.Workflow do
+  use TemporalSdk.Workflow
 
+  @impl true
+  def execute(_context, input) do
+    a1 = start_activity(HelloWorld.Activity, ["hello"])
+    a2 = start_activity(HelloWorld.Activity, ["world"])
+    [%{result: a1_result}, %{result: a2_result}] = wait_all([a1, a2])
+    [a1_result, a2_result, input, "\n"] |> Enum.join(" ") |> IO.puts()
+  end
+
+  def start do
+    TemporalSdk.start_workflow(:cluster_1, "default", HelloWorld.Workflow, [
+      :wait,
+      input: ["from Temporal"]
+    ])
+  end
+end
+```
+<!-- tabs-close -->
+
+Start `rebar3 shell` or `iex -S mix` and run Temporal
+[workflow execution](https://docs.temporal.io/workflow-execution):
+
+<!-- tabs-open -->
+### Erlang
 ```erlang
 1> hello_world_workflow:start().
 HELLO WORLD from Temporal
 ...
 ```
 
+### Elixir
+```elixir
+iex(1)> HelloWorld.Workflow.start()
+HELLO WORLD from Temporal
+...
+```
+<!-- tabs-close -->
+
 This and other examples can be found in the
 [temporal_sdk_samples](https://github.com/andrzej-mag/temporal_sdk_samples) repository.
-
-## TODO
-* signal_workflow with retries?
-* query_workflow with retries?
-* update_workflow with retries? and poll
 """.
 
 -export([
