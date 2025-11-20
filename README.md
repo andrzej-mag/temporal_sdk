@@ -17,6 +17,17 @@ Add `temporal_sdk` to your application runtime dependencies list:
 
 <!-- tabs-open -->
 
+#### Elixir
+
+```elixir
+# mix.exs
+  defp deps do
+    [
+      {:temporal_sdk, ">= 0.0.0"}
+    ]
+  end
+```
+
 #### Erlang
 
 ```erlang
@@ -33,25 +44,24 @@ Add `temporal_sdk` to your application runtime dependencies list:
 ]}.
 ```
 
+<!-- tabs-close -->
+
+Configure activity and workflow runtime [workers](https://docs.temporal.io/workers):
+
+<!-- tabs-open -->
+
 #### Elixir
 
 ```elixir
-# mix.exs
-  defp deps do
-    [
-      {:temporal_sdk, ">= 0.0.0"}
+# config/config.exs
+config :temporal_sdk,
+  clusters: [
+    cluster_1: [
+      activities: [%{:task_queue => "default"}],
+      workflows: [%{:task_queue => "default"}]
     ]
-  end
+  ]
 ```
-
-<!-- tabs-close -->
-
-Configure activity and workflow runtime [workers](https://docs.temporal.io/workers)
-(see: [`temporal_sdk_node`](https://hexdocs.pm/temporal_sdk/temporal_sdk_node.html),
-[`temporal_sdk_cluster`](https://hexdocs.pm/temporal_sdk/temporal_sdk_cluster.html) and
-[`temporal_sdk_worker`](https://hexdocs.pm/temporal_sdk/temporal_sdk_worker.html)):
-
-<!-- tabs-open -->
 
 #### Erlang
 
@@ -69,19 +79,6 @@ Configure activity and workflow runtime [workers](https://docs.temporal.io/worke
 ].
 ```
 
-#### Elixir
-
-```elixir
-# config/config.exs
-config :temporal_sdk,
-  clusters: [
-    cluster_1: [
-      activities: [%{:task_queue => "default"}],
-      workflows: [%{:task_queue => "default"}]
-    ]
-  ]
-```
-
 <!-- tabs-close -->
 
 The above `temporal_sdk` configuration assumes that the Temporal server is available on the
@@ -89,10 +86,21 @@ The above `temporal_sdk` configuration assumes that the Temporal server is avail
 Refer to [temporal_sdk_samples](https://github.com/andrzej-mag/temporal_sdk_samples#requirements)
 repository for Temporal CLI dev server setup instructions.
 
-Implement Temporal [activity definition](https://docs.temporal.io/activity-definition)
-(see: [`temporal_sdk_activity`](https://hexdocs.pm/temporal_sdk/temporal_sdk_activity.html)):
+Implement Temporal [activity definition](https://docs.temporal.io/activity-definition):
 
 <!-- tabs-open -->
+
+#### Elixir
+
+```elixir
+# lib/hello_world_activity.ex
+defmodule HelloWorld.Activity do
+  use TemporalSdk.Activity
+
+  @impl true
+  def execute(_context, [string]), do: [String.upcase(string)]
+end
+```
 
 #### Erlang
 
@@ -107,46 +115,11 @@ Implement Temporal [activity definition](https://docs.temporal.io/activity-defin
 execute(_Context, [String]) -> [string:uppercase(String)].
 ```
 
-#### Elixir
-
-```elixir
-# lib/hello_world_activity.ex
-defmodule HelloWorld.Activity do
-  use TemporalSdk.Activity
-
-  @impl true
-  def execute(_context, [string]), do: [String.upcase(string)]
-end
-```
-
 <!-- tabs-close -->
 
-Implement Temporal [workflow definition](https://docs.temporal.io/workflow-definition)
-(see: [`temporal_sdk_workflow`](https://hexdocs.pm/temporal_sdk/temporal_sdk_workflow.html)):
+Implement Temporal [workflow definition](https://docs.temporal.io/workflow-definition):
 
 <!-- tabs-open -->
-
-#### Erlang
-
-```erlang
-%% src/hello_world_workflow.erl
--module(hello_world_workflow).
-
--export([execute/2, start/0]).
-
--include_lib("temporal_sdk/include/workflow.hrl").
-
-execute(_Context, Input) ->
-    A1 = start_activity(hello_world_activity, ["hello"]),
-    A2 = start_activity(hello_world_activity, ["world"]),
-    [#{result := A1Result}, #{result := A2Result}] = wait_all([A1, A2]),
-    io:fwrite("~s ~s ~s~n~n", [A1Result, A2Result, Input]).
-
-start() ->
-    temporal_sdk:start_workflow(cluster_1, "default", hello_world_workflow, [
-        wait, {input, ["from Temporal"]}
-    ]).
-```
 
 #### Elixir
 
@@ -172,25 +145,47 @@ defmodule HelloWorld.Workflow do
 end
 ```
 
-<!-- tabs-close -->
-
-Start `rebar3 shell` or `iex -S mix` and run Temporal
-[workflow execution](https://docs.temporal.io/workflow-execution):
-
-<!-- tabs-open -->
-
 #### Erlang
 
 ```erlang
-1> hello_world_workflow:start().
-HELLO WORLD from Temporal
-...
+%% src/hello_world_workflow.erl
+-module(hello_world_workflow).
+
+-export([execute/2, start/0]).
+
+-include_lib("temporal_sdk/include/workflow.hrl").
+
+execute(_Context, Input) ->
+    A1 = start_activity(hello_world_activity, ["hello"]),
+    A2 = start_activity(hello_world_activity, ["world"]),
+    [#{result := A1Result}, #{result := A2Result}] = wait_all([A1, A2]),
+    io:fwrite("~s ~s ~s~n~n", [A1Result, A2Result, Input]).
+
+start() ->
+    temporal_sdk:start_workflow(cluster_1, "default", hello_world_workflow, [
+        wait, {input, ["from Temporal"]}
+    ]).
 ```
+
+<!-- tabs-close -->
+
+Start  `iex -S mix` or `rebar3 shell` and run Temporal
+[workflow execution](https://docs.temporal.io/workflow-execution):
+
+<!-- tabs-open -->
 
 #### Elixir
 
 ```elixir
 iex(1)> HelloWorld.Workflow.start()
+HELLO WORLD from Temporal
+...
+```
+
+#### Erlang
+
+```erlang
+1> hello_world_workflow:start().
 HELLO WORLD from Temporal
 ...
 ```
