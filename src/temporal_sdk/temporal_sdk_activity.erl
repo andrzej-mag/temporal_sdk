@@ -1,6 +1,6 @@
 -module(temporal_sdk_activity).
 
-% elp:ignore W0012 W0040
+% elp:ignore W0012 W0040 E1599
 -moduledoc {file, "../../docs/temporal_sdk/activity/-module.md"}.
 
 -export([

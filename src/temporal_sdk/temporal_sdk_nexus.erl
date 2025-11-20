@@ -1,6 +1,6 @@
 -module(temporal_sdk_nexus).
 
-% elp:ignore W0012 W0040
+% elp:ignore W0012 W0040 E1599
 -moduledoc {file, "../../docs/temporal_sdk/nexus/-module.md"}.
 
 -export([

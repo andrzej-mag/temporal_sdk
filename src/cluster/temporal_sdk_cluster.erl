@@ -1,6 +1,6 @@
 -module(temporal_sdk_cluster).
 
-% elp:ignore W0012 W0040
+% elp:ignore W0012 W0040 E1599
 -moduledoc {file, "../../docs/cluster/cluster/-module.md"}.
 
 -export([
