@@ -1,7 +1,3 @@
 defmodule TemporalSdk.Schedule do
-  @moduledoc """
-  Temporal schedule services module.
-
-  See `m::temporal_sdk_schedule`.
-  """
+  @moduledoc File.read!("docs/temporal_sdk/schedule/-module.md")
 end

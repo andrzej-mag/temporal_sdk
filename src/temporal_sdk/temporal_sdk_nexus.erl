@@ -1,11 +1,7 @@
 -module(temporal_sdk_nexus).
 
 % elp:ignore W0012 W0040
--moduledoc """
-Temporal nexus task module.
-
-WIP - don't use this yet.
-""".
+-moduledoc {file, "../../docs/temporal_sdk/nexus/-module.md"}.
 
 -export([
     await_data/1,

@@ -1,7 +1,3 @@
 defmodule TemporalSdk.Nexus do
-  @moduledoc """
-  Temporal nexus task module.
-
-  See `m::temporal_sdk_nexus`.
-  """
+  @moduledoc File.read!("docs/temporal_sdk/nexus/-module.md")
 end

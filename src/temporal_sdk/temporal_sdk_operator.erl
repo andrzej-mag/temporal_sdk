@@ -1,37 +1,7 @@
 -module(temporal_sdk_operator).
 
 % elp:ignore W0012 W0040
--moduledoc """
-Temporal operator services module.
-
-TODO:
-* add_search_attributes
-* remove_search_attributes
-* list_search_attributes
-
-* register_namespace
-* list_namespaces
-* describe_namespace
-* update_namespace
-* delete_namespace
-
-* 'GetNexusEndpoint'
-* 'CreateNexusEndpoint'
-* 'UpdateNexusEndpoint'
-* 'DeleteNexusEndpoint'
-* 'ListNexusEndpoints'
-
-* 'ListWorkers'
-* 'FetchWorkerConfig'
-* 'UpdateWorkerConfig'
-* 'DescribeWorker'
-
-* 'UpdateTaskQueueConfig'
-
-* 'AddOrUpdateRemoteCluster'
-* 'RemoveRemoteCluster'
-* 'ListClusters'
-""".
+-moduledoc {file, "../../docs/temporal_sdk/operator/-module.md"}.
 
 -export([
     create_nexus_endpoint/3,

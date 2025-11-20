@@ -1,9 +1,5 @@
 defmodule TemporalSdk.Workflow do
-  @moduledoc """
-  Temporal workflow task module.
-
-  See `m::temporal_sdk_workflow`.
-  """
+  @moduledoc File.read!("docs/temporal_sdk/workflow/-module.md")
 
   defmacro __using__(_opts) do
     quote do

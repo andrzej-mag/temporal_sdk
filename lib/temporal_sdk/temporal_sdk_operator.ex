@@ -1,7 +1,3 @@
 defmodule TemporalSdk.Operator do
-  @moduledoc """
-  Temporal operator services module.
-
-  See `m::temporal_sdk_operator`.
-  """
+  @moduledoc File.read!("docs/temporal_sdk/operator/-module.md")
 end

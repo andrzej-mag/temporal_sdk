@@ -1,7 +1,3 @@
 defmodule TemporalSdk.Batch do
-  @moduledoc """
-  Temporal batch services module.
-
-  See `m::temporal_sdk_batch`.
-  """
+  @moduledoc File.read!("docs/temporal_sdk/batch/-module.md")
 end

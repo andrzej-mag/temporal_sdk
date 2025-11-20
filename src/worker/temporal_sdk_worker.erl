@@ -1,9 +1,7 @@
 -module(temporal_sdk_worker).
 
 % elp:ignore W0012 W0040
--moduledoc """
-Tasks worker module.
-""".
+-moduledoc {file, "../../docs/worker/worker/-module.md"}.
 
 -export([
     count/2,

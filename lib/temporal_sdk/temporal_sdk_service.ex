@@ -1,9 +1,5 @@
 defmodule TemporalSdk.Service do
-  @moduledoc """
-  Temporal general services module.
-
-  See `m::temporal_sdk_service`.
-  """
+  @moduledoc File.read!("docs/temporal_sdk/service/-module.md")
 
   defdelegate get_workflow_history(cluster, workflow_execution), to: :temporal_sdk_service
   defdelegate get_workflow_history(cluster, workflow_execution, opts), to: :temporal_sdk_service

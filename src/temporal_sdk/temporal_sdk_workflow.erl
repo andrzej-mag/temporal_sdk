@@ -1,20 +1,7 @@
 -module(temporal_sdk_workflow).
 
 % elp:ignore W0012 W0040
--moduledoc """
-Temporal workflow task module.
-
-TODO:
-* start_activity WIP: session_execution, direct_execution, direct_result
-* start_nexus/4
-* start_nexus/5
-* cancel_nexus
-
-* upsert_workflow_search_attributes
-
-* cancel_external_workflow
-* signal_external_workflow
-""".
+-moduledoc {file, "../../docs/temporal_sdk/operator/-module.md"}.
 
 %% Temporal commands
 -export([

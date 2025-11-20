@@ -1,9 +1,7 @@
 -module(temporal_sdk).
 
 % elp:ignore W0012 W0040
--moduledoc """
-Common workflow services module.
-""".
+-moduledoc {file, "../../docs/temporal_sdk/temporal_sdk/-module.md"}.
 
 -export([
     start_workflow/3,

@@ -1,9 +1,7 @@
 -module(temporal_sdk_cluster).
 
 % elp:ignore W0012 W0040
--moduledoc """
-Temporal cluster configuration and management module.
-""".
+-moduledoc {file, "../../docs/cluster/cluster/-module.md"}.
 
 -export([
     is_alive/1,

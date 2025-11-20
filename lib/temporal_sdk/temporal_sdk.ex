@@ -1,9 +1,5 @@
 defmodule TemporalSdk do
-  @moduledoc """
-  Common workflow services module.
-
-  See `m::temporal_sdk`.
-  """
+  @moduledoc File.read!("docs/temporal_sdk/temporal_sdk/-module.md")
 
   defdelegate start_workflow(cluster, task_queue, workflow_type), to: :temporal_sdk
   defdelegate start_workflow(cluster, task_queue, workflow_type, opts), to: :temporal_sdk

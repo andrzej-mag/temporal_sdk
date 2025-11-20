@@ -1,7 +1,3 @@
 defmodule TemporalSdk.Versioning do
-  @moduledoc """
-  Temporal versioning services module.
-
-  See `m::temporal_sdk_versioning`.
-  """
+  @moduledoc File.read!("docs/temporal_sdk/versioning/-module.md")
 end

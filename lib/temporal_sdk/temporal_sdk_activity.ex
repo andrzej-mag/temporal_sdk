@@ -1,5 +1,5 @@
 defmodule TemporalSdk.Activity do
-  @moduledoc File.read!("docs/temporal_sdk/activity/module.md")
+  @moduledoc File.read!("docs/temporal_sdk/activity/-module.md")
 
   defmacro __using__(_opts) do
     quote do
