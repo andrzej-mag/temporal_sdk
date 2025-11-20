@@ -1,9 +1,7 @@
 -module(temporal_sdk_activity).
 
 % elp:ignore W0012 W0040
--moduledoc """
-Temporal activity task module.
-""".
+-moduledoc {file, "../../docs/temporal_sdk/activity/module.md"}.
 
 -export([
     await_data/1,

@@ -1,9 +1,5 @@
 defmodule TemporalSdk.Activity do
-  @moduledoc """
-  Temporal activity task module.
-
-  See `m::temporal_sdk_activity`.
-  """
+  @moduledoc File.read!("docs/temporal_sdk/activity/module.md")
 
   defmacro __using__(_opts) do
     quote do
