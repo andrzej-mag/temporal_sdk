@@ -72,11 +72,6 @@ See: `m::temporal_sdk_node`, `m::temporal_sdk_cluster` and `m::temporal_sdk_work
 
 <!-- tabs-close -->
 
-The above `temporal_sdk` configuration assumes that the Temporal server is available on the
-`localhost:7233`.
-Refer to [temporal_sdk_samples](https://github.com/andrzej-mag/temporal_sdk_samples#requirements)
-repository for Temporal CLI dev server setup instructions.
-
 Implement Temporal [activity definition](https://docs.temporal.io/activity-definition):
 
 <!-- tabs-open -->
