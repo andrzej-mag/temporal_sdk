@@ -195,6 +195,15 @@ HELLO WORLD from Temporal
 This and other examples can be found in the
 [temporal_sdk_samples](https://github.com/andrzej-mag/temporal_sdk_samples) repository.
 
+## Requirements
+
+Temporal server running locally or available on `localhost:7233`.
+For development and testing purposes it is recommended to use
+[Temporal CLI](https://github.com/temporalio/cli/):
+
+1. [Install](https://docs.temporal.io/cli#install) Temporal CLI.
+2. [Start](https://docs.temporal.io/cli#start-dev-server) Temporal CLI dev server.
+
 ## License
 
 Temporal Erlang and Elixir SDK is distributed under a [Business Source License (BSL)](LICENSE.txt).
