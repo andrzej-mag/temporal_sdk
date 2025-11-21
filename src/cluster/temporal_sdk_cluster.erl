@@ -1,7 +1,7 @@
 -module(temporal_sdk_cluster).
 
 % elp:ignore W0012 W0040 E1599
--moduledoc {file, "../../docs/cluster/cluster/-module.md"}.
+-moduledoc {file, "../../docs/cluster/-module.md"}.
 
 -export([
     is_alive/1,

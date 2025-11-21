@@ -1,7 +1,7 @@
 -module(temporal_sdk_worker).
 
 % elp:ignore W0012 W0040 E1599
--moduledoc {file, "../../docs/worker/worker/-module.md"}.
+-moduledoc {file, "../../docs/worker/-module.md"}.
 
 -export([
     count/2,

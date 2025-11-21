@@ -1,5 +1,5 @@
 defmodule TemporalSdk.Worker do
-  @moduledoc File.read!("docs/worker/worker/-module.md")
+  @moduledoc File.read!("docs/worker/-module.md")
 
   defdelegate count(cluster, worker_type), to: :temporal_sdk_worker
   defdelegate is_alive(cluster, worker_type, worker_id), to: :temporal_sdk_worker
