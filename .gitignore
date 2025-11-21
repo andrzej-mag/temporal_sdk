@@ -19,4 +19,9 @@ logs
 rebar3.crashdump
 *~
 #
-doc
+_deps
+_doc
+cover
+tmp
+*.ez
+temporal_sdk-*.tar

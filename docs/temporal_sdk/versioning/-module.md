@@ -1,10 +1,7 @@
--module(temporal_sdk_versioning).
-
-% elp:ignore W0012 W0040
--moduledoc """
 Temporal versioning services module.
 
-TODO:
+WIP. Module will provide following Temporal services:
+
 * 'UpdateWorkerBuildIdCompatibility'
 * 'GetWorkerBuildIdCompatibility'
 * 'UpdateWorkerVersioningRules'
@@ -24,4 +21,3 @@ TODO:
 * 'ListWorkerDeployments'
 * 'UpdateWorkerDeploymentVersionMetadata'
 * 'SetWorkerDeploymentManager'
-""".

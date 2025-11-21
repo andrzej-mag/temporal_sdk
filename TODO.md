@@ -1,5 +1,3 @@
-Add Elixir SDK syntactic wrapper.
-
 Add temporal_sdk_api_workflow_check_default deterministic check module inline with other SDKs behaviour.
 
 Better "temporal_sdk_api_awaitable_index:merge_data/3": merge using `event_id` instead of `state` only.
@@ -31,6 +29,7 @@ Gradually add more `temporal_sdk_samples`:
 * suggest_continue_as_new with activities
 * bench_activity
 * pubsub counter based on process groups
+* Phoenix LiveView pubsub
 * sharding Temporal
 * time skipping mock test
 * mock activity test
@@ -48,7 +47,7 @@ Asynchronous activity completion by heartbeat.
 Testing:
 
 * recover tons of (currently offline) unit tests outdated/invalidated during numerous SDK refactors
-* add pending unit tests
+* add pending unit tests, including Elixir
 * add pending integration tests
 * add pending replay tests
 * add endpoint load balancing tests

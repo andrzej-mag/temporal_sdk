@@ -25,6 +25,7 @@ wait_for_namespace_registered() {
 		echo "===> Waiting for namespace <$NAMESPACE> registration..."
 		sleep 1
 	done
+	sleep 1
 }
 
 wait_for_namespace_deleted() {
@@ -39,6 +40,7 @@ wait_for_namespace_deleted() {
 		echo "===> Waiting for namespace <$NAMESPACE> deletion..."
 		sleep 1
 	done
+	sleep 1
 }
 
 if ! [ -x "$(command -v temporal)" ]; then

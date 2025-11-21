@@ -1,35 +1,7 @@
 -module(temporal_sdk_service).
 
-% elp:ignore W0012 W0040
--moduledoc """
-Temporal general services module.
-
-TODO:
-* request_cancel_workflow_execution
-* reset_workflow_execution
-* terminate_workflow_execution
-* delete_workflow_execution
-* scan_workflow_executions
-* count_workflow_executions
-* describe_task_queue
-* get_cluster_info
-* get_system_info
-* list_task_queue_partitions
-* 'UpdateWorkflowExecution'
-* 'PollWorkflowExecutionUpdate'
-* 'UpdateActivityOptions'
-* 'UpdateWorkflowExecutionOptions'
-* 'PauseActivity'
-* 'UnpauseActivity'
-* 'ResetActivity'
-* 'ExecuteMultiOperation'
- 
-* 'CreateWorkflowRule'
-* 'DescribeWorkflowRule'
-* 'DeleteWorkflowRule'
-* 'ListWorkflowRules'
-* 'TriggerWorkflowRule'
-""".
+% elp:ignore W0012 W0040 E1599
+-moduledoc {file, "../../docs/temporal_sdk/operator/-module.md"}.
 
 -export([
     get_workflow_history/2,

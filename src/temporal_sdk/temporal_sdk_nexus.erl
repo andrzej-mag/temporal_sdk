@@ -1,9 +1,7 @@
--module(temporal_sdk_activity).
+-module(temporal_sdk_nexus).
 
-% elp:ignore W0012 W0040
--moduledoc """
-Temporal activity task module.
-""".
+% elp:ignore W0012 W0040 E1599
+-moduledoc {file, "../../docs/temporal_sdk/nexus/-module.md"}.
 
 -export([
     await_data/1,
@@ -12,14 +10,8 @@ Temporal activity task module.
     complete/1,
     cancel/1,
     fail/1,
-    fail/3,
 
-    heartbeat/0,
-    heartbeat/1,
-
-    last_heartbeat/0,
     cancel_requested/0,
-    activity_paused/0,
     elapsed_time/0,
     elapsed_time/1,
     remaining_time/0,
@@ -36,7 +28,7 @@ Temporal activity task module.
 
 -include("proto.hrl").
 
--type task() :: ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.PollActivityTaskQueueResponse'().
+-type task() :: ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.PollNexusTaskQueueResponse'().
 -export_type([task/0]).
 
 -type context() ::
@@ -46,9 +38,9 @@ Temporal activity task module.
         otel_ctx := otel_ctx:t(),
         task := task(),
         worker_opts := temporal_sdk_worker:opts(),
+        operation := unicode:chardata(),
         started_at := SystemTime :: integer(),
-        task_timeout := erlang:timeout(),
-        header => temporal_sdk:term_from_mapstring_payload()
+        task_timeout := erlang:timeout()
     }.
 -export_type([context/0]).
 
@@ -56,8 +48,6 @@ Temporal activity task module.
     #{
         data := data(),
         cancel_requested := boolean(),
-        activity_paused := boolean(),
-        last_heartbeat := heartbeat(),
         elapsed_time := non_neg_integer(),
         remaining_time := erlang:timeout()
     }.
@@ -66,11 +56,8 @@ Temporal activity task module.
 -type data() :: term().
 -export_type([data/0]).
 
--type heartbeat() :: temporal_sdk:term_to_payloads().
--export_type([heartbeat/0]).
-
 %% -------------------------------------------------------------------------------------------------
-%% Activity behaviour
+%% behaviour
 
 -type complete_action() :: {complete, Result :: temporal_sdk:term_to_payloads()}.
 -export_type([complete_action/0]).
@@ -89,19 +76,14 @@ Temporal activity task module.
 -type terminate_action() :: cancel_action() | complete_action() | fail_action().
 -export_type([terminate_action/0]).
 
--type heartbeat_action() :: heartbeat | {heartbeat, Heartbeat :: heartbeat()}.
--export_type([heartbeat_action/0]).
-
 -type data_action() :: {data, NewData :: data()}.
 -export_type([data_action/0]).
 
--callback execute(Context :: context(), Input :: temporal_sdk:term_from_payloads()) ->
-    Result :: temporal_sdk:term_to_payloads().
+-callback execute(Context :: context(), RequestPayload :: temporal_sdk:term_from_payload()) ->
+    ResponsePayload :: temporal_sdk:term_to_payload().
 
--callback terminate(HandlerContext :: handler_context()) -> term().
-
--callback handle_heartbeat(HandlerContext :: handler_context()) ->
-    terminate_action() | heartbeat_action().
+-callback handle_terminate(HandlerContext :: handler_context()) ->
+    any().
 
 -callback handle_cancel(HandlerContext :: handler_context()) ->
     terminate_action() | ignore.
@@ -109,26 +91,13 @@ Temporal activity task module.
 -callback handle_message(HandlerContext :: handler_context(), Message :: term()) ->
     terminate_action() | data_action() | ignore.
 
--callback handle_failure(
-    HandlerContext :: handler_context(),
-    Class :: error | exit | throw | temporal_sdk:serializable(),
-    Reason :: term() | temporal_sdk:serializable(),
-    Stacktrace :: erlang:raise_stacktrace() | temporal_sdk:serializable()
-) ->
-    ApplicationFailure ::
-        temporal_sdk:application_failure()
-        | temporal_sdk:user_application_failure().
-
 -optional_callbacks([
-    terminate/1,
-    handle_heartbeat/1,
     handle_cancel/1,
-    handle_message/2,
-    handle_failure/4
+    handle_message/2
 ]).
 
 %% -------------------------------------------------------------------------------------------------
-%% Commands
+%% Temporal commands
 
 -spec await_data(EtsPattern :: term()) ->
     {ok, data()} | timeout | invalid_pattern | no_return().
@@ -153,7 +122,7 @@ cancel(CanceledDetails) ->
             call({cancel, CanceledDetails});
         false ->
             erlang:error(
-                "Unable to cancel activity without activity being request canceled first.",
+                "Unable to cancel nexus operation without nexus operation being request canceled first.",
                 [CanceledDetails]
             )
     end.
@@ -162,8 +131,6 @@ cancel(CanceledDetails) ->
 complete(Result) ->
     call({complete, Result}).
 
-%% ApplicationFailure is sent immediately. No telemetry exception is generated.
-%% Can be compared to temporal_sdk_workflow:fail_workflow_execution/1.
 -spec fail(
     ApplicationFailure ::
         temporal_sdk:application_failure()
@@ -171,31 +138,9 @@ complete(Result) ->
 ) -> no_return().
 fail(ApplicationFailure) -> call({fail, ApplicationFailure}).
 
-%% {Class, Reason, Stacktrace} exception is translated to ApplicationFailure with
-%% handle_failure/4 callback or internal default translation and then dispatched to Temporal server.
-%% {Class, Reason, Stacktrace} telemetry exception is generated.
--spec fail(
-    Class :: error | exit | throw | temporal_sdk:serializable(),
-    Reason :: term() | temporal_sdk:serializable(),
-    Stacktrace :: erlang:raise_stacktrace() | temporal_sdk:serializable()
-) -> no_return().
-fail(Class, Reason, Stacktrace) -> call({fail, Class, Reason, Stacktrace}).
-
--spec heartbeat() -> ok.
-heartbeat() ->
-    cast({heartbeat}).
-
--spec heartbeat(Heartbeat :: heartbeat()) -> ok.
-heartbeat(Heartbeat) ->
-    cast({heartbeat, Heartbeat}).
-
 -spec cancel_requested() -> boolean() | no_return().
 cancel_requested() ->
     call({cancel_requested}).
-
--spec activity_paused() -> boolean() | no_return().
-activity_paused() ->
-    call({activity_paused}).
 
 -spec elapsed_time() -> NativeTime :: non_neg_integer() | no_return().
 elapsed_time() ->
@@ -215,10 +160,6 @@ remaining_time(Unit) ->
         infinity -> infinity;
         T -> erlang:convert_time_unit(T, native, Unit)
     end.
-
--spec last_heartbeat() -> LastHeartbeat :: heartbeat() | no_return().
-last_heartbeat() ->
-    call({last_heartbeat}).
 
 -spec get_data() -> Data :: data() | no_return().
 get_data() ->

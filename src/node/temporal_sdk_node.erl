@@ -1,9 +1,7 @@
 -module(temporal_sdk_node).
 
-% elp:ignore W0012 W0040
--moduledoc """
-SDK node configuration and management module.
-""".
+% elp:ignore W0012 W0040 E1599
+-moduledoc {file, "../../docs/node/-module.md"}.
 
 -export([
     stats/0,

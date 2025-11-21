@@ -6,7 +6,7 @@ License text copyright (c) 2024 MariaDB plc, All Rights Reserved.
 --------------------------------------------------------------------------------
 
 Licensor:             Andrzej Magdziarz
-Licensed Work:        Temporal Erlang SDK
+Licensed Work:        Temporal Erlang and Elixir SDK
                       The Licensed Work is (c) 2025 Andrzej Magdziarz
 Additional Use Grant: Educational users (e.g., accredited academic institutions)
                       and non-profit organizations (as defined by applicable law)

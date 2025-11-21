@@ -1,23 +1,10 @@
-[![Hex Version](https://img.shields.io/hexpm/v/temporal_sdk?style=for-the-badge)](https://hex.pm/packages/temporal_sdk)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-informational?style=for-the-badge)](https://hexdocs.pm/temporal_sdk)
-
-> Project status: work in progress - under active development.
-> The [TODO.md](TODO.md) file can be considered as a project progress tracker.
-
-[Temporal](https://temporal.io/) is a distributed, scalable, durable, and highly available
-orchestration engine used to execute asynchronous, long-running business logic in a scalable
-and resilient way.
-
-Temporal Erlang and Elixir SDK is a framework for authoring workflows and activities using the
-Erlang and Elixir programming languages.
-
-## Quick Start
+# Quick Start
 
 Add `temporal_sdk` to your application runtime dependencies list:
 
 <!-- tabs-open -->
 
-#### Elixir
+### Elixir
 
 ```elixir
 # mix.exs
@@ -28,7 +15,7 @@ Add `temporal_sdk` to your application runtime dependencies list:
   end
 ```
 
-#### Erlang
+### Erlang
 
 ```erlang
 %% rebar3.config
@@ -50,7 +37,7 @@ Configure activity and workflow runtime [workers](https://docs.temporal.io/worke
 
 <!-- tabs-open -->
 
-#### Elixir
+### Elixir
 
 ```elixir
 # config/config.exs
@@ -63,7 +50,9 @@ config :temporal_sdk,
   ]
 ```
 
-#### Erlang
+See: `m:TemporalSdk.Node`, `m:TemporalSdk.Cluster` and `m:TemporalSdk.Worker`
+
+### Erlang
 
 ```erlang
 %% config/sys.config
@@ -79,6 +68,8 @@ config :temporal_sdk,
 ].
 ```
 
+See: `m::temporal_sdk_node`, `m::temporal_sdk_cluster` and `m::temporal_sdk_worker`
+
 <!-- tabs-close -->
 
 The above `temporal_sdk` configuration assumes that the Temporal server is available on the
@@ -90,7 +81,7 @@ Implement Temporal [activity definition](https://docs.temporal.io/activity-defin
 
 <!-- tabs-open -->
 
-#### Elixir
+### Elixir
 
 ```elixir
 # lib/hello_world_activity.ex
@@ -102,7 +93,9 @@ defmodule HelloWorld.Activity do
 end
 ```
 
-#### Erlang
+See: `m:TemporalSdk.Activity`
+
+### Erlang
 
 ```erlang
 %% src/hello_world_activity.erl
@@ -115,13 +108,15 @@ end
 execute(_Context, [String]) -> [string:uppercase(String)].
 ```
 
+See: `m::temporal_sdk_activity`
+
 <!-- tabs-close -->
 
 Implement Temporal [workflow definition](https://docs.temporal.io/workflow-definition):
 
 <!-- tabs-open -->
 
-#### Elixir
+### Elixir
 
 ```elixir
 # lib/hello_world_workflow.ex
@@ -145,7 +140,9 @@ defmodule HelloWorld.Workflow do
 end
 ```
 
-#### Erlang
+See: `m:TemporalSdk.Workflow`
+
+### Erlang
 
 ```erlang
 %% src/hello_world_workflow.erl
@@ -167,6 +164,8 @@ start() ->
     ]).
 ```
 
+See: `m::temporal_sdk_workflow`
+
 <!-- tabs-close -->
 
 Start  `iex -S mix` or `rebar3 shell` and run Temporal
@@ -174,7 +173,7 @@ Start  `iex -S mix` or `rebar3 shell` and run Temporal
 
 <!-- tabs-open -->
 
-#### Elixir
+### Elixir
 
 ```elixir
 iex(1)> HelloWorld.Workflow.start()
@@ -182,7 +181,7 @@ HELLO WORLD from Temporal
 ...
 ```
 
-#### Erlang
+### Erlang
 
 ```erlang
 1> hello_world_workflow:start().
@@ -194,27 +193,3 @@ HELLO WORLD from Temporal
 
 This and other examples can be found in the
 [temporal_sdk_samples](https://github.com/andrzej-mag/temporal_sdk_samples) repository.
-
-## License
-
-Temporal Erlang and Elixir SDK is distributed under a [Business Source License (BSL)](LICENSE.txt).
-
-For more information on the use of the BSL generally, please visit the
-[Adopting and Developing Business Source License FAQ](https://mariadb.com/bsl-faq-adopting/).
-
-## Pricing
-
-The software monthly subscription fee is €100 (plus VAT/tax if applicable) per production application
-that uses this SDK as a dependency.
-
-To subscribe or manage your subscription please visit the [Subscription Management Link TBA].
-
-## Contributing
-
-Contributors must agree to the [Individual Contributor License Agreement](ICLA.txt).
-When creating your first Pull Request, please copy and paste the following acknowledgement as a PR
-comment:
-
-```text
-I have read the Individual Contributor License Agreement (ICLA) and I hereby sign the ICLA.
-```
