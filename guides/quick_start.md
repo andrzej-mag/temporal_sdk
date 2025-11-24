@@ -1,5 +1,8 @@
 # Quick Start
 
+The [temporal_sdk_samples](https://github.com/andrzej-mag/temporal_sdk_samples) repository
+contains this and other examples.
+
 Add `temporal_sdk` to your application runtime dependencies list:
 
 <!-- tabs-open -->
@@ -185,9 +188,6 @@ HELLO WORLD from Temporal
 ```
 
 <!-- tabs-close -->
-
-This and other examples can be found in the
-[temporal_sdk_samples](https://github.com/andrzej-mag/temporal_sdk_samples) repository.
 
 ## Requirements
 
