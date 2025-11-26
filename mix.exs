@@ -41,13 +41,25 @@ defmodule TemporalSdk.MixProject do
     do: [
       licenses: ["BUSL-1.1"],
       links: %{"GitHub" => @source_url},
-      files: ["include", "src", "rebar.config", "LICENSE*", "README*", "lib", "mix.exs"]
+      files: files()
+    ]
+
+  defp files,
+    do: [
+      "include",
+      "src",
+      "rebar.config",
+      "LICENSE*",
+      "README*",
+      "CHANGELOG.md",
+      "lib",
+      "mix.exs"
     ]
 
   defp docs,
     do: [
       output: "_doc",
-      extras: ["guides/quick_start.md"],
+      extras: extras(),
       main: "quick_start",
       source_url: @source_url,
       source_ref: "v#{version()}",
@@ -55,8 +67,11 @@ defmodule TemporalSdk.MixProject do
       api_reference: false,
       extra_section: "GUIDES",
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
-      groups_for_modules: groups_for_modules()
+      groups_for_modules: groups_for_modules(),
+      groups_for_extras: groups_for_extras()
     ]
+
+  defp extras, do: ["CHANGELOG.md", "guides/quick_start.md"]
 
   defp groups_for_modules,
     do: [
@@ -128,6 +143,8 @@ defmodule TemporalSdk.MixProject do
         :temporal_sdk_grpc_interceptor
       ]
     ]
+
+  defp groups_for_extras, do: [Guides: ~r{guides/[^\/]+\.md}]
 
   # -------------------------------------------------------------------------------------------------
   # Erlang config helpers
