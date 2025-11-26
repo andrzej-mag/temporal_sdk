@@ -17,6 +17,7 @@ defmodule TemporalSdk.MixProject do
       app: app_name!(),
       version: version(),
       elixir: "~> 1.17",
+      aliases: aliases(),
       deps: deps(@elixir_deps, @shared_deps_opts),
       erlc_options: rebar_key!(:erl_opts),
       test_paths: ["test_ex"],
@@ -36,6 +37,13 @@ defmodule TemporalSdk.MixProject do
     ]
 
   defp version, do: app_key!(:vsn) |> to_string
+
+  defp version_tag(_), do: IO.puts("v#{version()}")
+
+  defp aliases,
+    do: [
+      version_tag: &version_tag/1
+    ]
 
   defp package,
     do: [
