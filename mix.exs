@@ -48,12 +48,16 @@ defmodule TemporalSdk.MixProject do
   defp package,
     do: [
       licenses: ["BUSL-1.1"],
-      links: %{"GitHub" => @source_url},
+      links: %{
+        "GitHub" => @source_url,
+        "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md"
+      },
       files: files()
     ]
 
   defp files,
     do: [
+      "docs",
       "include",
       "src",
       "rebar.config",
