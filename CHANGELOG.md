@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.11](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.1..v0.1.11) - 2025-11-26
+
+### 🐛 Bug Fixes
+
+- Fix hex package config - ([3ac4ecb](https://github.com/andrzej-mag/temporal_sdk/commit/3ac4ecb966991a79844e9b1685ce71aa271211c2))
+
 ## [0.1.1](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.0..v0.1.1) - 2025-11-26
 
 ### 🚀 Features
