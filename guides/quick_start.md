@@ -1,7 +1,8 @@
 # Quick Start
 
-The [temporal_sdk_samples](https://github.com/andrzej-mag/temporal_sdk_samples) repository
-contains this and other examples.
+Full code for this example can be found in the
+[temporal_sdk_samples](https://github.com/andrzej-mag/temporal_sdk_samples) repository as a
+`HelloWorld`/`hello_world` sample.
 
 Add `temporal_sdk` to your application runtime dependencies list:
 
