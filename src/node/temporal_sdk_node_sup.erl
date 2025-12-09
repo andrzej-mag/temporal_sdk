@@ -39,9 +39,9 @@ init([]) ->
                 "Error initializing Temporal SDK. "
                 "Check SDK node configuration. "
                 "SDK cluster(s) not started.",
-                Err
+                #{opts => EnvNodeOpts, error => Err}
             ),
-            {ok, {#{strategy => one_for_one}, []}}
+            ignore
     end.
 
 clusters_specs(Clusters, LimiterCounters, ScopeConfig, EnableSingleDistributedWorkflowExecution) ->
