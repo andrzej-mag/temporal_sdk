@@ -77,13 +77,30 @@ defmodule TemporalSdk.MixProject do
       source_ref: "v#{version()}",
       formatters: ["html"],
       api_reference: false,
+      before_closing_body_tag: &before_closing_body_tag/1,
       extra_section: "GUIDES",
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
       groups_for_modules: groups_for_modules(),
       groups_for_extras: groups_for_extras()
     ]
 
-  defp extras, do: ["CHANGELOG.md", "guides/quick_start.md"]
+  defp before_closing_body_tag(:html),
+    do: """
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ startOnLoad: true });
+    </script>
+    """
+
+  defp before_closing_body_tag(:epub),
+    do: ""
+
+  defp extras,
+    do: [
+      "CHANGELOG.md",
+      "docs/architecture.md",
+      "guides/quick_start.md"
+    ]
 
   defp groups_for_modules,
     do: [
