@@ -60,7 +60,7 @@ list() ->
         (_) ->
             false
     end,
-    lists:filtermap(Fn, supervisor:which_children(temporal_sdk_sup)).
+    lists:filtermap(Fn, supervisor:which_children(temporal_sdk_node_sup)).
 
 -spec stats(Cluster :: cluster_name()) ->
     {ok, temporal_sdk_limiter:stats()} | {error, invalid_cluster}.

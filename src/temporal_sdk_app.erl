@@ -10,11 +10,13 @@
 ]).
 
 start(_StartType, _StartArgs) ->
-    case temporal_sdk_sup:start_link() of
+    case temporal_sdk_node_sup:start_link() of
         {ok, Pid} ->
             temporal_sdk_worker_manager_sup:start_config_workers(),
             {ok, Pid};
-        Err ->
+        ignore ->
+            {error, "Temporal SDK Node init failure. Check temporal_sdk configuration for errors."};
+        {error, _} = Err ->
             Err
     end.
 

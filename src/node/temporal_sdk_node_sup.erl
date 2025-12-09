@@ -1,4 +1,4 @@
--module(temporal_sdk_sup).
+-module(temporal_sdk_node_sup).
 -behaviour(supervisor).
 
 % elp:ignore W0012 W0040

@@ -65,5 +65,4 @@ flowchart TD
   click ActivityExec "https://hexdocs.pm/temporal_sdk/temporal_sdk_activity.html" _blank
   click NexusExec "https://hexdocs.pm/temporal_sdk/temporal_sdk_nexus.html" _blank
   click WorkflowExec "https://hexdocs.pm/temporal_sdk/temporal_sdk_workflow.html" _blank
-
 ```
