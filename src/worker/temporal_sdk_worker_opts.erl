@@ -314,7 +314,7 @@ worker_type_to_limitable(workflow) -> workflow.
     }}
     | temporal_sdk_worker:invalid_error().
 get_state(Cluster, WorkerType, WorkerId) when WorkerType =:= activity; WorkerType =:= workflow ->
-    case temporal_sdk_cluster:is_alive(Cluster) of
+    case temporal_sdk_cluster:is_ready(Cluster) of
         true ->
             try
                 {ok, gen_server:call(server_name(Cluster, WorkerType, WorkerId), get)}

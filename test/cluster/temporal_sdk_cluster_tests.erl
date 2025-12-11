@@ -6,29 +6,29 @@
 -include("test/include/temporal_sdk_test_fixtures_unit.hrl").
 
 -import(temporal_sdk_cluster, [
-    is_alive/1,
+    is_ready/1,
     list/0,
     stats/1,
     setup/2
 ]).
 
 -define(BASE_TESTS, [
-    fun t_is_alive/1,
+    fun t_is_ready/1,
     fun t_list/1,
     fun t_stats/1
 ]).
 
 base_test_() -> ?FIXTURE(?CONFIGS_BASE, ?BASE_TESTS).
 
-t_is_alive({Clusters, _Config}) ->
+t_is_ready({Clusters, _Config}) ->
     lists:foreach(
         fun(Cluster) ->
-            ?assertEqual(true, is_alive(Cluster))
+            ?assertEqual(true, is_ready(Cluster))
         end,
         Clusters
     ),
 
-    ?assertMatch({error, _}, is_alive(invalid_cluster)).
+    ?assertMatch({error, _}, is_ready(invalid_cluster)).
 
 t_list({Clusters, _Config}) ->
     ?assertEqual(lists:sort(Clusters), lists:sort(list())).

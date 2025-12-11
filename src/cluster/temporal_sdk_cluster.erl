@@ -4,7 +4,7 @@
 -moduledoc {file, "../../docs/cluster/-module.md"}.
 
 -export([
-    is_alive/1,
+    is_ready/1,
     list/0,
     stats/1
 ]).
@@ -46,8 +46,8 @@
 
 -define(DEFAULT_LIMITER_TIME_WINDOW, 60_000).
 
--spec is_alive(Cluster :: cluster_name()) -> true | {error, invalid_cluster}.
-is_alive(Cluster) ->
+-spec is_ready(Cluster :: cluster_name()) -> true | {error, invalid_cluster}.
+is_ready(Cluster) ->
     case erlang:whereis(temporal_sdk_cluster_sup:local_name(Cluster)) of
         undefined -> {error, invalid_cluster};
         _ -> true

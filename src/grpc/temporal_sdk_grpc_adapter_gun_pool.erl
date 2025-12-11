@@ -38,7 +38,7 @@ init_adapter(Cluster, Config) ->
 -spec pools_status(Cluster :: temporal_sdk_grpc:cluster_name()) ->
     #{all := [binary()], operational := [binary()]} | {error, invalid_cluster}.
 pools_status(Cluster) ->
-    case temporal_sdk_cluster:is_alive(Cluster) of
+    case temporal_sdk_cluster:is_ready(Cluster) of
         true ->
             Pools = temporal_sdk_grpc_adapter_gun_common:get_config(?MODULE, Cluster),
             % eqwalizer:ignore

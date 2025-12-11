@@ -184,7 +184,7 @@ handle_cast(_Request, State) ->
     Request :: term()
 ) -> {ok, dynamic()} | {error, invalid_cluster} | {error, invalid_worker}.
 do_call(Cluster, WorkerType, Request) ->
-    case temporal_sdk_cluster:is_alive(Cluster) of
+    case temporal_sdk_cluster:is_ready(Cluster) of
         true ->
             try
                 {ok, gen_server:call(local_name(Cluster, WorkerType), Request)}
