@@ -76,6 +76,8 @@
 
 -define(DEFAULT_TELEMETRY_EVENTS, [
     [grpc],
+    [node],
+    [cluster],
     [poller, poll],
     [poller, execute],
     [poller, wait],

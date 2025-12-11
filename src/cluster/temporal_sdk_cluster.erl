@@ -9,6 +9,7 @@
     stats/1
 ]).
 -export([
+    build_config/1,
     setup/2,
     get_counters/1
 ]).
@@ -69,6 +70,19 @@ stats(Cluster) ->
         {ok, C} -> {ok, temporal_sdk_limiter:get_concurrency(C)};
         Err -> Err
     end.
+
+-doc false.
+-spec build_config(Config :: cluster_config()) -> {ok, map()} | {error, {invalid_opts, map()}}.
+build_config(Config) ->
+    Defaults =
+        [
+            {cluster, [map, list], []},
+            {client, [map, list], []},
+            {activities, [map, list], []},
+            {workflows, [map, list], []},
+            {nexuses, [map, list], []}
+        ],
+    temporal_sdk_utils_opts:build(Defaults, Config).
 
 -doc false.
 -spec setup(Cluster :: cluster_name(), Opts :: opts() | user_opts()) ->

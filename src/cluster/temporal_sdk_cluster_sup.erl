@@ -24,9 +24,10 @@ start_link(#{cluster := Cluster} = ApiContext, ClusterConfig, LimiterCounters) -
     ]).
 
 init([#{cluster := Cluster} = ApiContext, ClusterConfig, LimiterCounters]) ->
-    EnvClustOpts = proplists:get_value(cluster, ClusterConfig, []),
-    EnvClientOpts = proplists:get_value(client, ClusterConfig, []),
+    SystemTime = erlang:system_time(),
     maybe
+        {ok, #{cluster := EnvClustOpts, client := EnvClientOpts}} ?=
+            temporal_sdk_cluster:build_config(ClusterConfig),
         {ok, LCounters, LChiSpec, ClusterOpts} ?= temporal_sdk_cluster:setup(Cluster, EnvClustOpts),
         {ok, ClientOpts} ?= temporal_sdk_client_opts:init_opts(Cluster, EnvClientOpts),
         #{telemetry_poll_interval := TelemetryPollInterval} = ClusterOpts,
@@ -40,16 +41,12 @@ init([#{cluster := Cluster} = ApiContext, ClusterConfig, LimiterCounters]) ->
         {ok, {#{strategy => one_for_one}, ChildSpecs}}
     else
         Err ->
-            temporal_sdk_utils_logger:log_error(
-                "Invalid Temporal SDK configuration.",
-                ?MODULE,
-                ?FUNCTION_NAME,
-                "Error starting cluster supervisor. "
-                "Check SDK clusters configuration. "
-                "SDK cluster not started.",
-                Err
+            temporal_sdk_telemetry:execute(
+                [cluster, exception],
+                #{cluster => Cluster, error => Err, opts => ClusterConfig},
+                SystemTime
             ),
-            {ok, {#{strategy => one_for_one}, []}}
+            ignore
     end.
 
 persist_context(Cluster, ApiContext) ->

@@ -54,21 +54,24 @@
 -define(CONFIGS_BASE_CONFIGS, [
     [
         {client, #{
-            endpoints => lists:nth(1, ?ENDPOINTS), grpc_opts => ?CONFIGS_BASE_GRPC_OPTS
+            adapter => {temporal_sdk_grpc_adapter_gun, [{endpoints, lists:nth(1, ?ENDPOINTS)}]},
+            grpc_opts => ?CONFIGS_BASE_GRPC_OPTS
         }},
         {activities, [?CONFIGS_BASE_TASK]},
         {workflows, [?CONFIGS_BASE_TASK]}
     ],
     [
         {client, #{
-            endpoints => lists:nth(2, ?ENDPOINTS), grpc_opts => ?CONFIGS_BASE_GRPC_OPTS
+            adapter => {temporal_sdk_grpc_adapter_gun, [{endpoints, lists:nth(2, ?ENDPOINTS)}]},
+            grpc_opts => ?CONFIGS_BASE_GRPC_OPTS
         }},
         {activities, [?CONFIGS_BASE_TASK]},
         {workflows, [?CONFIGS_BASE_TASK]}
     ],
     [
         {client, #{
-            endpoints => lists:nth(3, ?ENDPOINTS), grpc_opts => ?CONFIGS_BASE_GRPC_OPTS
+            adapter => {temporal_sdk_grpc_adapter_gun, [{endpoints, lists:nth(3, ?ENDPOINTS)}]},
+            grpc_opts => ?CONFIGS_BASE_GRPC_OPTS
         }},
         {activities, [?CONFIGS_BASE_TASK]},
         {workflows, [?CONFIGS_BASE_TASK]}
