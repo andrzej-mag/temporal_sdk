@@ -11,7 +11,7 @@
     init/1
 ]).
 
--define(DEFAULT_WORKFLOW_SCOPE_PARTITIONS_SIZE, 10).
+-define(DEFAULT_WORKFLOW_SCOPE_SHARD_SIZE, 10).
 
 -spec start_link() -> supervisor:startlink_ret().
 start_link() -> supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -74,7 +74,7 @@ scope_specs(ScopeList) ->
     ].
 
 scopes(NodeOpts, EnvClustersConfig) ->
-    Partitions = map_get(workflow_scope_partitions_size, NodeOpts),
+    SC = map_get(scope_config, NodeOpts),
     Scopes = lists:uniq(
         lists:map(
             fun({ClusterName, ClusterOpts}) when is_list(ClusterOpts) ->
@@ -85,7 +85,7 @@ scopes(NodeOpts, EnvClustersConfig) ->
     ),
     ScopeList = lists:map(
         fun(Scope) ->
-            {Scope, proplists:get_value(Scope, Partitions, ?DEFAULT_WORKFLOW_SCOPE_PARTITIONS_SIZE)}
+            {Scope, proplists:get_value(Scope, SC, ?DEFAULT_WORKFLOW_SCOPE_SHARD_SIZE)}
         end,
         Scopes
     ),

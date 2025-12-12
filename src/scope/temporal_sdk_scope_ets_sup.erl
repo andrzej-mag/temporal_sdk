@@ -22,8 +22,8 @@ child_spec(ScopeConfig) ->
     [
         #{
             id => {temporal_sdk_scope_ets_cluster_sup, Scope},
-            start => {temporal_sdk_scope_ets_cluster_sup, start_link, [Scope, Partitions]},
+            start => {temporal_sdk_scope_ets_cluster_sup, start_link, [Scope, ShardSize]},
             type => supervisor
         }
-     || {Scope, Partitions} <- ScopeConfig
+     || {Scope, ShardSize} <- ScopeConfig
     ].

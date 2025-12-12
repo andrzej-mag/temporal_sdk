@@ -17,17 +17,17 @@ init_ctx(
     #{
         worker_opts := #{namespace := Namespace},
         task_opts := #{workflow_id := WorkflowId, run_id := RunId},
-        workflow_scope := {Scope, PartitionsSize}
+        workflow_scope := {Scope, ShardSize}
     } = ApiContext
 ) ->
-    PartitionId = partition_id(PartitionsSize, Namespace, WorkflowId, RunId),
+    ShardId = shard_id(ShardSize, Namespace, WorkflowId, RunId),
     ApiContext#{
         workflow_scope := #{
             scope => Scope,
-            partitions_size => PartitionsSize,
-            partition_id => PartitionId,
-            ets_scope_id => ets_scope_id(Scope, PartitionId),
-            pg_scope_id => pg_scope_id(Scope, PartitionId)
+            shard_size => ShardSize,
+            shard_id => ShardId,
+            ets_scope_id => ets_scope_id(Scope, ShardId),
+            pg_scope_id => pg_scope_id(Scope, ShardId)
         }
     }.
 
@@ -52,19 +52,19 @@ start(#{
     temporal_sdk_utils_recycled_int:new(EtsScopeId),
     pg:join(PgScopeId, {Namespace, WorkflowId}, self()).
 
-build_ets_ids(#{workflow_scope := #{scope := Scope, partition_id := PartitionId}}, TableId) ->
-    History = temporal_sdk_utils_path:atom_path([?MODULE, ets, Scope, PartitionId, TableId, history]),
-    Index = temporal_sdk_utils_path:atom_path([?MODULE, ets, Scope, PartitionId, TableId, index]),
+build_ets_ids(#{workflow_scope := #{scope := Scope, shard_id := ShardId}}, TableId) ->
+    History = temporal_sdk_utils_path:atom_path([?MODULE, ets, Scope, ShardId, TableId, history]),
+    Index = temporal_sdk_utils_path:atom_path([?MODULE, ets, Scope, ShardId, TableId, index]),
     {History, Index}.
 
-ets_scope_id(Scope, PartitionId) ->
-    temporal_sdk_utils_path:atom_path([?MODULE, ets, Scope, PartitionId]).
+ets_scope_id(Scope, ShardId) ->
+    temporal_sdk_utils_path:atom_path([?MODULE, ets, Scope, ShardId]).
 
-pg_scope_id(Scope, PartitionId) ->
-    temporal_sdk_utils_path:atom_path([?MODULE, pg, Scope, PartitionId]).
+pg_scope_id(Scope, ShardId) ->
+    temporal_sdk_utils_path:atom_path([?MODULE, pg, Scope, ShardId]).
 
-partition_id(PartitionsSize, Namespace, WorkflowId, RunId) ->
-    case erlang:adler32([Namespace, WorkflowId, RunId]) rem PartitionsSize of
-        0 -> rand:uniform(PartitionsSize);
+shard_id(ShardSize, Namespace, WorkflowId, RunId) ->
+    case erlang:adler32([Namespace, WorkflowId, RunId]) rem ShardSize of
+        0 -> rand:uniform(ShardSize);
         V -> V
     end.

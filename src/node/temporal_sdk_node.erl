@@ -32,7 +32,7 @@ SDK node configuration as a map.
 """.
 -type opts() :: #{
     limiter_time_windows => limiter_time_windows() | user_limiter_time_windows(),
-    workflow_scope_partitions_size => [scope_config()],
+    scope_config => [scope_config()],
     enable_single_distributed_workflow_execution => boolean(),
     telemetry_poll_interval => temporal_sdk:time(),
     telemetry_logs => temporal_sdk_telemetry_logs:opts(),
@@ -45,10 +45,10 @@ SDK node configuration as a map.
 SDK node configuration as a proplist.
 """.
 -type user_opts() :: [
-    {limiter_time_windows, limiter_time_windows() | user_limiter_time_windows()}
-    | {workflow_scope_partitions_size, [scope_config()]}
-    | {enable_single_distributed_workflow_execution, boolean()}
+    {enable_single_distributed_workflow_execution, boolean()}
     | enable_single_distributed_workflow_execution
+    | {scope_config, [scope_config()]}
+    | {limiter_time_windows, limiter_time_windows() | user_limiter_time_windows()}
     | {telemetry_poll_interval, temporal_sdk:time()}
     | {telemetry_logs, temporal_sdk_telemetry_logs:opts()}
     | {telemetry_metrics, [atom()]}
@@ -60,7 +60,7 @@ SDK node configuration as a proplist.
 SDK node scope configuration.
 """.
 -type scope_config() :: {
-    Scope :: temporal_sdk_cluster:cluster_name(), PartitionsSize :: pos_integer()
+    ScopeId :: temporal_sdk_cluster:cluster_name(), ShardSize :: pos_integer()
 }.
 -export_type([scope_config/0]).
 
@@ -145,7 +145,7 @@ setup(LimiterId, UserOpts) ->
 defaults(user_opts) ->
     [
         {limiter_time_windows, nested, defaults(limiter_time_windows)},
-        {workflow_scope_partitions_size, list, []},
+        {scope_config, list, []},
         {enable_single_distributed_workflow_execution, boolean, true},
         {telemetry_poll_interval, time, 10_000},
         {telemetry_logs, map,

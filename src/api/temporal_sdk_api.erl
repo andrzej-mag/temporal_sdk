@@ -63,8 +63,8 @@ Temporal API helpers.
 
 -type scope() :: #{
     scope := temporal_sdk_cluster:cluster_name(),
-    partitions_size := pos_integer(),
-    partition_id => non_neg_integer(),
+    shard_size := pos_integer(),
+    shard_id => non_neg_integer(),
     ets_scope_id => atom(),
     pg_scope_id => atom()
 }.

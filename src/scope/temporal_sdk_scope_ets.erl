@@ -25,11 +25,11 @@ new(EtsScopeId) ->
 %% -------------------------------------------------------------------------------------------------
 %% gen_server
 
--spec start_link(Scope :: temporal_sdk_cluster:cluster_name(), Partition :: pos_integer()) ->
+-spec start_link(Scope :: temporal_sdk_cluster:cluster_name(), Shard :: pos_integer()) ->
     gen_server:start_ret().
-start_link(Scope, Partition) ->
+start_link(Scope, Shard) ->
     gen_server:start_link(
-        {local, temporal_sdk_scope:ets_scope_id(Scope, Partition)},
+        {local, temporal_sdk_scope:ets_scope_id(Scope, Shard)},
         ?MODULE,
         [Scope],
         []
