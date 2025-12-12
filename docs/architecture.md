@@ -7,20 +7,20 @@ flowchart TD
 
   Cluster1@{ shape: rect, label: "Temporal Cluster 1"}
   ClusterN@{ shape: rect, label: "Temporal Cluster N"}
-  ClusterTool@{ shape: lin-rect, label: "gRPC client <br> stats telemetry <br> rate limiter"}
-  ClusterToolN@{ shape: lin-rect, label: "gRPC client <br> stats telemetry <br> rate limiter"}
+  ClusterTool@{ shape: lin-rect, label: "gRPC client <br> stats telemetry <br> cluster rate limiter"}
+  ClusterToolN@{ shape: lin-rect, label: "gRPC client <br> stats telemetry <br> cluster rate limiter"}
 
   Activity@{ shape: processes, label: "Activity worker" }
-  ActivityTool@{ shape: lin-rect, label: "task poller <br> stats telemetry <br> rate limiter" }
+  ActivityTool@{ shape: lin-rect, label: "task poller <br> poller rate limiter <br> stats telemetry <br> worker  rate limiter" }
 
   Nexus@{ shape: processes, label: "Nexus worker" }
-  NexusTool@{ shape: lin-rect, label: "task poller <br> stats telemetry <br> rate limiter" }
+  NexusTool@{ shape: lin-rect, label: "task poller <br> poller rate limiter <br> stats telemetry <br> worker  rate limiter" }
 
   Workflow@{ shape: processes, label: "Workflow worker" }
-  WorkflowTool@{ shape: lin-rect, label: "task poller <br> stats telemetry <br> rate limiter" }
+  WorkflowTool@{ shape: lin-rect, label: "task poller <br> poller rate limiter <br> stats telemetry <br> worker  rate limiter" }
 
   Task@{ shape: processes, label: "A/N/W task worker" }
-  TaskTool@{ shape: lin-rect, label: "task poller <br> stats telemetry <br> rate limiter" }
+  TaskTool@{ shape: lin-rect, label: "task poller <br> poller rate limiter <br> stats telemetry <br> worker rate limiter" }
 
   ActivityExec@{ shape: processes, label: "Activity executor" }
   NexusExec@{ shape: processes, label: "Nexus executor" }
