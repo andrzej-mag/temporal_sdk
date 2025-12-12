@@ -13,6 +13,9 @@
     get_counters/1
 ]).
 
+-doc """
+SDK configuration.
+""".
 -type sdk_config() :: [
     {node, NodeOpts :: opts() | user_opts()}
     | {clusters, [
@@ -24,6 +27,9 @@
 ].
 -export_type([sdk_config/0]).
 
+-doc """
+SDK node configuration as a map.
+""".
 -type opts() :: #{
     limiter_time_windows => limiter_time_windows() | user_limiter_time_windows(),
     workflow_scope_partitions_size => [scope_config()],
@@ -35,11 +41,9 @@
 }.
 -export_type([opts/0]).
 
--type scope_config() :: {
-    Scope :: temporal_sdk_cluster:cluster_name(), PartitionsSize :: pos_integer()
-}.
--export_type([scope_config/0]).
-
+-doc """
+SDK node configuration as a proplist.
+""".
 -type user_opts() :: [
     {limiter_time_windows, limiter_time_windows() | user_limiter_time_windows()}
     | {workflow_scope_partitions_size, [scope_config()]}
@@ -52,6 +56,17 @@
 ].
 -export_type([user_opts/0]).
 
+-doc """
+SDK node scope configuration.
+""".
+-type scope_config() :: {
+    Scope :: temporal_sdk_cluster:cluster_name(), PartitionsSize :: pos_integer()
+}.
+-export_type([scope_config/0]).
+
+-doc """
+SDK node fixed window rate limiter time windows configuration as a map.
+""".
 -type limiter_time_windows() :: #{
     activity_direct => temporal_sdk_limiter:time_window(),
     activity_eager => temporal_sdk_limiter:time_window(),
@@ -62,6 +77,9 @@
 }.
 -export_type([limiter_time_windows/0]).
 
+-doc """
+SDK node fixed window rate limiter time windows configuration as a proplist.
+""".
 -type user_limiter_time_windows() :: [
     {activity_direct, temporal_sdk_limiter:time_window()}
     | {activity_eager, temporal_sdk_limiter:time_window()}
