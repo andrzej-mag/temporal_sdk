@@ -37,7 +37,7 @@ Add `temporal_sdk` to your application runtime dependencies list:
 
 <!-- tabs-close -->
 
-Configure activity and workflow runtime [workers](https://docs.temporal.io/workers):
+Configure activity and workflow runtime [task workers](https://docs.temporal.io/workers):
 
 <!-- tabs-open -->
 
@@ -192,7 +192,8 @@ HELLO WORLD from Temporal
 
 ## Requirements
 
-Temporal server running locally or available on `localhost:7233`.
+The basic `config.exs`/`sys.config` configuration files provided above assumes an unsecured Temporal
+server running on `localhost:7233`.
 For development and testing purposes it is recommended to use
 [Temporal CLI](https://github.com/temporalio/cli/):
 

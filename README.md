@@ -30,7 +30,7 @@ Add `temporal_sdk` to your application runtime dependencies list:
   end
 ```
 
-Configure activity and workflow runtime task [workers](https://docs.temporal.io/workers):
+Configure activity and workflow runtime [task workers](https://docs.temporal.io/workers):
 
 ```elixir
 # config/config.exs
@@ -90,9 +90,10 @@ HELLO WORLD from Temporal
 
 ## Requirements
 
-Temporal server running locally or available on `localhost:7233`.
-For development and testing purposes it is recommended to use
-[Temporal CLI](https://github.com/temporalio/cli/):
+The basic `config.exs` configuration file provided above assumes an unsecured Temporal server running
+on `localhost:7233`.
+For development and testing purposes it is recommended to run the
+[Temporal CLI](https://github.com/temporalio/cli/) locally:
 
 1. [Install](https://docs.temporal.io/cli#install) Temporal CLI.
 2. [Start](https://docs.temporal.io/cli#start-dev-server) Temporal CLI dev server.
