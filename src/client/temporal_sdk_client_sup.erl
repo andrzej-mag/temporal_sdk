@@ -22,6 +22,9 @@ start_link(Cluster, ClientOpts) ->
     ).
 
 init([Cluster, ClientOpts]) ->
+    InitTime = temporal_sdk_telemetry:execute([client, init], #{
+        cluster => Cluster, opts => ClientOpts
+    }),
     maybe
         #{
             adapter := Adapter,
@@ -32,19 +35,16 @@ init([Cluster, ClientOpts]) ->
         ok ?= temporal_sdk_grpc_opts:check_opts(GrpcOpts),
         ok ?= temporal_sdk_grpc_opts:check_opts(GrpcOptsLongpoll),
         ok ?= temporal_sdk_grpc:start_grpc(Cluster, Adapter),
+        temporal_sdk_telemetry:execute([client, start], #{cluster => Cluster, opts => ClientOpts}),
         {ok, {#{strategy => one_for_one}, child_spec(Cluster, PoolSize)}}
     else
         Err ->
-            temporal_sdk_utils_logger:log_error(
-                "Invalid Temporal SDK configuration.",
-                ?MODULE,
-                ?FUNCTION_NAME,
-                "Error starting client supervisor. "
-                "Check client configuration. "
-                "SDK client not started.",
-                Err
+            temporal_sdk_telemetry:execute(
+                [client, exception],
+                #{cluster => Cluster, opts => ClientOpts, error => Err},
+                InitTime
             ),
-            {ok, {#{strategy => one_for_one}, []}}
+            ignore
     end.
 
 child_spec(Cluster, Size) ->

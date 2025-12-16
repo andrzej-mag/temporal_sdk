@@ -31,13 +31,11 @@ SDK configuration.
 SDK node configuration as a map.
 """.
 -type opts() :: #{
-    limiter_time_windows => limiter_time_windows() | user_limiter_time_windows(),
-    scope_config => [scope_config()],
     enable_single_distributed_workflow_execution => boolean(),
+    scope_config => [scope_config()],
+    limiter_time_windows => limiter_time_windows() | user_limiter_time_windows(),
     telemetry_poll_interval => temporal_sdk:time(),
-    telemetry_logs => temporal_sdk_telemetry_logs:opts(),
-    telemetry_metrics => [atom()],
-    telemetry_traces => [atom()]
+    telemetry_events_handlers => temporal_sdk_telemetry:events_handlers()
 }.
 -export_type([opts/0]).
 
@@ -50,9 +48,7 @@ SDK node configuration as a proplist.
     | {scope_config, [scope_config()]}
     | {limiter_time_windows, limiter_time_windows() | user_limiter_time_windows()}
     | {telemetry_poll_interval, temporal_sdk:time()}
-    | {telemetry_logs, temporal_sdk_telemetry_logs:opts()}
-    | {telemetry_metrics, [atom()]}
-    | {telemetry_traces, [atom()]}
+    | {telemetry_events_handlers, temporal_sdk_telemetry:events_handlers()}
 ].
 -export_type([user_opts/0]).
 
@@ -91,23 +87,6 @@ SDK node fixed window rate limiter time windows configuration as a proplist.
 -export_type([user_limiter_time_windows/0]).
 
 -define(DEFAULT_LIMITER_TIME_WINDOW, 60_000).
-
--define(DEFAULT_TELEMETRY_EVENTS, [
-    [grpc],
-    [node],
-    [cluster],
-    [poller, poll],
-    [poller, execute],
-    [poller, wait],
-    [activity],
-    [activity, executor],
-    [activity, task],
-    [workflow, executor],
-    [workflow, task],
-    [workflow, execution]
-]).
-
--define(DEFAULT_TELEMETRY_LOGS_LEVELS, #{stop => false, exception => error}).
 
 %% -------------------------------------------------------------------------------------------------
 %% API
@@ -148,11 +127,12 @@ defaults(user_opts) ->
         {scope_config, list, []},
         {enable_single_distributed_workflow_execution, boolean, true},
         {telemetry_poll_interval, time, 10_000},
-        {telemetry_logs, map,
-            #{events => ?DEFAULT_TELEMETRY_EVENTS, log_levels => ?DEFAULT_TELEMETRY_LOGS_LEVELS},
-            merge},
-        {telemetry_metrics, list, ?DEFAULT_TELEMETRY_EVENTS},
-        {telemetry_traces, list, ?DEFAULT_TELEMETRY_EVENTS}
+        {telemetry_events_handlers, list, [
+            {
+                fun() -> temporal_sdk_telemetry:events_by_suffix([exception]) end,
+                fun temporal_sdk_telemetry:handle_log/4
+            }
+        ]}
     ];
 defaults(limiter_time_windows) ->
     [

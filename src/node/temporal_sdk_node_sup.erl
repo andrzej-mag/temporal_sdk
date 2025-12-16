@@ -21,15 +21,16 @@ start_link() -> supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 init([]) ->
     EnvNodeOpts = application:get_env(temporal_sdk, node, []),
     EnvClustersConfig = application:get_env(temporal_sdk, clusters, []),
+    temporal_sdk_telemetry:execute([node, init], #{opts => EnvNodeOpts}),
     case temporal_sdk_node:setup(node, EnvNodeOpts) of
         {ok, LimiterCounters, LimiterChiSpecs, NodeOpts} ->
             temporal_sdk_telemetry:setup(NodeOpts),
-            temporal_sdk_telemetry:execute([node, init], #{opts => NodeOpts}),
             {ScopeList, ScopeConfig} = scopes(NodeOpts, EnvClustersConfig),
             #{enable_single_distributed_workflow_execution := SDWE} = NodeOpts,
             ChildSpecs =
                 clusters_specs(EnvClustersConfig, LimiterCounters, ScopeConfig, SDWE) ++
                     scope_specs(ScopeList) ++ telemetry_poller_specs(NodeOpts) ++ LimiterChiSpecs,
+            temporal_sdk_telemetry:execute([node, start], #{opts => NodeOpts}),
             {ok, {#{strategy => one_for_one}, ChildSpecs}};
         Err ->
             temporal_sdk_utils_logger:log_error(

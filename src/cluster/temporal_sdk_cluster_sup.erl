@@ -24,27 +24,29 @@ start_link(#{cluster := Cluster} = ApiContext, ClusterConfig, LimiterCounters) -
     ]).
 
 init([#{cluster := Cluster} = ApiContext, ClusterConfig, LimiterCounters]) ->
-    SystemTime = erlang:system_time(),
+    InitTime = temporal_sdk_telemetry:execute([cluster, init], #{
+        cluster => Cluster, opts => ClusterConfig
+    }),
     maybe
         {ok, #{cluster := EnvClustOpts, client := EnvClientOpts}} ?=
             temporal_sdk_cluster:build_config(ClusterConfig),
         {ok, LCounters, LChiSpec, ClusterOpts} ?= temporal_sdk_cluster:setup(Cluster, EnvClustOpts),
         {ok, ClientOpts} ?= temporal_sdk_client_opts:init_opts(Cluster, EnvClientOpts),
         #{telemetry_poll_interval := TelemetryPollInterval} = ClusterOpts,
-        temporal_sdk_telemetry:execute([cluster, init], #{cluster => Cluster, opts => ClusterOpts}),
         ApiContext1 = update_enable_single_distributed_workflow_execution(ApiContext, ClusterOpts),
         ApiContext2 = ApiContext1#{client_opts => ClientOpts},
         persist_context(Cluster, ApiContext2),
         ChildSpecs =
             child_specs(ApiContext2, TelemetryPollInterval, LimiterCounters#{cluster => LCounters}) ++
                 LChiSpec,
+        temporal_sdk_telemetry:execute([cluster, start], #{cluster => Cluster, opts => ClusterOpts}),
         {ok, {#{strategy => one_for_one}, ChildSpecs}}
     else
         Err ->
             temporal_sdk_telemetry:execute(
                 [cluster, exception],
                 #{cluster => Cluster, error => Err, opts => ClusterConfig},
-                SystemTime
+                InitTime
             ),
             ignore
     end.

@@ -6,7 +6,7 @@
 
 -export([
     start_config_workers/0,
-    start_worker/4,
+    start_worker/3,
     terminate_worker/3
 ]).
 -export([
@@ -41,14 +41,16 @@ init([ApiContext, LimiterCounters]) ->
 -spec start_worker(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: activity | nexus | workflow,
-    WorkerOpts :: temporal_sdk_worker:user_opts() | temporal_sdk_worker:opts(),
-    LogError :: boolean()
+    WorkerOpts :: temporal_sdk_worker:user_opts() | temporal_sdk_worker:opts()
 ) ->
     {ok, temporal_sdk_worker:opts()}
     | {invalid_opts, map()}
     | temporal_sdk_worker:invalid_error()
     | {error, supervisor:startchild_err()}.
-start_worker(Cluster, WorkerType, WorkerOpts, LogError) ->
+start_worker(Cluster, WorkerType, WorkerOpts) ->
+    InitTime = temporal_sdk_telemetry:execute([worker, init], #{
+        cluster => Cluster, worker_type => WorkerType, opts => WorkerOpts
+    }),
     maybe
         true ?= temporal_sdk_cluster:is_ready(Cluster),
         {ok, LCounters, LChiSpec, Opts} ?=
@@ -57,19 +59,12 @@ start_worker(Cluster, WorkerType, WorkerOpts, LogError) ->
         {ok, Opts}
     else
         Err ->
-            case LogError of
-                false ->
-                    Err;
-                true ->
-                    temporal_sdk_utils_logger:log_error(
-                        Err,
-                        ?MODULE,
-                        ?FUNCTION_NAME,
-                        "Error starting Temporal SDK worker. "
-                        "Check worker configuration.",
-                        #{cluster => Cluster, worker_type => WorkerType, user_opts => WorkerOpts}
-                    )
-            end
+            temporal_sdk_telemetry:execute(
+                [worker, exception],
+                #{cluster => Cluster, worker_type => WorkerType, opts => WorkerOpts, error => Err},
+                InitTime
+            ),
+            Err
     end.
 
 start_child(SupRef, ExtraArgs) ->
@@ -118,7 +113,7 @@ do_start_config_workers([]) ->
 start_config_worker(undefined, _WorkerType, _Cluster) ->
     ok;
 start_config_worker([WorkerConfig | TWorkerConfigs], WorkerType, Cluster) ->
-    start_worker(Cluster, WorkerType, WorkerConfig, true),
+    start_worker(Cluster, WorkerType, WorkerConfig),
     start_config_worker(TWorkerConfigs, WorkerType, Cluster);
 start_config_worker([], _WorkerType, _Cluster) ->
     ok.

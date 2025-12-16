@@ -50,7 +50,7 @@ init([
     ),
     ChildSpecs =
         child_specs(ApiContext, LimiterCounters, WorkerLimiterCounter) ++ WorkerLimiterChiSpec,
-    temporal_sdk_telemetry:execute([worker, init], #{
+    temporal_sdk_telemetry:execute([worker, start], #{
         cluster => Cluster, worker_type => WorkerType, opts => WorkerOpts
     }),
     {ok, {#{strategy => one_for_one}, ChildSpecs}}.

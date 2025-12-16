@@ -139,13 +139,8 @@ defmodule TemporalSdk.MixProject do
         :temporal_sdk_cluster,
         :temporal_sdk_limiter,
         :temporal_sdk_node,
-        :temporal_sdk_worker
-      ],
-      Telemetry: [
         :temporal_sdk_telemetry,
-        :temporal_sdk_telemetry_logs,
-        :temporal_sdk_telemetry_metrics,
-        :temporal_sdk_telemetry_traces
+        :temporal_sdk_worker
       ],
       API: [
         :temporal_sdk_api,

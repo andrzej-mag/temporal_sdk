@@ -8,12 +8,12 @@
     poll/2
 ]).
 
--define(EVENT_ORIGIN, node).
+-define(EVENT_ORIGIN, [node, stats]).
 
 poll(Metadata, Timeout) ->
     Clusters = temporal_sdk_cluster:list(),
     temporal_sdk_telemetry:spawn_execute(
-        [?EVENT_ORIGIN],
+        ?EVENT_ORIGIN,
         Metadata,
         #{
             clusters_count => length(Clusters),

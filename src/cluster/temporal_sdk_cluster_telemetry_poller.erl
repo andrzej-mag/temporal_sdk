@@ -8,14 +8,14 @@
     poll/2
 ]).
 
--define(EVENT_ORIGIN, cluster).
+-define(EVENT_ORIGIN, [cluster, stats]).
 
 poll(#{cluster := Cluster} = Metadata, Timeout) ->
     {AW, AWCount} = parse_worker_list(Cluster, activity),
     {WW, WWCount} = parse_worker_list(Cluster, workflow),
     {ok, Stats} = temporal_sdk_cluster:stats(Cluster),
     temporal_sdk_telemetry:spawn_execute(
-        [?EVENT_ORIGIN],
+        ?EVENT_ORIGIN,
         Metadata,
         #{
             activity_list => AW,

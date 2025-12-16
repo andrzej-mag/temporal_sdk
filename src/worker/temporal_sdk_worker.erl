@@ -396,7 +396,7 @@ set_limits(Cluster, WorkerType, WorkerId, Limits, Nodes) ->
     | invalid_error()
     | supervisor:startchild_ret().
 start(Cluster, WorkerType, WorkerOpts) ->
-    temporal_sdk_worker_manager_sup:start_worker(Cluster, WorkerType, WorkerOpts, false).
+    temporal_sdk_worker_manager_sup:start_worker(Cluster, WorkerType, WorkerOpts).
 
 -spec start(
     Cluster :: temporal_sdk_cluster:cluster_name(),
