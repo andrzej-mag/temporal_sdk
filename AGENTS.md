@@ -106,6 +106,7 @@ The Temporal SDK is a framework for authoring workflows and activities using Erl
 - The function documentation file should start with a short paragraph describing the function and then go into greater details
 - Exclude documentation generation for modules containing the `-moduledoc false` attribute
 - Exclude documentation generation for functions marked with the `-doc false` attribute
+- Documentation text in markdown files must be hard wrapped to maintain a line length of 100 characters.
 
 ## CONTRIBUTION GUIDELINES
 
