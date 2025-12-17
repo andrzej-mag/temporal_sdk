@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.1.12](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.11..v0.1.12) - 2025-12-17
+
+### 🚀 Features
+
+- [**breaking**] Improve SDK telemetry - ([e41b83e](https://github.com/andrzej-mag/temporal_sdk/commit/e41b83e535c38d5d3ab98177e49c8c23f64cc7da))
+- Improve cluster sup telemetry - ([37e1cee](https://github.com/andrzej-mag/temporal_sdk/commit/37e1cee1da06df38e4ea4bfcbbd6f04f3645bd8f))
+
+### 🐛 Bug Fixes
+
+- Error handling in node sup - ([a4fbd6e](https://github.com/andrzej-mag/temporal_sdk/commit/a4fbd6ed2fe3a23adff1e793c06f3ed7df0d0af4))
+
+### 🚜 Refactor
+
+- Rename [worker, terminate] to [worker, stop] - ([d2d37d2](https://github.com/andrzej-mag/temporal_sdk/commit/d2d37d234836195e0c06d0b1a52b313274e07af2))
+- Rename SDK node scope Partitions to Shards - ([988bc9d](https://github.com/andrzej-mag/temporal_sdk/commit/988bc9d1284bd2157631a17e78dfce284fa3cc49))
+- [**breaking**] Rename temporal_sdk_cluster:is_alive/1 to is_ready - ([6533298](https://github.com/andrzej-mag/temporal_sdk/commit/6533298ba961e1e71529c741148b0aa41d1dcd38))
+- Improve node supervisor - ([69c4350](https://github.com/andrzej-mag/temporal_sdk/commit/69c43509ff2fcd037cdbe5f450d3b0d135700a8e))
+
+### 📚 Documentation
+
+- Improve Quick Start example - ([6ab2a7a](https://github.com/andrzej-mag/temporal_sdk/commit/6ab2a7a3024c282b6913ffb9d910b28ffb26fb21))
+- Add SDK node type docs - ([caf128a](https://github.com/andrzej-mag/temporal_sdk/commit/caf128ae7ab29eb05abb8a6197d82356abab0a73))
+- Improve architecture.md - ([8fd324d](https://github.com/andrzej-mag/temporal_sdk/commit/8fd324d85dcd8c32c3b7bf8c19fdc5a8a2df1190))
+- Add architecture.md - ([b4ecca4](https://github.com/andrzej-mag/temporal_sdk/commit/b4ecca4005fbefb264a05e567e93941d0b7e140a))
+- Improve README.md - ([e96e6f4](https://github.com/andrzej-mag/temporal_sdk/commit/e96e6f4cc0a18e91dce6f27b2343cafc3a8c8741))
+
+### ⚙️ Miscellaneous
+
+- Add AGENTS.md - ([d5c2a95](https://github.com/andrzej-mag/temporal_sdk/commit/d5c2a950ec188f895d386731eee975933e730303))
+
 ## [0.1.11](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.1..v0.1.11) - 2025-11-26
 
 ### 🐛 Bug Fixes
