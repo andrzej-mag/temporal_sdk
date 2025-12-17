@@ -86,7 +86,7 @@ terminate_worker(Cluster, WorkerType, WorkerId) ->
                 undefined ->
                     {error, not_found};
                 Pid ->
-                    temporal_sdk_telemetry:execute([worker, terminate], #{
+                    temporal_sdk_telemetry:execute([worker, stop], #{
                         cluster => Cluster, worker_type => WorkerType, worker_id => WorkerId
                     }),
                     supervisor:terminate_child(supervisor_ref(Cluster, WorkerType), Pid)

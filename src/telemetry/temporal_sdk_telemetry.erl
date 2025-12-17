@@ -88,7 +88,7 @@ events() ->
         %% temporal_sdk_worker
         [temporal_sdk, worker, init],
         [temporal_sdk, worker, start],
-        [temporal_sdk, worker, terminate],
+        [temporal_sdk, worker, stop],
         [temporal_sdk, worker, exception],
         [temporal_sdk, worker, stats],
         %% temporal_sdk_activity
