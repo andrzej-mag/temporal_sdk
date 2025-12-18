@@ -14,7 +14,7 @@
 ]).
 
 -doc """
-SDK configuration.
+SDK configuration options.
 """.
 -type sdk_config() :: [
     {node, NodeOpts :: opts() | user_opts()}
@@ -28,7 +28,7 @@ SDK configuration.
 -export_type([sdk_config/0]).
 
 -doc """
-SDK node configuration as a map.
+SDK node configuration options as a map.
 """.
 -type opts() :: #{
     enable_single_distributed_workflow_execution => boolean(),
@@ -40,7 +40,7 @@ SDK node configuration as a map.
 -export_type([opts/0]).
 
 -doc """
-SDK node configuration as a proplist.
+SDK node configuration options as a proplist.
 """.
 -type user_opts() :: [
     {enable_single_distributed_workflow_execution, boolean()}
@@ -53,7 +53,7 @@ SDK node configuration as a proplist.
 -export_type([user_opts/0]).
 
 -doc """
-SDK node scope configuration.
+SDK node scope configuration options.
 """.
 -type scope_config() :: {
     ScopeId :: temporal_sdk_cluster:cluster_name(), ShardSize :: pos_integer()
@@ -91,14 +91,20 @@ SDK node fixed window rate limiter time windows configuration as a proplist.
 %% -------------------------------------------------------------------------------------------------
 %% API
 
+-doc {file, "../../docs/node/stats-0.md"}.
 -spec stats() -> temporal_sdk_limiter:stats().
 stats() -> temporal_sdk_limiter:get_concurrency(get_counters(node)).
 
+-doc {file, "../../docs/node/os_stats-0.md"}.
 -spec os_stats() -> temporal_sdk_limiter:stats().
 os_stats() -> temporal_sdk_limiter_os:get_stats(get_counters(os)).
 
+-doc {file, "../../docs/node/os_disk_mounts-0.md"}.
 -spec os_disk_mounts() -> [Id :: string()].
 os_disk_mounts() -> get_disk_mounts().
+
+%% -------------------------------------------------------------------------------------------------
+%% internal
 
 -doc false.
 -spec setup(LimiterId :: atom(), UserOpts :: opts() | user_opts()) ->
