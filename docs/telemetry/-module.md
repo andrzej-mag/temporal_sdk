@@ -15,6 +15,7 @@ Emitted when the SDK node supervisor is initialized.
 - `system_time` - `erlang:system_time()`
 
 <hr>
+
 ### `[temporal_sdk, node, start]`
 
 Emitted when the SDK node supervisor is started.
@@ -28,6 +29,7 @@ Emitted when the SDK node supervisor is started.
 - `system_time` - `erlang:system_time()`
 
 <hr>
+
 ### `[temporal_sdk, node, stats]`
 
 SDK node stats emitted every `telemetry_poll_interval` time interval.
