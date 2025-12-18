@@ -1,21 +1,54 @@
 SDK telemetry helpers module.
 
-## SDK Telemetry events
+## SDK Node - `m:temporal_sdk_node`
 
-### `m:temporal_sdk_node`
+### `[temporal_sdk, node, init]`
 
-- [temporal_sdk, node, init]
-- [temporal_sdk, node, start]
-- [temporal_sdk, node, stats]
+Emitted when the SDK node supervisor is initialized.
 
-### `m:temporal_sdk_cluster`
+**Metadata**
+
+- `opts` - `node` SDK configuration options as provided by the user
+
+**Measurements**
+
+- `system_time` - `erlang:system_time()`
+
+<hr>
+### `[temporal_sdk, node, start]`
+
+Emitted when the SDK node supervisor is started.
+
+**Metadata**
+
+- `opts` - parsed `node` SDK configuration options
+
+**Measurements**
+
+- `system_time` - `erlang:system_time()`
+
+<hr>
+### `[temporal_sdk, node, stats]`
+
+SDK node stats emitted every `telemetry_poll_interval` time interval.
+
+**Metadata**
+
+**Measurements**
+
+- `clusters_count` - equal to `length(temporal_sdk_cluster:list())`
+- `clusters_list` - equal to `temporal_sdk_cluster:list()`
+- `stats` - equal to `temporal_sdk_node:stats()`
+- `os_stats` - equal to `temporal_sdk_node:os_stats()`
+
+## Temporal Cluster - `m:temporal_sdk_cluster`
 
 - [temporal_sdk, cluster, init]
 - [temporal_sdk, cluster, start]
 - [temporal_sdk, cluster, exception]
 - [temporal_sdk, cluster, stats]
 
-### `m:temporal_sdk_worker`
+## Worker - `m:temporal_sdk_worker`
 
 - [temporal_sdk, worker, init]
 - [temporal_sdk, worker, start]
@@ -23,7 +56,7 @@ SDK telemetry helpers module.
 - [temporal_sdk, worker, exception]
 - [temporal_sdk, worker, stats]
 
-### `m:temporal_sdk_activity`
+## Activity Task - `m:temporal_sdk_activity`
 
 - [temporal_sdk, activity, executor, start]
 - [temporal_sdk, activity, executor, stop]
@@ -35,7 +68,7 @@ SDK telemetry helpers module.
 - [temporal_sdk, activity, execution, stop]
 - [temporal_sdk, activity, execution, exception]
 
-### `m:temporal_sdk_nexus`
+## Nexus Task - `m:temporal_sdk_nexus`
 
 - [temporal_sdk, nexus, executor, start]
 - [temporal_sdk, nexus, executor, stop]
@@ -47,7 +80,7 @@ SDK telemetry helpers module.
 - [temporal_sdk, nexus, execution, stop]
 - [temporal_sdk, nexus, execution, exception]
 
-### `m:temporal_sdk_workflow`
+## Workflow Task - `m:temporal_sdk_workflow`
 
 - [temporal_sdk, workflow, executor, start]
 - [temporal_sdk, workflow, executor, stop]
@@ -59,19 +92,19 @@ SDK telemetry helpers module.
 - [temporal_sdk, workflow, execution, stop]
 - [temporal_sdk, workflow, execution, exception]
 
-### `m:temporal_sdk_client`
+## gRPC Client - `m:temporal_sdk_client`
 
 - [temporal_sdk, client, start]
 - [temporal_sdk, client, stop]
 - [temporal_sdk, client, exception]
 
-### `m:temporal_sdk_grpc`
+## gRPC Request - `m:temporal_sdk_grpc`
 
 - [temporal_sdk, grpc, start]
 - [temporal_sdk, grpc, stop]
 - [temporal_sdk, grpc, exception]
 
-### `temporal_sdk_poller`
+## Task Poller - `temporal_sdk_poller`
 
 - [temporal_sdk, poller, poll, start]
 - [temporal_sdk, poller, poll, stop]
