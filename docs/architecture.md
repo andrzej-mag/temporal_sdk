@@ -76,8 +76,4 @@ flowchart TD
 
   click TemporalServer1 "https://docs.temporal.io/temporal" _blank
   click TemporalServerN "https://docs.temporal.io/temporal" _blank
-
-
-
-
 ```
