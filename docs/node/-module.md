@@ -1,8 +1,18 @@
 SDK node configuration and management module.
 
+The SDK node is a top level SDK library process running on the BEAM node.
+
+SDK node process is responsible for:
+
+- configuring and starting SDK node statistics telemetry poller,
+- configuring SDK node level fixed window rate limiter time windows,
+- configuring and attaching SDK-wide telemetry events handlers,
+- configuring SDK node-wide options, such as `scope_config`,
+- configuring and starting SDK Temporal cluster processes.
+
 ## SDK Configuration
 
-**`node`** - proplist or map with SDK node configuration options as described in the
+**`node`** - property list or map with SDK node configuration options as described in the
 [SDK Node Configuration](#module-sdk-node-configuration) section.
 Example:
 <!-- tabs-open -->
@@ -19,9 +29,9 @@ node: %{:scope_config => [{:cluster_1, 5}]}
 ```
 <!-- tabs-close -->
 
-**`clusters`** - keyword list/proplist containing Temporal cluster configurations.
-The list key is a cluster name `t:temporal_sdk_cluster:cluster_name/0`, and the list value is a
-cluster configuration represented as a map or proplist.
+**`clusters`** - property list containing Temporal cluster configurations.
+The proplist key is a cluster name `t:temporal_sdk_cluster:cluster_name/0`, and the proplist value
+is a cluster configuration represented as a map or proplist.
 Refer to `m:temporal_sdk_cluster` for details about cluster configuration.
 
 Example `temporal_sdk` configuration with one Temporal cluster `cluster_1`:
@@ -58,13 +68,19 @@ config :temporal_sdk,
 ### SDK Node Configuration
 
 **`enable_single_distributed_workflow_execution`** - enables single workflow execution per Erlang
-cluster, see [SDK node scope](#module-sdk-node-scope) for details.
+cluster, see [Workflow Execution Scope](#module-workflow-execution-scope) section for details.
+Setting can be overwritten for each Temporal cluster individually by using the Temporal cluster
+configuration option with the same name, see `m:temporal_sdk_cluster`.
 Default: `true`.
 
-**`scope_config`** - SDK node workflow execution scope configuration. Accepts a keyword
-list/proplist, with the list key set to the Temporal cluster name and the value set to the
-given cluster scope shards count. See [SDK Node Scope](#module-sdk-node-scope) section for details.
-By default, the shards count is set to 10 for each Temporal cluster. Example: `[{cluster_1, 5}]`.
+**`scope_config`** - SDK node workflow execution scope configuration defined as a property list.
+Proplist key is the `workflow_scope` scope name set in the Temporal cluster configuration and the
+proplist value is the given cluster scope shards count.
+If `workflow_scope` option is not set in the cluster configuration, the scope name will be the same
+as the cluster name.
+See [Workflow Execution Scope](#module-workflow-execution-scope) section for details.
+Setting must be consistent across all SDK nodes.
+By default, the shards count is set to 10 for each Temporal cluster. Example: `[{cluster_1, 20}]`.
 
 **`limiter_time_windows`** - SDK node fixed window rate limiter time windows configuration.
 See `m:temporal_sdk_limiter` for details.
@@ -120,10 +136,11 @@ level using the built-in telemetry event handler function `temporal_sdk_telemetr
 ]
 ```
 
-## SDK Node Scope
+## Workflow Execution Scope
 
 After the user starts workflow execution by using `TemporalSdk.start_workflow/3` or
-`temporal_sdk:start_workflow/3`, a `StartWorkflowExecutionRequest` is sent to the Temporal server.
+`temporal_sdk:start_workflow/3`, a `StartWorkflowExecutionRequest` gRPC request is sent to the
+Temporal platform Temporal server.
 The Temporal server schedules the new workflow task execution on a user-defined workflow task queue.
 The workflow task execution is then polled from the Temporal server by the SDK workflow task worker
 polling given workflow task queue.
@@ -143,10 +160,11 @@ implementations will cache and execute the polled task on each involved worker h
 This strategy may result in storing duplicate task data and executing the same task code across
 multiple worker hosts.
 
-Erlang leverages OTP distribution to optimize Temporal task execution.
-If `enable_single_distributed_workflow_execution` configuration option is set to true (default value),
-after polling a new workflow task execution, the SDK will check whether the given workflow task
-execution is already being processed by a workflow task executor on any node within the Erlang cluster.
+This SDK utilizes Erlang OTP distribution to optimize Temporal task execution.
+If `enable_single_distributed_workflow_execution` configuration option is set to true
+(default and recommended value), after polling a new workflow task execution from Temporal server,
+the SDK will check whether the given workflow task execution is already being processed by a workflow
+task executor on any SDK node within the Erlang cluster.
 If there is already a workflow executor processing the given workflow task execution, the polled
 workflow task is sent to that workflow executor.
 The workflow executor then validates the integrity of received workflow task, particularly by
@@ -162,7 +180,14 @@ The optimization described above is performed on a best-effort basis.
 If the Temporal server dispatches workflow task execution to multiple BEAM nodes, at least one
 workflow task execution will be processed by the SDK in the Erlang cluster.
 
-SDK uses sharded `m:pg` process groups to register workflow task executors across the Erlang cluster.
-`scope_config` SDK node configuration option is used to specify the number of process group shards
+If `enable_single_distributed_workflow_execution` configuration option is set to false (not recommended),
+after polling a new workflow task execution, the SDK will check whether the given workflow task
+execution is already being processed by any workflow task executor running on the local node.
+If there is already a workflow executor processing the given workflow task execution, the polled
+workflow task will be sent to that workflow executor, otherwise a new workflow executor process is
+spawned on local node.
+
+SDK uses sharded `m:pg` process groups to register workflow task executors across the Erlang cluster
+nodes. `scope_config` SDK node configuration option is used to specify the number of process group shards
 per Temporal cluster.
 The default number of process group shards is set to 10, which should be sufficient for most use cases.
