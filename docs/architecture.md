@@ -2,11 +2,11 @@
 
 ```mermaid
 flowchart TD
-  Node@{ shape: rect, label: "SDK Node"}
+  Node@{ shape: rect, label: "SDK node"}
   NodeTool@{ shape: lin-rect, label: "scope <br> stats telemetry <br> node rate limiter <br> OS rate limiter"}
 
-  Cluster1@{ shape: rect, label: "Temporal Cluster 1"}
-  ClusterN@{ shape: rect, label: "Temporal Cluster N"}
+  Cluster1@{ shape: rect, label: "SDK cluster 1"}
+  ClusterN@{ shape: rect, label: "SDK cluster N"}
   ClusterTool@{ shape: lin-rect, label: "gRPC client <br> stats telemetry <br> cluster rate limiter"}
   ClusterToolN@{ shape: lin-rect, label: "gRPC client <br> stats telemetry <br> cluster rate limiter"}
 
@@ -27,31 +27,31 @@ flowchart TD
   WorkflowExec@{ shape: processes, label: "Workflow executor" }
   TaskExec@{ shape: processes, label: "A/N/W task executor" }
 
-  TemporalServer1@{ shape: rect, label: "Temporal Platform <br> Temporal Server 1"}
-  TemporalServerN@{ shape: rect, label: "Temporal Platfowm <br> Temporal Server N"}
+  TemporalService1@{ shape: processes, label: "Temporal Service 1 <br> Temporal Server(s)"}
+  TemporalServiceN@{ shape: processes, label: "Temporal Service N <br> Temporal Server(s)"}
 
-  style TemporalServer1 stroke:#0000ff
-  style TemporalServerN stroke:#0000ff
+  style TemporalService1 stroke-dasharray: 3 3
+  style TemporalServiceN stroke-dasharray: 3 3
 
-  Node --- NodeTool
-  Node --- Cluster1
-  Cluster1 ======= TemporalServer1
-  Cluster1 --- ClusterTool
-  Cluster1 ---- Activity
-  Cluster1 ---- Nexus
-  Cluster1 ---- Workflow
-  Node --- ClusterN
-  ClusterN ======= TemporalServerN
-  ClusterN --- ClusterToolN
-  ClusterN ---- Task
-  Activity --- ActivityTool
-  Activity -..- ActivityExec
-  Nexus --- NexusTool
-  Nexus -..- NexusExec
-  Workflow --- WorkflowTool
-  Workflow -..- WorkflowExec
-  Task --- TaskTool
-  Task -..- TaskExec
+  Node --> Cluster1
+  Cluster1 <-.gRPC.....-> TemporalService1
+  Cluster1 --> ClusterTool
+  Cluster1 ---> Activity
+  Cluster1 ---> Nexus
+  Cluster1 ---> Workflow
+  Node --> NodeTool
+  Node --> ClusterN
+  ClusterN <-.gRPC.....-> TemporalServiceN
+  ClusterN --> ClusterToolN
+  ClusterN ---> Task
+  Activity --> ActivityTool
+  Activity -..-> ActivityExec
+  Nexus --> NexusTool
+  Nexus -..-> NexusExec
+  Workflow --> WorkflowTool
+  Workflow -..-> WorkflowExec
+  Task --> TaskTool
+  Task -..-> TaskExec
 
   click Node "https://hexdocs.pm/temporal_sdk/temporal_sdk_node.html" _blank
   click NodeTool "https://hexdocs.pm/temporal_sdk/temporal_sdk_node.html" _blank
@@ -74,6 +74,6 @@ flowchart TD
   click NexusExec "https://hexdocs.pm/temporal_sdk/temporal_sdk_nexus.html" _blank
   click WorkflowExec "https://hexdocs.pm/temporal_sdk/temporal_sdk_workflow.html" _blank
 
-  click TemporalServer1 "https://docs.temporal.io/temporal" _blank
-  click TemporalServerN "https://docs.temporal.io/temporal" _blank
+  click TemporalService1 "https://docs.temporal.io/temporal-service" _blank
+  click TemporalServiceN "https://docs.temporal.io/temporal-service" _blank
 ```
