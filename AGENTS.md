@@ -28,7 +28,7 @@ The Temporal SDK is a framework for authoring workflows and activities using Erl
 │   ├── node/               # SDK node implementation
 │   ├── api/                # API definitions and interfaces
 │   ├── client/             # gRPC client implementation
-│   ├── cluster/            # Temporal clusters management
+│   ├── cluster/            # SDK cluster management
 │   ├── executor/           # Temporal workflow, activity and nexus execution logic
 │   ├── grpc/               # gRPC communication layer
 │   ├── poller/             # Polling mechanisms for task queues
@@ -54,7 +54,7 @@ The Temporal SDK is a framework for authoring workflows and activities using Erl
 - **Execution Engine**: Temporal workflow, activity and nexus execution logic in `src/executor/`
 - **Communication**: gRPC layer in `src/grpc/` for interacting with Temporal server
 - **Workers**: Temporal task workers management in `src/worker/`
-- **Cluster Management**: Temporal clusters management in `src/cluster/`
+- **Cluster Management**: SDK cluster management in `src/cluster/`
 - **Polling**: Task queue polling mechanisms in `src/poller/`
 - **Protocol Buffers**: Temporal API protocol buffer definitions in `src/proto/`
 - **Telemetry**: Metrics, logs, and traces collection in `src/telemetry/`
