@@ -1,14 +1,15 @@
 SDK node configuration and management module.
 
-The SDK node is a top level SDK library process running on the BEAM node.
+The SDK node is a top level SDK library supervisor process running on the Erlang node.
 
-SDK node process is responsible for:
+SDK node responsibilities::
 
-- configuring and starting SDK node statistics telemetry poller,
-- configuring SDK node level fixed window rate limiter time windows,
-- configuring and attaching SDK-wide telemetry events handlers,
-- configuring SDK node-wide options, such as `scope_config`,
-- configuring and starting SDK Temporal cluster processes.
+- configure and start SDK node statistics telemetry poller,
+- configure SDK node-level fixed window rate limiter time windows,
+- configure and attach SDK-wide telemetry events handlers,
+- configure SDK node-wide options, such as `scope_config`,
+- configure, start and supervise SDK scope management processes,
+- configure, start and supervise SDK cluster processes.
 
 ## SDK Configuration
 
@@ -29,12 +30,12 @@ node: %{:scope_config => [{:cluster_1, 5}]}
 ```
 <!-- tabs-close -->
 
-**`clusters`** - property list containing Temporal cluster configurations.
+**`clusters`** - property list containing SDK cluster configurations.
 The proplist key is a cluster name `t:temporal_sdk_cluster:cluster_name/0`, and the proplist value
 is a cluster configuration represented as a map or proplist.
 Refer to `m:temporal_sdk_cluster` for details about cluster configuration.
 
-Example `temporal_sdk` configuration with one Temporal cluster `cluster_1`:
+Example `temporal_sdk` configuration with one SDK cluster `cluster_1`:
 
 <!-- tabs-open -->
 ### Elixir
@@ -69,18 +70,18 @@ config :temporal_sdk,
 
 **`enable_single_distributed_workflow_execution`** - enables single workflow execution per Erlang
 cluster, see [Workflow Execution Scope](#module-workflow-execution-scope) section for details.
-Setting can be overwritten for each Temporal cluster individually by using the Temporal cluster
+Setting can be overwritten for each SDK cluster individually by using the SDK cluster
 configuration option with the same name, see `m:temporal_sdk_cluster`.
 Default: `true`.
 
 **`scope_config`** - SDK node workflow execution scope configuration defined as a property list.
-Proplist key is the `workflow_scope` scope name set in the Temporal cluster configuration and the
+Proplist key is the `workflow_scope` scope name set in the SDK cluster configuration and the
 proplist value is the given cluster scope shards count.
 If `workflow_scope` option is not set in the cluster configuration, the scope name will be the same
 as the cluster name.
 See [Workflow Execution Scope](#module-workflow-execution-scope) section for details.
 Setting must be consistent across all SDK nodes.
-By default, the shards count is set to 10 for each Temporal cluster. Example: `[{cluster_1, 20}]`.
+By default, the shards count is set to 10 for each SDK cluster. Example: `[{cluster_1, 20}]`.
 
 **`limiter_time_windows`** - SDK node fixed window rate limiter time windows configuration.
 See `m:temporal_sdk_limiter` for details.
@@ -140,7 +141,7 @@ level using the built-in telemetry event handler function `temporal_sdk_telemetr
 
 After the user starts workflow execution by using `TemporalSdk.start_workflow/3` or
 `temporal_sdk:start_workflow/3`, a `StartWorkflowExecutionRequest` gRPC request is sent to the
-Temporal platform Temporal server.
+Temporal service Temporal server.
 The Temporal server schedules the new workflow task execution on a user-defined workflow task queue.
 The workflow task execution is then polled from the Temporal server by the SDK workflow task worker
 polling given workflow task queue.
@@ -188,6 +189,6 @@ workflow task will be sent to that workflow executor, otherwise a new workflow e
 spawned on local node.
 
 SDK uses sharded `m:pg` process groups to register workflow task executors across the Erlang cluster
-nodes. `scope_config` SDK node configuration option is used to specify the number of process group shards
-per Temporal cluster.
+nodes. `scope_config` SDK node configuration option is used to specify the number of process group
+shards per SDK cluster.
 The default number of process group shards is set to 10, which should be sufficient for most use cases.
