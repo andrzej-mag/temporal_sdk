@@ -15,7 +15,7 @@ Requires `m:disksup`.
 ### Elixir
 
 ```elixir
-iex(1)> :temporal_sdk_node.os_disk_mounts()
+iex(1)> TemporalSdk.Node.os_disk_mounts()
 [~c"/dev", ~c"/run", ~c"/", ~c"/dev/shm", ~c"/run/lock", ~c"/tmp",
  ~c"/boot/efi", ~c"/run/user/1001"]
 ```
