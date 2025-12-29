@@ -19,7 +19,7 @@ Please refer to the documentation
 [Quick Start guide](https://hexdocs.pm/temporal_sdk/quick_start.html) for an extended version of
 this example with Erlang code snippets.
 
-Add `temporal_sdk` to your application runtime dependencies list:
+Add `temporal_sdk` to your application dependencies list:
 
 ```elixir
 # mix.exs
@@ -30,7 +30,9 @@ Add `temporal_sdk` to your application runtime dependencies list:
   end
 ```
 
-Configure activity and workflow runtime [task workers](https://docs.temporal.io/workers):
+Configure `:cluster_1` [SDK cluster](https://hexdocs.pm/temporal_sdk/TemporalSdk.Cluster.html) with
+activity and workflow runtime [task workers](https://docs.temporal.io/workers) that poll for tasks
+from the `"default"` [task queue](https://docs.temporal.io/task-queue):
 
 ```elixir
 # config/config.exs
