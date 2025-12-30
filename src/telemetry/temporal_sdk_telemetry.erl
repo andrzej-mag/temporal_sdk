@@ -229,7 +229,7 @@ execute(EventName, Metadata) ->
 -spec execute(
     EventName :: telemetry:event_name(),
     Metadata :: telemetry:event_metadata(),
-    Measurement_Or_StartTime :: map() | integer()
+    MeasurementOrStartTime :: map() | integer()
 ) -> ok.
 execute(EventName, Metadata, StartTime) when is_integer(StartTime) ->
     Duration = erlang:system_time() - StartTime,
@@ -242,8 +242,13 @@ execute(EventName, Metadata, Measurement) when is_map(Measurement) ->
     EventName :: telemetry:event_name(),
     Metadata :: telemetry:event_metadata(),
     StartTime :: integer(),
-    Exception :: exception()
+    MeasurementOrException :: map() | exception()
 ) -> ok.
+execute(EventName, Metadata, StartTime, Measurement) when
+    is_integer(StartTime), is_map(Measurement)
+->
+    Duration = erlang:system_time() - StartTime,
+    spawn_execute(EventName, Metadata, Measurement#{duration => Duration});
 execute(EventName, Metadata, StartTime, {Class, Reason, Stacktrace}) when is_integer(StartTime) ->
     execute(
         EventName,
