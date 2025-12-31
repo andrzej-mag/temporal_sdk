@@ -331,10 +331,12 @@ get_limits(Cluster, WorkerType, WorkerId) ->
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: worker_type(),
     WorkerId :: worker_id(),
-    Limits :: limiter_limits()
+    NewLimits :: limiter_limits()
 ) -> ok | invalid_worker | invalid_state.
-set_limits(Cluster, session, WorkerId, Limits) ->
+set_limits(Cluster, session, WorkerId, NewLimits) ->
     maybe
+        {ok, OldLimits} ?= get_limits(Cluster, session, WorkerId),
+        {ok, Limits} ?= temporal_sdk_utils_maps:deep_merge_opts(OldLimits, NewLimits),
         Pid = temporal_sdk_worker_registry:whereis_name({Cluster, workflow, WorkerId}),
         true ?= is_pid(Pid),
         Chi = supervisor:which_children(Pid),
@@ -354,8 +356,10 @@ set_limits(Cluster, session, WorkerId, Limits) ->
         false -> invalid_worker;
         _ -> invalid_state
     end;
-set_limits(Cluster, WorkerType, WorkerId, Limits) ->
+set_limits(Cluster, WorkerType, WorkerId, NewLimits) ->
     maybe
+        {ok, OldLimits} ?= get_limits(Cluster, WorkerType, WorkerId),
+        {ok, Limits} ?= temporal_sdk_utils_maps:deep_merge_opts(OldLimits, NewLimits),
         Pid = temporal_sdk_worker_registry:whereis_name({Cluster, WorkerType, WorkerId}),
         true ?= is_pid(Pid),
         Chi = supervisor:which_children(Pid),

@@ -231,30 +231,25 @@ backoff_error(StateData) ->
         {state_timeout, floor(StateData#state.backoff_current), retry_timeout}}.
 
 handle_set_limits(NewLimits, StateData) ->
-    SD1 =
-        case NewLimits of
-            #{task_poller_limiter := TPL} ->
-                StateData#state{task_exec_interval = task_exec_interval(TPL)};
-            #{} ->
-                StateData
-        end,
-    SD2 =
-        maybe
-            #{limits := L} ?= NewLimits,
-            {ok, Checks} ?=
-                temporal_sdk_limiter:build_checks(L, StateData#state.limiter_counters),
-            SD1#state{limiter_checks = Checks}
-        else
-            _ -> SD1
-        end,
-    SD3 =
-        case NewLimits of
-            #{limiter_check_frequency := LCF} ->
-                SD2#state{capacity_check_interval = LCF};
-            #{} ->
-                SD2
-        end,
-    {keep_state, SD3}.
+    #{task_poller_limiter := TPL, limiter_check_frequency := LCF, limits := L} = NewLimits,
+    case temporal_sdk_limiter:build_checks(L, StateData#state.limiter_counters) of
+        {ok, Checks} ->
+            SD = StateData#state{
+                task_exec_interval = task_exec_interval(TPL),
+                capacity_check_interval = LCF,
+                limiter_checks = Checks
+            },
+            {keep_state, SD};
+        Err ->
+            temporal_sdk_utils_logger:log_error(
+                Err,
+                ?MODULE,
+                ?FUNCTION_NAME,
+                "Error when setting new rate limiter limits. Keeping old limits.",
+                #{invalid_ignored_new_limits => NewLimits}
+            ),
+            keep_state_and_data
+    end.
 
 %% -------------------------------------------------------------------------------------------------
 %% helpers
