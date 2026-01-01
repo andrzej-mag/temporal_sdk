@@ -8,7 +8,8 @@
     setup/3,
     get_opts/3,
     stats/3,
-    worker_type_to_limitable/1
+    worker_type_to_limitable/1,
+    build_limiter_config/2
 ]).
 -export([
     setup_replay/2,
@@ -204,30 +205,30 @@ defaults(os_limits, _WorkerType) ->
     ] ++ DiskLimits;
 defaults(OptsType, _WorkerType) when OptsType =:= node_limits; OptsType =:= cluster_limits ->
     [
-        {activity_direct, limiter_limits, '$_optional'},
-        {activity_eager, limiter_limits, '$_optional'},
-        {activity_regular, limiter_limits, '$_optional'},
-        {activity_session, limiter_limits, '$_optional'},
-        {nexus, limiter_limits, '$_optional'},
-        {workflow, limiter_limits, '$_optional'}
+        {activity_direct, limiter_config, '$_optional'},
+        {activity_eager, limiter_config, '$_optional'},
+        {activity_regular, limiter_config, '$_optional'},
+        {activity_session, limiter_config, '$_optional'},
+        {nexus, limiter_config, '$_optional'},
+        {workflow, limiter_config, '$_optional'}
     ];
 defaults(worker_limits, activity) ->
     [
-        {activity_regular, limiter_limits, '$_optional'}
+        {activity_regular, limiter_config, '$_optional'}
     ];
 defaults(worker_limits, session) ->
     [
-        {activity_session, limiter_limits, '$_optional'}
+        {activity_session, limiter_config, '$_optional'}
     ];
 defaults(worker_limits, workflow) ->
     [
-        {activity_direct, limiter_limits, '$_optional'},
-        {activity_eager, limiter_limits, '$_optional'},
-        {workflow, limiter_limits, '$_optional'}
+        {activity_direct, limiter_config, '$_optional'},
+        {activity_eager, limiter_config, '$_optional'},
+        {workflow, limiter_config, '$_optional'}
     ];
 defaults(worker_limits, nexus) ->
     [
-        {nexus, limiter_limits, '$_optional'}
+        {nexus, limiter_config, '$_optional'}
     ];
 defaults(limiter_time_windows, activity) ->
     [
@@ -296,6 +297,18 @@ worker_type_to_limitable(activity) -> activity_regular;
 worker_type_to_limitable(nexus) -> nexus;
 worker_type_to_limitable(session) -> activity_session;
 worker_type_to_limitable(workflow) -> workflow.
+
+-spec build_limiter_config(
+    WorkerType :: temporal_sdk_worker:worker_type(),
+    UserConfig :: map() | proplists:proplist()
+) -> {ok, temporal_sdk_worker:limiter_config()} | {error, {invalid_opts, map()}}.
+build_limiter_config(WorkerType, UserConfig) ->
+    DefaultConfig = [
+        {task_poller_limiter, map, '$_optional'},
+        {limits, nested, defaults(limits, WorkerType)},
+        {limiter_check_frequency, pos_integer, '$_optional'}
+    ],
+    temporal_sdk_utils_opts:build(DefaultConfig, UserConfig).
 
 %% -------------------------------------------------------------------------------------------------
 %% gen_server

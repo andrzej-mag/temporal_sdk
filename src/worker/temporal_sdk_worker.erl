@@ -232,12 +232,19 @@
 ].
 -export_type([user_limiter_time_windows_nexus/0]).
 
--type limiter_limits() :: #{
+-type limiter_config() :: #{
     task_poller_limiter => task_poller_limiter(),
     limits => temporal_sdk_limiter:levels_limits(),
     limiter_check_frequency => pos_integer()
 }.
--export_type([limiter_limits/0]).
+-export_type([limiter_config/0]).
+
+-type user_limiter_config() :: [
+    {task_poller_limiter, task_poller_limiter()}
+    | {limits, temporal_sdk_limiter:levels_limits()}
+    | {limiter_check_frequency, pos_integer()}
+].
+-export_type([user_limiter_config/0]).
 
 -type invalid_error() :: {error, invalid_cluster | invalid_worker}.
 -export_type([invalid_error/0]).
@@ -311,7 +318,7 @@ stats(Cluster, WorkerType, WorkerId) ->
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: worker_type(),
     WorkerId :: worker_id()
-) -> {ok, limiter_limits()} | invalid_error().
+) -> {ok, limiter_config()} | invalid_error().
 get_limits(Cluster, session, WorkerId) ->
     case options(Cluster, workflow, WorkerId) of
         {ok, #{task_settings := #{session_worker := SW}}} when is_map(SW) ->
@@ -327,16 +334,23 @@ get_limits(Cluster, WorkerType, WorkerId) ->
         {error, _} = Err -> Err
     end.
 
+%% Default value for the `limits` key is:
+%% `limits => #{cluster => #{},node => #{},os => #{},worker => #{}`
+%% which means that if `limits` key is not set in the `NewLimiterConfig` rate limite limits are reset.
+
 -spec set_limits(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: worker_type(),
     WorkerId :: worker_id(),
-    NewLimits :: limiter_limits()
-) -> ok | invalid_worker | invalid_state.
-set_limits(Cluster, session, WorkerId, NewLimits) ->
+    NewLimiterConfig :: limiter_config() | user_limiter_config()
+) ->
+    ok
+    | {error, {invalid_opts, map()}}
+    | invalid_worker
+    | invalid_state.
+set_limits(Cluster, session, WorkerId, NewLimiterConfig) ->
     maybe
-        {ok, OldLimits} ?= get_limits(Cluster, session, WorkerId),
-        {ok, Limits} ?= temporal_sdk_utils_maps:deep_merge_opts(OldLimits, NewLimits),
+        {ok, Limits} ?= temporal_sdk_worker_opts:build_limiter_config(session, NewLimiterConfig),
         Pid = temporal_sdk_worker_registry:whereis_name({Cluster, workflow, WorkerId}),
         true ?= is_pid(Pid),
         Chi = supervisor:which_children(Pid),
@@ -354,12 +368,12 @@ set_limits(Cluster, session, WorkerId, NewLimits) ->
         )
     else
         false -> invalid_worker;
+        {error, _} = Err -> Err;
         _ -> invalid_state
     end;
-set_limits(Cluster, WorkerType, WorkerId, NewLimits) ->
+set_limits(Cluster, WorkerType, WorkerId, NewLimiterConfig) ->
     maybe
-        {ok, OldLimits} ?= get_limits(Cluster, WorkerType, WorkerId),
-        {ok, Limits} ?= temporal_sdk_utils_maps:deep_merge_opts(OldLimits, NewLimits),
+        {ok, Limits} ?= temporal_sdk_worker_opts:build_limiter_config(WorkerType, NewLimiterConfig),
         Pid = temporal_sdk_worker_registry:whereis_name({Cluster, WorkerType, WorkerId}),
         true ?= is_pid(Pid),
         Chi = supervisor:which_children(Pid),
@@ -377,6 +391,7 @@ set_limits(Cluster, WorkerType, WorkerId, NewLimits) ->
         )
     else
         false -> invalid_worker;
+        {error, _} = Err -> Err;
         _ -> invalid_state
     end.
 
@@ -384,11 +399,11 @@ set_limits(Cluster, WorkerType, WorkerId, NewLimits) ->
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: worker_type(),
     WorkerId :: worker_id(),
-    Limits :: limiter_limits(),
+    NewLimiterConfig :: limiter_config() | user_limiter_config(),
     Nodes :: [node()]
 ) -> ok.
-set_limits(Cluster, WorkerType, WorkerId, Limits, Nodes) ->
-    erpc:multicast(Nodes, ?MODULE, set_limits, [Cluster, WorkerType, WorkerId, Limits]).
+set_limits(Cluster, WorkerType, WorkerId, NewLimiterConfig, Nodes) ->
+    erpc:multicast(Nodes, ?MODULE, set_limits, [Cluster, WorkerType, WorkerId, NewLimiterConfig]).
 
 -spec start(
     Cluster :: temporal_sdk_cluster:cluster_name(),
