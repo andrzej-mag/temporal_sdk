@@ -205,30 +205,30 @@ defaults(os_limits, _WorkerType) ->
     ] ++ DiskLimits;
 defaults(OptsType, _WorkerType) when OptsType =:= node_limits; OptsType =:= cluster_limits ->
     [
-        {activity_direct, limiter_config, '$_optional'},
-        {activity_eager, limiter_config, '$_optional'},
-        {activity_regular, limiter_config, '$_optional'},
-        {activity_session, limiter_config, '$_optional'},
-        {nexus, limiter_config, '$_optional'},
-        {workflow, limiter_config, '$_optional'}
+        {activity_direct, limiter_limits, '$_optional'},
+        {activity_eager, limiter_limits, '$_optional'},
+        {activity_regular, limiter_limits, '$_optional'},
+        {activity_session, limiter_limits, '$_optional'},
+        {nexus, limiter_limits, '$_optional'},
+        {workflow, limiter_limits, '$_optional'}
     ];
 defaults(worker_limits, activity) ->
     [
-        {activity_regular, limiter_config, '$_optional'}
+        {activity_regular, limiter_limits, '$_optional'}
     ];
 defaults(worker_limits, session) ->
     [
-        {activity_session, limiter_config, '$_optional'}
+        {activity_session, limiter_limits, '$_optional'}
     ];
 defaults(worker_limits, workflow) ->
     [
-        {activity_direct, limiter_config, '$_optional'},
-        {activity_eager, limiter_config, '$_optional'},
-        {workflow, limiter_config, '$_optional'}
+        {activity_direct, limiter_limits, '$_optional'},
+        {activity_eager, limiter_limits, '$_optional'},
+        {workflow, limiter_limits, '$_optional'}
     ];
 defaults(worker_limits, nexus) ->
     [
-        {nexus, limiter_config, '$_optional'}
+        {nexus, limiter_limits, '$_optional'}
     ];
 defaults(limiter_time_windows, activity) ->
     [

@@ -32,7 +32,7 @@
     | undefined
     | infinity
     | time
-    | limiter_config
+    | limiter_limits
     %% Temporal types
     | duration
     | serializable
@@ -157,7 +157,7 @@ isv(infinity, infinity) ->
     true;
 isv(time, V) when is_integer(V), V >= 0 -> true;
 isv(time, {V, U}) when is_integer(V), V >= 0, is_atom(U) -> true;
-isv(limiter_config, {V1, V2}) when is_integer(V1), V1 > 0, is_integer(V2), V2 > 0 -> true;
+isv(limiter_limits, {V1, V2}) when is_integer(V1), V1 > 0, is_integer(V2), V2 > 0 -> true;
 %% Temporal types
 isv(duration, V) when is_integer(V), V >= 0 -> true;
 isv(duration, {V, U}) when is_number(V), V >= 0, is_atom(U) -> true;
