@@ -402,6 +402,7 @@ set_limiter_config(Cluster, WorkerType, WorkerId, NewLimiterConfig) ->
         _ -> invalid_state
     end.
 
+-doc {file, "../../docs/worker/set_limiter_config-5.md"}.
 -spec set_limiter_config(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: worker_type(),
