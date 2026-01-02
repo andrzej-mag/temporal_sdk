@@ -10,6 +10,7 @@ defmodule TemporalSdk.Worker do
   @doc File.read!("docs/worker/get_limiter_config-3.md")
   defdelegate get_limiter_config(cluster, worker_type, worker_id), to: :temporal_sdk_worker
 
+  @doc File.read!("docs/worker/set_limiter_config-4.md")
   defdelegate set_limiter_config(cluster, worker_type, worker_id, new_limiter_config),
     to: :temporal_sdk_worker
 

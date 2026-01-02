@@ -348,9 +348,7 @@ get_limiter_config(Cluster, WorkerType, WorkerId) ->
         {error, _} = Err -> Err
     end.
 
-%% Default values for the `limits` levels are set to '#{}', which means that setting
-%% `limits => #{}` will reset all rate limitter concurrency and fixed window limits.
-
+-doc {file, "../../docs/worker/set_limiter_config-4.md"}.
 -spec set_limiter_config(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: worker_type(),
