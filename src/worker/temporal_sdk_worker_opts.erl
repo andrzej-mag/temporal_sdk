@@ -308,7 +308,22 @@ build_limiter_config(WorkerType, UserConfig) ->
         {limits, nested, defaults(limits, WorkerType)},
         {limiter_check_frequency, pos_integer, '$_optional'}
     ],
-    temporal_sdk_utils_opts:build(DefaultConfig, UserConfig).
+    case temporal_sdk_utils_opts:build(DefaultConfig, UserConfig) of
+        {ok, Opts} ->
+            {ok, maybe_without_limits(UserConfig, Opts)};
+        Err ->
+            Err
+    end.
+
+maybe_without_limits(#{limits := _}, Opts) ->
+    Opts;
+maybe_without_limits(#{}, Opts) ->
+    maps:without([limits], Opts);
+maybe_without_limits(UserConfig, Opts) when is_list(UserConfig) ->
+    case proplists:is_defined(limits, UserConfig) of
+        true -> Opts;
+        false -> maps:without([limits], Opts)
+    end.
 
 %% -------------------------------------------------------------------------------------------------
 %% gen_server

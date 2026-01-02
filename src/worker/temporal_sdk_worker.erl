@@ -334,9 +334,8 @@ get_limiter_config(Cluster, WorkerType, WorkerId) ->
         {error, _} = Err -> Err
     end.
 
-%% Default value for the `limits` key is:
-%% `limits => #{cluster => #{},node => #{},os => #{},worker => #{}`
-%% which means that if `limits` key is not set in the `NewLimiterConfig` rate limiter limits are reset.
+%% Default values for the `limits` levels are set to '#{}', which means that setting
+%% `limits => #{}` will reset all rate limitter concurrency and fixed window limits.
 
 -spec set_limiter_config(
     Cluster :: temporal_sdk_cluster:cluster_name(),
