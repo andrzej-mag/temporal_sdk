@@ -232,6 +232,12 @@
 ].
 -export_type([user_limiter_time_windows_nexus/0]).
 
+-doc """
+Dynamic configuration for the worker rate limiter.
+
+Use `get_limiter_config/3` to retrieve and `set_limiter_config/4` to update the dynamic configuration
+of worker rate limiters.
+""".
 -type limiter_config() :: #{
     task_poller_limiter => task_poller_limiter(),
     limits => temporal_sdk_limiter:levels_limits(),
@@ -321,6 +327,7 @@ options(Cluster, WorkerType, WorkerId) ->
 stats(Cluster, WorkerType, WorkerId) ->
     temporal_sdk_worker_opts:stats(Cluster, WorkerType, WorkerId).
 
+-doc {file, "../../docs/worker/get_limiter_config-3.md"}.
 -spec get_limiter_config(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: worker_type(),
