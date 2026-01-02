@@ -249,6 +249,13 @@
 -type invalid_error() :: {error, invalid_cluster | invalid_worker}.
 -export_type([invalid_error/0]).
 
+-type set_limiter_config_ret() ::
+    ok
+    | {error, {invalid_opts, map()}}
+    | invalid_worker
+    | invalid_state.
+-export_type([set_limiter_config_ret/0]).
+
 %% -------------------------------------------------------------------------------------------------
 %% public
 
@@ -342,11 +349,7 @@ get_limiter_config(Cluster, WorkerType, WorkerId) ->
     WorkerType :: worker_type(),
     WorkerId :: worker_id(),
     NewLimiterConfig :: limiter_config() | user_limiter_config()
-) ->
-    ok
-    | {error, {invalid_opts, map()}}
-    | invalid_worker
-    | invalid_state.
+) -> set_limiter_config_ret().
 set_limiter_config(Cluster, session, WorkerId, NewLimiterConfig) ->
     maybe
         {ok, Limits} ?= temporal_sdk_worker_opts:build_limiter_config(session, NewLimiterConfig),
@@ -400,11 +403,15 @@ set_limiter_config(Cluster, WorkerType, WorkerId, NewLimiterConfig) ->
     WorkerId :: worker_id(),
     NewLimiterConfig :: limiter_config() | user_limiter_config(),
     Nodes :: [node()]
-) -> ok.
+) -> ok | [{ok, set_limiter_config_ret()} | {error, {erpc, Reason :: term()}} | term()].
 set_limiter_config(Cluster, WorkerType, WorkerId, NewLimiterConfig, Nodes) ->
-    erpc:multicast(Nodes, ?MODULE, set_limiter_config, [
+    ErpcResult = erpc:multicall(Nodes, ?MODULE, set_limiter_config, [
         Cluster, WorkerType, WorkerId, NewLimiterConfig
-    ]).
+    ]),
+    case lists:uniq(ErpcResult) of
+        [{ok, ok}] -> ok;
+        _ -> ErpcResult
+    end.
 
 -spec start(
     Cluster :: temporal_sdk_cluster:cluster_name(),
