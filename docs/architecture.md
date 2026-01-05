@@ -78,6 +78,57 @@ flowchart TD
   click TemporalServiceN "https://docs.temporal.io/temporal-service" _blank
 ```
 
+## Rate Limiting
+
+SDK provides the following rate limiters:
+
+- OS rate limiter,
+- concurrency rate limiter,
+- fixed window rate limiter,
+- task worker task poller leaky bucket rate limiter.
+
+OS rate limiting is controlled by OS resource usage, including memory, CPU load, and disk capacity.
+Concurrency and fixed window rate limiting are controlled by the Temporal task execution counters.
+
+Concurrency and fixed window rate limiters are available at the SDK node, SDK cluster, and task worker
+SDK hierarchy levels, as shown in the SDK Architecture diagram above.
+
+Rate limiting is enforced by the task worker task pollers and can be applied to all Temporal task
+executions polled by those workers:
+
+- activity tasks, including regular, session, eager, and direct execution activity tasks,
+- workflow tasks, including eager, continued as new and child workflow tasks,
+- nexus tasks.
+
+After a Temporal task is polled from the Temporal server by the task worker task poller, the task poller
+state machine starts the task executor and then enters the `wait` state.
+The task poller state machine remains in the `wait` state until the user-provided rate limiter limits
+are exceeded.
+As soon as the rate limiter limits are satisfied, the task poller state machine transitions from the
+`wait` state to the `poll` state and polls the Temporal server for the next task execution.
+
+Task poller state machine `wait` state transitions emit the following telemetry events:
+
+- [`[temporal_sdk, poller, wait, start]`](`m::temporal_sdk_telemetry#module-temporal_sdk-poller-wait-start`)
+- [`[temporal_sdk, poller, wait, stop]`](`m::temporal_sdk_telemetry#module-temporal_sdk-poller-wait-stop`)
+
+Telemetry event `[temporal_sdk, poller, wait, stop]` provides measurements detailing how long task
+pollers spend in the `wait` state when they exceed rate limiter limits.
+
+Concurrency and fixed window rate limiters limits configuration options are set per task poller.
+A single SDK task poller can theoretically poll thousands of tasks per second, although actual
+performance is subject to Temporal server limitations. Accordingly, when setting limits below a few
+hundred tasks per second, it is recommended to reduce the task poller pool size to one or two pollers,
+subject to the given use case requirements. SDK will be unable to properly handle rate limiting where
+the task poller's pool size exceeds the rate limiter limits.
+
+See also:
+
+- `m::temporal_sdk_limiter`,
+- `:temporal_sdk_worker.get_limiter_config/3`,
+- `:temporal_sdk_worker.set_limiter_config/4`,
+- `:temporal_sdk_worker.set_limiter_config/5`.
+
 ## Workflow Execution Scope
 
 After the user starts workflow execution by calling `TemporalSdk.start_workflow/3` or

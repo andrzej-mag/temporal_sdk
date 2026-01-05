@@ -1,10 +1,8 @@
 -module(temporal_sdk_limiter).
 -behaviour(gen_server).
 
-% elp:ignore W0012 W0040
--moduledoc """
-Rate limiter module.
-""".
+% elp:ignore W0012 W0040 E1599
+-moduledoc {file, "../../docs/limiter/-module.md"}.
 
 -export([
     setup/2,
@@ -26,41 +24,77 @@ Rate limiter module.
     handle_info/2
 ]).
 
+-doc """
+Rate limiter limiting levels.
+""".
 -type level() :: os | node | cluster | worker.
 -export_type([level/0]).
 
+-doc """
+OS rate limiter limitables.
+""".
 -type os_limitable() :: cpu1 | cpu5 | cpu15 | mem | {disk, Id :: string()}.
 -export_type([os_limitable/0]).
 
+-doc """
+Concurrency and fixed window rate limiters limitables.
+""".
 -type temporal_limitable() ::
     activity_regular | activity_session | activity_eager | activity_direct | workflow | nexus.
 -export_type([temporal_limitable/0]).
 
+-doc """
+Rate limiter limitables.
+""".
 -type limitable() :: os_limitable() | temporal_limitable().
 -export_type([limitable/0]).
 
+-doc """
+Fixed window rate limiter time window length.
+""".
 -type time_window() ::
     {Length :: pos_integer(), Unit :: temporal_sdk:time_unit()}
     | LengthMsec :: erlang:timeout().
 
 -export_type([time_window/0]).
 
+-doc """
+Fixed window rate limiter limitables time windows.
+""".
 -type time_windows() :: #{limitable() => time_window()}.
 -export_type([time_windows/0]).
 
+-doc """
+Rate limiter limits for concurrency, fixed window and OS limitables.
+""".
 -type limit() ::
     {MaxConcurrency :: pos_integer(), MaxFrequency :: pos_integer()}
     | OsMaxLimit :: pos_integer().
 -export_type([limit/0]).
 
+-doc """
+Rate limiter limitables limits.
+""".
 -type limits() :: #{limitable() => limit()}.
 -export_type([limits/0]).
 
+-doc """
+Rate limiter levels limitables limits as a map.
+""".
 -type levels_limits() :: #{level() => limits()}.
 -export_type([levels_limits/0]).
 
+-doc """
+Rate limiter levels limitables limits as a proplist.
+""".
 -type user_levels_limits() :: [{level(), limits()}].
 -export_type([user_levels_limits/0]).
+
+-doc """
+Rate limiter limitables statistics.
+""".
+-type stats() :: #{limitable() => -1 | pos_integer()}.
+-export_type([stats/0]).
 
 -type counter() :: #{limitable() => counters:counters_ref()}.
 -export_type([counter/0]).
@@ -76,9 +110,6 @@ Rate limiter module.
 
 -type check_ret() :: true | {level(), limitable()}.
 -export_type([check_ret/0]).
-
--type stats() :: #{limitable() => -1 | pos_integer()}.
--export_type([stats/0]).
 
 %% -------------------------------------------------------------------------------------------------
 %% internal API
