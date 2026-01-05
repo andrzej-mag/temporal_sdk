@@ -233,10 +233,11 @@
 -export_type([user_limiter_time_windows_nexus/0]).
 
 -doc """
-Dynamic configuration for the worker rate limiter.
+Dynamic configuration of the rate limiter.
 
 Use `get_limiter_config/3` to retrieve and `set_limiter_config/4` to update the dynamic configuration
-of worker rate limiters.
+of rate limiters.
+See `start/3` for descriptions of the configuration options.
 """.
 -type limiter_config() :: #{
     task_poller_limiter => task_poller_limiter(),

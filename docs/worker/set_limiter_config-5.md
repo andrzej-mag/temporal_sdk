@@ -1,4 +1,4 @@
-Updates the dynamic configuration for the worker rate limiter on the Erlang nodes.
+Updates the dynamic configuration of the rate limiter on the Erlang nodes list.
 
 Function applies `set_limiter_config/4` on the Erlang nodes provided as a list using
 `erpc:multicall/4`.
@@ -12,7 +12,8 @@ Successful example:
 ```elixir
 iex(a@host)1> n = Node.list() ++ [Node.self()]
 [:b@host, :a@host]
-iex(a@host)2> TemporalSdk.Worker.set_limiter_config(:cluster_1, :activity, "worker", [{:limits, %{}}], n)
+iex(a@host)2> TemporalSdk.Worker.set_limiter_config(:cluster_1, :activity, "worker",
+              [{:limits, %{}}], n)
 :ok
 ```
 
@@ -35,7 +36,8 @@ worker started, and the third node is not accessible:
 ```elixir
 iex(a@host)1> n = [:b@host, :a@host, :c@host]
 [:b@host, :a@host, :c@host]
-iex(a@host)2> TemporalSdk.Worker.set_limiter_config(:cluster_1, :activity, "worker", [{:limits, %{}}], n)
+iex(a@host)2> TemporalSdk.Worker.set_limiter_config(:cluster_1, :activity, "worker",
+              [{:limits, %{}}], n)
 [ok: :ok, ok: :invalid_worker, error: {:erpc, :noconnection}]
 ```
 

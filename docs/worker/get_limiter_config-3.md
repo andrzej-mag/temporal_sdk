@@ -1,4 +1,4 @@
-Returns the dynamic configuration for the worker rate limiter.
+Returns the current dynamic configuration of the rate limiter.
 
 Example:
 

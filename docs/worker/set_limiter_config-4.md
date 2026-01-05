@@ -1,8 +1,9 @@
-Updates the dynamic configuration for the worker rate limiter.
+Updates the dynamic configuration of the rate limiter.
 
-Default values for the `limits` limiter levels are set to '#{}', which means that setting
+Default values for the `limits` limiter levels are set to `#{}`, which means that setting
 `limits => #{}` will reset all rate limiter concurrency and fixed window limits.
 
+Example:
 <!-- tabs-open -->
 ### Elixir
 
@@ -54,7 +55,8 @@ iex(3)> TemporalSdk.Worker.get_limiter_config(:cluster_1, :activity, "test_worke
    task_poller_limiter: %{limit: 60, time_window: {1, :minute}},
    limiter_check_frequency: 500
  }}
-iex(4)> TemporalSdk.Worker.set_limiter_config(:cluster_1, :activity, "test_worker", limits: %{})
+iex(4)> TemporalSdk.Worker.set_limiter_config(:cluster_1, :activity, "test_worker",
+        limits: %{})
 :ok
 iex(5)> TemporalSdk.Worker.get_limiter_config(:cluster_1, :activity, "test_worker")
 {:ok,
