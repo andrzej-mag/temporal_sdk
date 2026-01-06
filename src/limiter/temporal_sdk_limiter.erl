@@ -45,6 +45,11 @@ Concurrency and fixed window rate limiters limitables.
 
 -doc """
 Rate limiter limitables.
+
+SDK is using a concept of limitables according to the following definition:
+
+Limitable - an OS resource or Temporal task that is capable of rate limiting Temporal task execution
+rates.
 """.
 -type limitable() :: os_limitable() | temporal_limitable().
 -export_type([limitable/0]).

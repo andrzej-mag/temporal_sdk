@@ -115,12 +115,12 @@ Task poller state machine `wait` state transitions emit the following telemetry 
 Telemetry event `[temporal_sdk, poller, wait, stop]` provides measurements detailing how long task
 pollers spend in the `wait` state when they exceed rate limiter limits.
 
-Concurrency and fixed window rate limiters limits configuration options are set per task poller.
-A single SDK task poller can theoretically poll thousands of tasks per second, although actual
+Concurrency and fixed window rate limiters limits configuration options are set per entire task poller pool.
+A single SDK task poller state machine can theoretically poll thousands of tasks per second, although actual
 performance is subject to Temporal server limitations. Accordingly, when setting limits below a few
 hundred tasks per second, it is recommended to reduce the task poller pool size to one or two pollers,
 subject to the given use case requirements. SDK will be unable to properly handle rate limiting where
-the task poller's pool size exceeds the rate limiter limits.
+the task poller's pool size exceeds the rate limiter concurrency or fixed window limits.
 
 See also:
 
