@@ -1,32 +1,6 @@
 Retrieves the current OS statistics from the SDK OS rate limiter.
 
-Function provides information about current OS resource usage:
-
-- `mem` memory usage as a percentage calculated using code snippet below.
-  Requires `m:memsup`.
-
-```erlang
-case memsup:get_memory_data() of
-    {0, 0, _} -> -1;
-    {Total, Allocated, _Worst} -> round(Allocated / Total * 100)
-end;
-```
-
-- `cpu1` average system load over the last minute retrieved from `cpu_sup:avg1/0`.
-  Returns `-1` if `m:cpu_sup` is not available.
-  Requires `m:cpu_sup`.
-
-- `cpu5` average system load over the last five minutes retrieved from `cpu_sup:avg5/0`.
-  Returns `-1` if `m:cpu_sup` is not available.
-  Requires `m:cpu_sup`.
-
-- `cpu15` average system load over the last 15 minutes retrieved from `cpu_sup:avg15/0`.
-  Returns `-1` if `m:cpu_sup` is not available.
-  Requires `m:cpu_sup`.
-
-- percentage of OS disk space or partition used as returned by the `disksup:get_disk_data/0` `Capacity` field.
-  The key map is a tuple of `disk` and disk/partition ID, with the key value being the percentage of space used.
-  Requires `m:disksup`.
+See `m:temporal_sdk_limiter#module-os-rate-limiter` for details about OS limitables.
 
 ## Example
 
