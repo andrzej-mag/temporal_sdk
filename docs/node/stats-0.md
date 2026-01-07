@@ -1,11 +1,15 @@
-Retrieves the current SDK node limitables concurrency statistics from the SDK concurrency rate limiter.
+Retrieves the current concurrency statistics from the node-level concurrency rate limiter.
 
 Function returns a `t:temporal_sdk_limiter:stats/0` map, where the map key is the
 `t:temporal_sdk_limiter:temporal_limitable/0` and the value is the number of currently running limitable
-task executions on the SDK node-level rate limiter.
-
-A limitable is a rate-limited Temporal awaitable task, such as a Temporal activity, nexus, or workflow
-task execution. See `m:temporal_sdk_limiter` for more details.
+task executions at the node-level.
+The number of task executions at the node-level corresponds to the sum of task executions across all
+clusters.
+Statistics values are stored as concurrency rate limiter `m:counters`, which provides practically unlimited
+performance.
+A limitable here refers to a Temporal task, such as a Temporal activity, nexus, or workflow task,
+that is capable of rate limiting the execution rate of Temporal tasks.
+See `m:temporal_sdk_limiter` for more details.
 
 ## Example
 

@@ -3,17 +3,16 @@ Rate limiter module.
 ## OS Rate Limiter
 
 OS rate limiting is controlled by OS resource usage reported by the
-[`os_mon`](https://www.erlang.org/doc/apps/os_mon/api-reference.html) managed resource utilization
-supervisors:
+[`os_mon`](https://www.erlang.org/doc/apps/os_mon/api-reference.html) resource utilization supervisors:
 
-- `m:cpu_sup` - CPU load,
 - `m:memsup` - memory utilization,
+- `m:cpu_sup` - CPU load,
 - `m:disksup` - mounted OS disks and partitions usage capacity.
 
 `os_mon` OS monitoring OTP application is started by the SDK, however it is up to the user to provide
 [`os_mon` configuration](https://www.erlang.org/doc/apps/os_mon/os_mon_app.html) as required.
 
-OS rate limiter provides following OS limitables:
+OS rate limiter manages following [OS limitables](`t:os_limitable/0`):
 
 - `mem` - memory usage as a percentage calculated using code snippet below.
   Updated at time intervals retrieved from `memsup:get_check_interval/0`.
@@ -27,23 +26,24 @@ case memsup:get_memory_data() of
 end;
 ```
 
-- `cpu1` average system load over the last minute retrieved from `cpu_sup:avg1/0`.
+- `cpu1` - average system load over the last minute retrieved from `cpu_sup:avg1/0`.
   Updated every minute.
   Set to `-1` if `m:cpu_sup` is not available.
   Requires `m:cpu_sup`.
 
-- `cpu5` average system load over the last five minutes retrieved from `cpu_sup:avg5/0`.
+- `cpu5` - average system load over the last five minutes retrieved from `cpu_sup:avg5/0`.
   Updated every five minutes.
   Set to `-1` if `m:cpu_sup` is not available.
   Requires `m:cpu_sup`.
 
-- `cpu15` average system load over the last 15 minutes retrieved from `cpu_sup:avg15/0`.
+- `cpu15` - average system load over the last 15 minutes retrieved from `cpu_sup:avg15/0`.
   Updated every 15 minutes.
   Set to `-1` if `m:cpu_sup` is not available.
   Requires `m:cpu_sup`.
 
-- percentage of OS disk space or partition used as returned by the `disksup:get_disk_data/0` `Capacity` field.
-  The key map is a tuple of `disk` and disk/partition ID, with the key value being the percentage of space used.
+- `{disk, Id}` - percentage of OS disk space or partition used as returned by the
+  `disksup:get_disk_data/0` `Capacity` field. The key is a tuple of `disk` and disk/partition Id,
+  with the key value being the percentage of space used.
   Updated at time intervals retrieved from `disksup:get_check_interval/0`.
   Requires `m:disksup`.
 
@@ -54,7 +54,7 @@ OS limits can be retrieved and updated dynamically with:
 - `temporal_sdk_worker:set_limiter_config/4`,
 - `temporal_sdk_worker:set_limiter_config/5`.
 
-Example runtime SDK configuration OS limits settings for the workflow worker:
+Example runtime SDK configuration OS limits settings for "worker_1" workflow worker:
 
 <!-- tabs-open -->
 ### Elixir

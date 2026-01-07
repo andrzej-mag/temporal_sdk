@@ -31,13 +31,13 @@ Rate limiter limiting levels.
 -export_type([level/0]).
 
 -doc """
-OS rate limiter limitables.
+OS rate limiter [limitables](`t:limitable/0`).
 """.
 -type os_limitable() :: cpu1 | cpu5 | cpu15 | mem | {disk, Id :: string()}.
 -export_type([os_limitable/0]).
 
 -doc """
-Concurrency and fixed window rate limiters limitables.
+Concurrency and fixed window rate limiters [limitables](`t:limitable/0`).
 """.
 -type temporal_limitable() ::
     activity_regular | activity_session | activity_eager | activity_direct | workflow | nexus.

@@ -1,7 +1,7 @@
 Returns a list of mounted OS disks and partitions.
 
 During SDK startup, `disksup:get_disk_data/0` is invoked once, and the list of disks or partitions
-`Id` is cached in `m:persistent_term`.
+`Id` is cached with `m:persistent_term`.
 This function returns a cached value, meaning it does not update when disks or partitions are
 mounted or unmounted at runtime.
 Function is internally used when initializing and validating OS rate limiter `disk` settings for new
