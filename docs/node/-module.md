@@ -86,7 +86,7 @@ Setting must be consistent across all Erlang cluster SDK nodes.
 By default, the shards count is set to 10 for each SDK cluster. Example: `[{cluster_1, 20}]`.
 
 **`limiter_time_windows`** - SDK node fixed window rate limiter time windows configuration.
-See `m:temporal_sdk_limiter` for details.
+See `m:temporal_sdk_limiter#module-concurrency-and-fixed-window-rate-limiters` for details.
 By default, the fixed window rate limiter time window is set to 60 seconds:
 
 <!-- tabs-open -->

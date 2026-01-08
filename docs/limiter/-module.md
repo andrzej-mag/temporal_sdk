@@ -48,15 +48,10 @@ end;
   Requires `m:disksup`.
 
 Values retrieved from the `os_mon` resource utilization supervisors are stored by the SDK using
-`m:counters`, which provides practically unlimited rate limiter performance while requiring negligible
-resources.
+`m:counters`.
 
-Rate limiter OS limits are set with the `m:temporal_sdk_worker` `limits` configuration option.
-OS limits can be retrieved and updated dynamically with:
-
-- `temporal_sdk_worker:get_limiter_config/3`,
-- `temporal_sdk_worker:set_limiter_config/4`,
-- `temporal_sdk_worker:set_limiter_config/5`.
+OS rate limiter limits are set with the `t:temporal_sdk_worker:opts/0`
+`limits` task worker configuration option.
 
 Example runtime SDK configuration OS limits settings for "worker_1" workflow worker:
 
@@ -121,13 +116,12 @@ config :temporal_sdk,
 ## Concurrency and Fixed Window Rate Limiters
 
 Concurrency and fixed window rate limiters control task polling rates using task execution counters.
-Task execution counters are implemented with `m:counters`, which provides practically unlimited
-rate limiter performance while requiring negligible resources.
+Task execution counters are implemented using `m:counters`.
 
-Concurrency rate limiter counters are incremented by task executors when task execution begins.
-Concurrency rate limiter counters are decremented by task executors when task execution terminates.
-Fixed window rate limiter counters are incremented by task executors when task execution begins.
-Fixed window rate limiter counters are periodically reset at time intervals configured by the
+Concurrency and fixed window frequency counters are incremented by task executors when task execution
+begins.
+Concurrency counters are decremented by task executors when task execution terminates.
+Fixed window frequency counters are periodically reset at time intervals configured by the
 `limiter_time_windows` configuration option.
 
 Concurrency and fixed window rate limiters are available at SDK node, SDK cluster and task worker
@@ -177,17 +171,16 @@ config :temporal_sdk,
 ```
 <!-- tabs-close -->
 
-Concurrency and fixed window rate limiters limits are set with the `limits` `t:temporal_sdk_worker:opts/0`
-task worker configuration option. Limits can be applied at the SDK node, cluster, and worker rate
-limiting levels.
+Concurrency and fixed window rate limiters limits are set with the `t:temporal_sdk_worker:opts/0`
+`limits` task worker configuration option.
+Limits can be applied at the SDK node, cluster, and worker rate limiting levels.
 At the worker level, only a subset of limitables corresponding to the given worker type can be used.
-Concurrency and fixed window rate limiters limits can be retrieved and updated dynamically with:
 
-- `temporal_sdk_worker:get_limiter_config/3`,
-- `temporal_sdk_worker:set_limiter_config/4`,
-- `temporal_sdk_worker:set_limiter_config/5`.
+[Limits values](`t:temporal_sdk_limiter:limit/0`) are set as tuples where the first element is a
+concurrency limit and the second element is a fixed window frequency limit.
 
-Example runtime SDK configuration limits settings for "worker_1" workflow worker:
+Example runtime SDK configuration concurrency and frequency limits settings for "worker_1" workflow
+worker:
 
 <!-- tabs-open -->
 ### Elixir
@@ -201,12 +194,10 @@ config :temporal_sdk,
         [
           worker_id: :worker_1,
           task_queue: "worker_1_tq",
+          task_poller_pool_size: 1,
           limits: [
             node: [
-              activity_direct: {200, 1_000},
-              activity_eager: {200, 1_000},
               activity_regular: {200, 1_000},
-              activity_session: {200, 1_000},
               nexus: {200, 1_000},
               workflow: {200, 1_000}
             ],
@@ -239,12 +230,10 @@ config :temporal_sdk,
                 [
                     {worker_id, worker_1},
                     {task_queue, "worker_1_tq"},
+                    {task_poller_pool_size, 1},
                     {limits, [
                         {node, [
-                            {activity_direct, {200, 1_000}},
-                            {activity_eager, {200, 1_000}},
                             {activity_regular, {200, 1_000}},
-                            {activity_session, {200, 1_000}},
                             {nexus, {200, 1_000}},
                             {workflow, {200, 1_000}}
                         ]},
@@ -272,9 +261,9 @@ In the example above, the polling rate of workflow tasks polled from the "worker
 will be limited if:
 
 - The number of concurrently running tasks at the SDK node-level exceeds 200 for any of the following:
-  activity_direct, activity_eager, activity_regular, activity_session, nexus, or workflow.
+  activity_regular, nexus, or workflow.
 - The number of fixed window rate limited tasks at the SDK node-level exceeds 1000 for any of the following:
-  activity_direct, activity_eager, activity_regular, activity_session, nexus, or workflow.
+  activity_regular, nexus, or workflow.
 
 - The number of concurrently running tasks at the SDK cluster-level exceeds 10 for any of the following:
   activity_direct, activity_eager, activity_regular, activity_session, nexus, or workflow.
@@ -282,6 +271,26 @@ will be limited if:
   activity_direct, activity_eager, activity_regular, activity_session, nexus, or workflow.
 
 - The number of concurrently running workflow tasks spawned by the "worker_1" worker exceeds 5,
-- The number of fixed window rate limiter workflow tasks spawned by the "worker_1" worker exceeds 50.
+- The fixed window frequency of workflow tasks spawned by the "worker_1" worker exceeds 50.
+
+Notice that `task_poller_pool_size` is set to 1 in the example above.
+The maximum number of concurrently running workflow task executions is limited to 5, so a single task
+poller will be sufficient.
+See also [SDK Architecture - Rate Limiting](architecture.md#rate-limiting).
 
 ## Task Poller Leaky Bucket Rate Limiter
+
+## Rate Limiter Dynamic Configuration
+
+Following rate limiter [configuration options](`t:temporal_sdk_worker:limiter_config/0`) can be
+updated dynamically:
+
+- `limits`,
+- `task_poller_limiter`,
+- `limiter_check_frequency`.
+
+Following functions can be used to retrieve and update rate limiter dynamic configuration:
+
+- `temporal_sdk_worker:get_limiter_config/3`,
+- `temporal_sdk_worker:set_limiter_config/4`,
+- `temporal_sdk_worker:set_limiter_config/5`.

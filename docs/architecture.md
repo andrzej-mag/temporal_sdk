@@ -104,6 +104,8 @@ After a Temporal task is polled from the Temporal server by the task worker task
 state machine starts the task executor and then enters the `wait` state.
 The task poller state machine remains in the `wait` state until the user-provided rate limiter limits
 are exceeded.
+Task poller rate limit check frequency is configured via the
+[`t:temporal_sdk_worker:opts/0`] `limiter_check_frequency` option.
 As soon as the rate limiter limits are satisfied, the task poller state machine transitions from the
 `wait` state to the `poll` state and polls the Temporal server for the next task execution.
 

@@ -1,8 +1,6 @@
 Retrieves the current OS statistics from the SDK OS rate limiter.
 
 Function returns OS rate limiter limitables statistics as a `map()`.
-Statistics values are stored as OS rate limiter `m:counters`, which provides practically unlimited
-performance.
 See `m:temporal_sdk_limiter#module-os-rate-limiter` for details about OS limitables.
 
 ## Example

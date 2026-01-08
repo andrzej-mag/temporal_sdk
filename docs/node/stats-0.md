@@ -5,11 +5,9 @@ Function returns a `t:temporal_sdk_limiter:stats/0` map, where the map key is th
 task executions at the node-level.
 The number of task executions at the node-level corresponds to the sum of task executions across all
 clusters.
-Statistics values are stored as concurrency rate limiter `m:counters`, which provides practically unlimited
-performance.
 A limitable here refers to a Temporal task, such as a Temporal activity, nexus, or workflow task,
-that is capable of rate limiting the execution rate of Temporal tasks.
-See `m:temporal_sdk_limiter` for more details.
+that is capable of rate limiting the polling rate of Temporal tasks.
+See `m:temporal_sdk_limiter#module-concurrency-and-fixed-window-rate-limiters` for more details.
 
 ## Example
 
