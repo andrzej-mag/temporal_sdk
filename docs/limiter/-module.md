@@ -280,6 +280,77 @@ See also [SDK Architecture - Rate Limiting](architecture.md#rate-limiting).
 
 ## Task Poller Leaky Bucket Rate Limiter
 
+Leaky bucket rate limiter controls task polling rate using leak time intervals derived from
+`t:temporal_sdk_worker:task_poller_limiter/0` data.
+
+Conventional leaky bucket implementation assumes that the bucket is intermittently filled with incoming
+requests, which leak at a constant rate.
+In our case, we can assume an infinite capacity bucket that is continuously filled without overflow
+with poll requests and leaks at a constant rate.
+
+Leaky bucket rate limiting is implemented within the task worker task poller state machine.
+`t:temporal_sdk_worker:task_poller_limiter/0` defines two rate limiter parameters: `Limit` and `TimeWindow`.
+The minimum time interval between task polls executed by the task poller is calculated as:
+`TimeWindowMsec / Limit`.
+The wait time between task polls is implemented using `m:gen_statem` timeouts, which have a time
+resolution of 1 millisecond. This constraint limits the ratio `TimeWindowMsec / Limit` to values greater
+than or equal to 1 millisecond per poll request. This corresponds to a maximum rate limiter capacity of
+1000 poll requests per second or unrestricted capacity.
+
+Leaky bucket rate limiting is configured with the `t:temporal_sdk_worker:opts/0` `task_poller_limiter`
+task worker configuration option.
+`task_poller_limiter` is set per individual task poller. The total task worker polling capacity equals
+the number of task pollers specified by `task_poller_pool_size` multiplied by the individual poller
+capacity set with `task_poller_limiter`.
+
+Example runtime SDK configuration leaky bucket settings for "worker_1" workflow worker:
+
+<!-- tabs-open -->
+### Elixir
+
+```elixir
+config :temporal_sdk,
+  clusters: [
+    cluster_1: [
+      activities: [[task_queue: "default"]],
+      workflows: [
+        [
+          worker_id: :worker_1,
+          task_queue: "worker_1_tq",
+          task_poller_pool_size: 2,
+          task_poller_limiter: %{:limit => 10, :time_window => {1, :minute}}
+        ]
+      ]
+    ]
+  ]
+```
+
+### Erlang
+
+```erlang
+{temporal_sdk, [
+    {clusters, [
+        {cluster_1, [
+            {activities, [[{task_queue, "default"}]]},
+            {workflows, [
+                [
+                    {worker_id, worker_1},
+                    {task_queue, "worker_1_tq"},
+                    {task_poller_pool_size, 2},
+                    {task_poller_limiter, #{limit => 10, time_window => {1, minute}}}
+                ]
+            ]}
+        ]}
+    ]}
+]}
+```
+<!-- tabs-close -->
+
+In the example above, the single task poller is limited to 10 requests per minute, which means that
+the minimum time interval between poll requests will be 6 seconds.
+As poller pool size is set to 2, total workflow worker task poll rate will be equal to 20 requests
+per minute or one task poll request per 3 seconds.
+
 ## Rate Limiter Dynamic Configuration
 
 Following rate limiter [configuration options](`t:temporal_sdk_worker:limiter_config/0`) can be
@@ -293,4 +364,5 @@ Following functions can be used to retrieve and update rate limiter dynamic conf
 
 - `temporal_sdk_worker:get_limiter_config/3`,
 - `temporal_sdk_worker:set_limiter_config/4`,
-- `temporal_sdk_worker:set_limiter_config/5`.
+- `temporal_sdk_worker:set_limiter_config/5`,
+- Elixir counterparts of above in the `TemporalSdk.Worker` module.
