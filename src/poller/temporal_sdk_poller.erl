@@ -205,7 +205,12 @@ wait(enter, _State, StateData) ->
 wait(state_timeout, retry_timeout, StateData) ->
     case is_allowed(StateData) of
         true ->
-            ?EV(StateData, [wait, stop], StateData#state.ev_wait_at),
+            ?EV(
+                StateData,
+                [wait, stop],
+                StateData#state.ev_wait_at,
+                #{limited_by => StateData#state.limiter_wait_time}
+            ),
             {next_state, poll, StateData};
         LevelLimitable ->
             {repeat_state, update_limiter_wait_time(LevelLimitable, StateData),
@@ -323,6 +328,5 @@ ev_metadata(StateData) ->
     Metadata = StateData#state.ev_metadata,
     Metadata#{
         task_poll_status => StateData#state.task_poll_status,
-        task_execute_status => StateData#state.task_execute_status,
-        limiter_wait_time => StateData#state.limiter_wait_time
+        task_execute_status => StateData#state.task_execute_status
     }.
