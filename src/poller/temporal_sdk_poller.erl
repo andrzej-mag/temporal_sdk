@@ -199,9 +199,8 @@ handle_poll(StateData) ->
             keep_state_and_data
     end.
 
-wait(enter, _State, StateData) ->
-    T = ?EV(StateData, [wait, start]),
-    {keep_state, StateData#state{ev_wait_at = T}};
+wait(enter, _State, _StateData) ->
+    keep_state_and_data;
 wait(state_timeout, retry_timeout, StateData) ->
     case is_allowed(StateData) of
         true ->
@@ -227,12 +226,15 @@ backoff_normal(StateData) ->
             true -> 0;
             false -> floor(StateData#state.task_exec_interval - ElapsedTime)
         end,
-    {next_state, wait, StateData#state{backoff_current = StateData#state.backoff_initial},
+    T = ?EV(StateData, [wait, start]),
+    {next_state, wait,
+        StateData#state{backoff_current = StateData#state.backoff_initial, ev_wait_at = T},
         {state_timeout, Timeout, retry_timeout}}.
 
 backoff_error(StateData) ->
     NewBackoff = max(2 * StateData#state.backoff_current, 1),
-    {next_state, wait, StateData#state{backoff_current = NewBackoff},
+    T = ?EV(StateData, [wait, start]),
+    {next_state, wait, StateData#state{backoff_current = NewBackoff, ev_wait_at = T},
         {state_timeout, floor(StateData#state.backoff_current), retry_timeout}}.
 
 handle_set_limits(NewLimits, StateData) ->
