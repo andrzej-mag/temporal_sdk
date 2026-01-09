@@ -83,12 +83,12 @@ flowchart TD
 SDK provides the following rate limiters:
 
 - OS rate limiter,
-- concurrency rate limiter,
-- fixed window rate limiter,
+- concurrency and fixed window rate limiters,
 - task worker task poller leaky bucket rate limiter.
 
 OS rate limiting is controlled by OS resource usage, including memory, CPU load, and disk capacity.
 Concurrency and fixed window rate limiting are controlled by the Temporal task execution counters.
+Leaky bucket rate limiting is controlled by leak rates derived from user-provided configuration.
 
 Concurrency and fixed window rate limiters are available at the SDK node, SDK cluster, and task worker
 SDK hierarchy levels, as shown in the SDK Architecture diagram above.
@@ -105,7 +105,7 @@ state machine starts the task executor and then enters the `wait` state.
 The task poller state machine remains in the `wait` state until the user-provided rate limiter limits
 are exceeded.
 Task poller rate limit check frequency is configured via the
-[`t:temporal_sdk_worker:opts/0`] `limiter_check_frequency` option.
+`t::temporal_sdk_worker.opts/0` `limiter_check_frequency` option.
 As soon as the rate limiter limits are satisfied, the task poller state machine transitions from the
 `wait` state to the `poll` state and polls the Temporal server for the next task execution.
 
@@ -122,14 +122,9 @@ A single SDK task poller state machine can theoretically poll thousands of tasks
 performance is subject to Temporal server limitations. Accordingly, when setting limits below a few
 hundred tasks per second, it is recommended to reduce the task poller pool size to one or two pollers,
 subject to the given use case requirements. SDK will be unable to properly handle rate limiting where
-the task poller's pool size exceeds the rate limiter concurrency or fixed window limits.
+the task poller's pool size exceeds the rate limiter concurrency or fixed window frequency limits.
 
-See also:
-
-- `m::temporal_sdk_limiter`,
-- `:temporal_sdk_worker.get_limiter_config/3`,
-- `:temporal_sdk_worker.set_limiter_config/4`,
-- `:temporal_sdk_worker.set_limiter_config/5`.
+See also `m::temporal_sdk_limiter`.
 
 ## Workflow Execution Scope
 

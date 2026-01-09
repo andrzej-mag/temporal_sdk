@@ -48,7 +48,7 @@ Rate limiter limitables.
 
 SDK is using a concept of limitables according to the following definition:
 
-Limitable - an OS resource or Temporal task that is capable of rate limiting Temporal task execution
+Limitable - an OS resource or Temporal task that is capable of rate limiting Temporal task polling
 rates.
 """.
 -type limitable() :: os_limitable() | temporal_limitable().
