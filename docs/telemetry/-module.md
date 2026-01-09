@@ -1,4 +1,18 @@
-SDK telemetry helpers module.
+SDK telemetry module.
+
+Telemetry event `system_time` measurement is set to `erlang:system_time()`.
+
+Telemetry event `duration` measurement is expressed in native `t:erlang:time_unit/0`.
+
+All `start` and `init` telemetry events contain `system_time` as a measurement.
+
+All `stop` and `exception` telemetry events contain `duration` as a measurement.
+
+Exception metadata common to all `exception` telemetry events:
+
+- `class` - one of `error`, `exit` or `throw`,
+- `reason` - exception reason, any Erlang `term()`,
+- `stacktrace` - OTP style stack trace, see `erlang:raise/3`.
 
 ## SDK Node - `m:temporal_sdk_node`
 
@@ -8,11 +22,7 @@ Emitted when the SDK node supervisor is initialized.
 
 **Metadata**
 
-- `opts` - `node` SDK configuration options as provided by the user
-
-**Measurements**
-
-- `system_time` - `erlang:system_time()`
+- `opts` - user-provided `node` SDK configuration options
 
 <hr>
 
@@ -24,17 +34,11 @@ Emitted when the SDK node supervisor is started.
 
 - `opts` - parsed `node` SDK configuration options
 
-**Measurements**
-
-- `system_time` - `erlang:system_time()`
-
 <hr>
 
 ### `[temporal_sdk, node, stats]`
 
 SDK node stats emitted every `telemetry_poll_interval` time interval.
-
-**Metadata**
 
 **Measurements**
 
@@ -108,11 +112,83 @@ SDK node stats emitted every `telemetry_poll_interval` time interval.
 
 ## Task Poller - `temporal_sdk_poller`
 
-- [temporal_sdk, poller, poll, start]
-- [temporal_sdk, poller, poll, stop]
-- [temporal_sdk, poller, poll, exception]
-- [temporal_sdk, poller, execute, start]
-- [temporal_sdk, poller, execute, stop]
-- [temporal_sdk, poller, execute, exception]
-- [temporal_sdk, poller, wait, start]
-- [temporal_sdk, poller, wait, stop]
+Metadata common to all task poller telemetry events:
+
+- `cluster` - SDK cluster name `t:temporal_sdk_cluster:cluster_name/0`
+- `namespace` - Temporal namespace name
+- `task_queue` - Temporal task queue name
+- `worker_type` - task worker type `t:temporal_sdk_worker:worker_type/0`
+- `poller_id` - task poller process unique id defined as a list:
+  `[WorkerSupervisorPid, WorkerPollerId]`. `WorkerPollerId` is an integer in the range from 1 to
+  task worker pollers pool size, for example: `[<0.813.0>, 1]`
+- `worker_id` - task worker id `t:temporal_sdk_worker:id/0`
+- `task_poll_status` - status of the task poll operation,
+  one of: `undefined`, `null`, `task`, `error`
+- `task_execute_status` - status of the task execution operation,
+  one of: `undefined`, `executed`, `redirected`, `failed`
+
+<hr>
+
+### `[temporal_sdk, poller, poll, start]`
+
+Emitted when the task poller enters the `poll` state and begins polling for a new task by sending a
+long-poll request to the Temporal server.
+
+<hr>
+
+### `[temporal_sdk, poller, poll, stop]`
+
+Emitted when a task poll request is successful and a task poll response is received.
+
+<hr>
+
+### `[temporal_sdk, poller, poll, exception]`
+
+Emitted when a task poll request fails.
+
+<hr>
+
+### `[temporal_sdk, poller, execute, start]`
+
+Emitted when the task poller enters `execute` state and starts task execution, after new task was
+successfully polled from Temporal server.
+
+<hr>
+
+### `[temporal_sdk, poller, execute, stop]`
+
+Emitted when a task execution operation is successful.
+
+<hr>
+
+### `[temporal_sdk, poller, execute, exception]`
+
+Emitted when a task execution operation fails.
+
+<hr>
+
+### `[temporal_sdk, poller, wait, start]`
+
+Emitted when the task poller enters the `wait` state after successfully executing task.
+
+<hr>
+
+### `[temporal_sdk, poller, wait, stop]`
+
+Emitted when all rate limiter limit checks pass and the task poller is allowed to transition to the
+`poll` state to poll for a new task.
+
+**Measurements**
+
+- `limited_by` - list of rate limiter limitables for which rate limits were exceeded, forcing the
+  task poller state machine to remain idle in the `wait` state before polling next task execution
+  from Temporal server.
+  Expressed as a `map()`.
+  Map key is a tuple of `t:temporal_sdk_limiter:level/0` and `t:temporal_sdk_limiter:limitable/0`.
+  Map value is a time interval in milliseconds during which given limitable limits were exceeded.
+
+Example measurements:
+
+```erlang
+#{duration => 101214764,limited_by => #{{worker,activity_regular} => 1000}}
+```
