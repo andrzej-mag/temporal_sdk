@@ -80,32 +80,24 @@ flowchart TD
 
 ## Rate Limiting
 
-SDK provides the following rate limiters:
-
-- OS rate limiter,
-- concurrency and fixed window rate limiters,
-- task worker task poller leaky bucket rate limiter.
-
-OS rate limiting is controlled by OS resource usage, including memory, CPU load, and disk capacity.
-Concurrency and fixed window rate limiting are controlled by the Temporal task execution counters.
-Leaky bucket rate limiting is controlled by leak rates derived from user-provided configuration.
-
+OS rate limiter is started at the SDK node-level.
 Concurrency and fixed window rate limiters are available at the SDK node, SDK cluster, and task worker
-SDK hierarchy levels, as shown in the SDK Architecture diagram above.
+SDK hierarchy levels. They are depicted in the SDK Architecture diagram above as a "node rate
+limiter", "cluster rate limiter", and "worker rate limiter".
+Task worker task poller leaky bucket rate limiter is implemented within the task worker task poller state
+machine and is represented as a "poller rate limiter" on the diagram above.
 
-Rate limiting is enforced by the task worker task pollers and can be applied to all Temporal task
-executions polled by those workers:
+After a Temporal task is polled from the Temporal server by the task worker's task poller, the task
+poller's state machine starts the task executor and then enters the `wait` state, where rate limiter
+limits are checked and applied.
+First, a time delay derived from the leaky bucket rate limiter settings is applied.
+After the leaky bucket delay passes, limits checks are executed for OS, concurrency, and fixed window
+rate limiters.
 
-- activity tasks, including regular, session, eager, and direct execution activity tasks,
-- workflow tasks, including eager, continued as new and child workflow tasks,
-- nexus tasks.
-
-After a Temporal task is polled from the Temporal server by the task worker task poller, the task poller
-state machine starts the task executor and then enters the `wait` state.
 The task poller state machine remains in the `wait` state until the user-provided rate limiter limits
 are exceeded.
-Task poller rate limit check frequency is configured via the
-`t::temporal_sdk_worker.opts/0` `limiter_check_frequency` option.
+Rate limits check frequency is configured via the `t::temporal_sdk_worker.opts/0`
+`limiter_check_frequency` option.
 As soon as the rate limiter limits are satisfied, the task poller state machine transitions from the
 `wait` state to the `poll` state and polls the Temporal server for the next task execution.
 
@@ -115,14 +107,15 @@ Task poller state machine `wait` state transitions emit the following telemetry 
 - [`[temporal_sdk, poller, wait, stop]`](`m::temporal_sdk_telemetry#module-temporal_sdk-poller-wait-stop`)
 
 Telemetry event `[temporal_sdk, poller, wait, stop]` provides measurements detailing how long task
-pollers spend in the `wait` state when they exceed rate limiter limits.
+pollers spend in the `wait` state when they exceed OS, concurrency or fixed window rate limiters limits.
 
 Concurrency and fixed window rate limiters limits configuration options are set per entire task poller pool.
 A single SDK task poller state machine can theoretically poll thousands of tasks per second, although actual
-performance is subject to Temporal server limitations. Accordingly, when setting limits below a few
-hundred tasks per second, it is recommended to reduce the task poller pool size to one or two pollers,
-subject to the given use case requirements. SDK will be unable to properly handle rate limiting where
-the task poller's pool size exceeds the rate limiter concurrency or fixed window frequency limits.
+performance is subject to Temporal server limitations. Accordingly, when setting concurrency or fixed
+window frequency limits below a few hundred tasks per second, it is recommended to reduce the task poller
+pool size to one or two pollers, subject to the given use case requirements. SDK will be unable to properly
+handle rate limiting where the task poller's pool size exceeds the rate limiter concurrency or fixed
+window frequency limits.
 
 See also `m::temporal_sdk_limiter`.
 

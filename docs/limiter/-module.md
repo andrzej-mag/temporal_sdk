@@ -1,5 +1,29 @@
 Rate limiter module.
 
+SDK provides the following rate limiters:
+
+- [OS rate limiter](#module-os-rate-limiter),
+- [concurrency and fixed window rate limiters](#module-concurrency-and-fixed-window-rate-limiters),
+- [task worker task poller leaky bucket rate
+limiter](#module-task-poller-leaky-bucket-rate-limiter).
+
+OS rate limiting is controlled by OS resource usage, including memory, CPU load, and disk capacity.
+Concurrency and fixed window rate limiting are controlled by the Temporal task execution counters.
+Leaky bucket rate limiting is controlled by leak rates derived from user-provided configuration.
+
+Rate limiting is enforced by task worker task pollers and can limit poll rates for all Temporal tasks
+polled from Temporal server:
+
+- activity tasks, including regular, session, eager, and direct execution activity tasks,
+- workflow tasks, including eager, continued as new and child workflow tasks,
+- nexus tasks.
+
+Rate limiters can be used individually or in combination. When using concurrency and fixed window
+rate limiters in combination with a leaky bucket rate limiter, special attention is required as the
+functionality of these limiters overlaps.
+
+See also [SDK Architecture - Rate Limiting](architecture.md#rate-limiting) .
+
 ## OS Rate Limiter
 
 OS rate limiter controls task polling rates using OS resource usage reported by the
@@ -175,7 +199,7 @@ config :temporal_sdk,
 Concurrency and fixed window rate limiters limits are set with the `t:temporal_sdk_worker:opts/0`
 `limits` task worker configuration option.
 Limits can be applied at the SDK node, cluster, and worker rate limiting levels.
-At the worker level, only a subset of limitables corresponding to the given worker type can be used.
+At the worker level, only limitables that are specific to the given worker type are permitted.
 
 [Limits values](`t:temporal_sdk_limiter:limit/0`) are set as tuples where the first element is a
 concurrency limit and the second element is a fixed window frequency limit.
