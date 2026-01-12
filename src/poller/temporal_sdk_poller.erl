@@ -226,9 +226,13 @@ backoff_normal(StateData) ->
             true -> 0;
             false -> floor(StateData#state.task_exec_interval - ElapsedTime)
         end,
-    T = ?EV(StateData, [wait, start]),
+    SystemTime = erlang:system_time(),
+    case Timeout of
+        0 -> ?EV(StateData, [wait, start], #{system_time => SystemTime, limiter_delay => 0});
+        _ -> ?EV(StateData, [wait, start], #{system_time => SystemTime, limiter_delay => Timeout})
+    end,
     {next_state, wait,
-        StateData#state{backoff_current = StateData#state.backoff_initial, ev_wait_at = T},
+        StateData#state{backoff_current = StateData#state.backoff_initial, ev_wait_at = SystemTime},
         {state_timeout, Timeout, retry_timeout}}.
 
 backoff_error(StateData) ->

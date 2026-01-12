@@ -106,8 +106,11 @@ Task poller state machine `wait` state transitions emit the following telemetry 
 - [`[temporal_sdk, poller, wait, start]`](`m::temporal_sdk_telemetry#module-temporal_sdk-poller-wait-start`)
 - [`[temporal_sdk, poller, wait, stop]`](`m::temporal_sdk_telemetry#module-temporal_sdk-poller-wait-stop`)
 
-Telemetry event `[temporal_sdk, poller, wait, stop]` provides measurements detailing how long task
-pollers spend in the `wait` state when they exceed OS, concurrency or fixed window rate limiters limits.
+Telemetry event `[temporal_sdk, poller, wait, start]` provides a `limiter_delay` measurement that
+indicates the duration of the delay imposed by the leaky bucket rate limiter.
+Telemetry event `[temporal_sdk, poller, wait, stop]` provides a `limited_by` measurement detailing
+how long task pollers spend in the `wait` state when they exceed OS, concurrency or fixed window rate
+limiters limits.
 
 Concurrency and fixed window rate limiters limits configuration options are set per entire task poller pool.
 A single SDK task poller state machine can theoretically poll thousands of tasks per second, although actual

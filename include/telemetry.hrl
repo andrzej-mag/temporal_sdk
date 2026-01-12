@@ -11,9 +11,9 @@ end).
     )
 ).
 
--define(EV(StateData, Event, StartTime),
+-define(EV(StateData, Event, MeasurementsOrStartTime),
     temporal_sdk_telemetry:execute(
-        [ev_origin() | Event], ev_metadata(StateData), StartTime
+        [ev_origin() | Event], ev_metadata(StateData), MeasurementsOrStartTime
     )
 ).
 

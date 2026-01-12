@@ -161,6 +161,10 @@ Emitted when a task execution operation fails.
 
 Emitted when the task poller enters the `wait` state after successfully executing task.
 
+**Measurements**
+
+- `limiter_delay` - leaky bucket rate limiter time delay length in milliseconds.
+
 <hr>
 
 ### `[temporal_sdk, poller, wait, stop]`
