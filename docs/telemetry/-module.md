@@ -1,5 +1,7 @@
 SDK telemetry module.
 
+## Common Event Measurements and Metadata
+
 Telemetry event `system_time` measurement is set to `erlang:system_time()`.
 
 Telemetry event `duration` measurement is expressed in native `t:erlang:time_unit/0`.
@@ -44,17 +46,17 @@ SDK node stats emitted every `telemetry_poll_interval` time interval.
 
 - `clusters_count` - equal to `length(temporal_sdk_cluster:list())`
 - `clusters_list` - equal to `temporal_sdk_cluster:list()`
-- `stats` - equal to `temporal_sdk_node:stats()`
 - `os_stats` - equal to `temporal_sdk_node:os_stats()`
+- `stats` - equal to `temporal_sdk_node:stats()`
 
-## Temporal Cluster - `m:temporal_sdk_cluster`
+## SDK Cluster - `m:temporal_sdk_cluster`
 
 - [temporal_sdk, cluster, init]
 - [temporal_sdk, cluster, start]
 - [temporal_sdk, cluster, exception]
 - [temporal_sdk, cluster, stats]
 
-## Worker - `m:temporal_sdk_worker`
+## Task Worker - `m:temporal_sdk_worker`
 
 - [temporal_sdk, worker, init]
 - [temporal_sdk, worker, start]
@@ -98,34 +100,22 @@ SDK node stats emitted every `telemetry_poll_interval` time interval.
 - [temporal_sdk, workflow, execution, stop]
 - [temporal_sdk, workflow, execution, exception]
 
-## gRPC Client - `m:temporal_sdk_client`
-
-- [temporal_sdk, client, start]
-- [temporal_sdk, client, stop]
-- [temporal_sdk, client, exception]
-
-## gRPC Request - `m:temporal_sdk_grpc`
-
-- [temporal_sdk, grpc, start]
-- [temporal_sdk, grpc, stop]
-- [temporal_sdk, grpc, exception]
-
 ## Task Poller - `temporal_sdk_poller`
 
 Metadata common to all task poller telemetry events:
 
 - `cluster` - SDK cluster name `t:temporal_sdk_cluster:cluster_name/0`
 - `namespace` - Temporal namespace name
-- `task_queue` - Temporal task queue name
-- `worker_type` - task worker type `t:temporal_sdk_worker:worker_type/0`
 - `poller_id` - task poller process unique id defined as a list:
   `[WorkerSupervisorPid, WorkerPollerId]`. `WorkerPollerId` is an integer in the range from 1 to
   task worker pollers pool size, for example: `[<0.813.0>, 1]`
-- `worker_id` - task worker id `t:temporal_sdk_worker:id/0`
-- `task_poll_status` - status of the task poll operation,
-  one of: `undefined`, `null`, `task`, `error`
 - `task_execute_status` - status of the task execution operation,
   one of: `undefined`, `executed`, `redirected`, `failed`
+- `task_poll_status` - status of the task poll operation,
+  one of: `undefined`, `null`, `task`, `error`
+- `task_queue` - Temporal task queue name
+- `worker_id` - task worker id `t:temporal_sdk_worker:id/0`
+- `worker_type` - task worker type `t:temporal_sdk_worker:worker_type/0`
 
 <hr>
 
@@ -192,3 +182,15 @@ Example measurements:
 ```erlang
 #{duration => 101214764,limited_by => #{{worker,activity_regular} => 1000}}
 ```
+
+## gRPC Client - `m:temporal_sdk_client`
+
+- [temporal_sdk, client, start]
+- [temporal_sdk, client, stop]
+- [temporal_sdk, client, exception]
+
+## gRPC Request - `m:temporal_sdk_grpc`
+
+- [temporal_sdk, grpc, start]
+- [temporal_sdk, grpc, stop]
+- [temporal_sdk, grpc, exception]
