@@ -137,7 +137,11 @@ events() ->
         [temporal_sdk, poller, execute, stop],
         [temporal_sdk, poller, execute, exception],
         [temporal_sdk, poller, wait, start],
-        [temporal_sdk, poller, wait, stop]
+        [temporal_sdk, poller, wait, stop],
+        %% temporal_sdk_limiter
+        [temporal_sdk, task_counter, node],
+        [temporal_sdk, task_counter, cluster],
+        [temporal_sdk, task_counter, worker]
     ].
 
 -doc {file, "../../docs/telemetry/events_by_prefix-1.md"}.

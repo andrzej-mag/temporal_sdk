@@ -155,6 +155,10 @@ Counters at the SDK node-level correspond to the sum of the respective counters 
 Counters at the SDK cluster-level correspond to the sum of the respective counters from the task
 workers that belong to the given SDK cluster.
 
+Fixed window rate limiter task counters are used to emit
+[`[temporal_sdk, task_counter]`](`m:temporal_sdk_telemetry#module-task-counters-m-temporal_sdk_limiter`)
+telemetry events at time intervals configured by the`limiter_time_windows` option.
+
 Concurrency rate limiters do not have any configuration options.
 Fixed window rate limiter time windows are configured using the `limiter_time_windows` configuration
 option at each SDK limiting level: node, cluster, and worker.

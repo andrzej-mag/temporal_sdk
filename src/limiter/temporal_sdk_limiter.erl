@@ -5,6 +5,7 @@
 -moduledoc {file, "../../docs/limiter/-module.md"}.
 
 -export([
+    default_time_window/0,
     setup/2,
     build_checks/2,
     build_counters/2,
@@ -120,6 +121,10 @@ Rate limiter limitables statistics.
 %% internal API
 
 -doc false.
+-spec default_time_window() -> pos_integer().
+default_time_window() -> 60_000.
+
+-doc false.
 -spec setup(LimiterId :: tuple(), TimeWindows :: time_windows()) ->
     {Counter :: counter(), LimiterChiSpec :: supervisor:child_spec()}.
 setup(LimiterId, TimeWindows) ->
@@ -127,13 +132,13 @@ setup(LimiterId, TimeWindows) ->
         (L, {Time, Unit}, {LAcc, TWAcc}) when is_integer(Time) ->
             T = temporal_sdk_utils_time:convert_to_msec(Time, Unit),
             C = counters:new(2, [write_concurrency]),
-            {LAcc#{L => C}, TWAcc#{C => T}};
+            {LAcc#{L => C}, TWAcc#{C => {T, L}}};
         (L, T, {LAcc, TWAcc}) when is_integer(T) ->
             C = counters:new(2, [write_concurrency]),
-            {LAcc#{L => C}, TWAcc#{C => T}}
+            {LAcc#{L => C}, TWAcc#{C => {T, L}}}
     end,
-    {UserCounters, CountersWindows} = maps:fold(Fn, {#{}, #{}}, TimeWindows),
-    ChiSpec = #{id => LimiterId, start => {?MODULE, start_link, [LimiterId, CountersWindows]}},
+    {UserCounters, CountersData} = maps:fold(Fn, {#{}, #{}}, TimeWindows),
+    ChiSpec = #{id => LimiterId, start => {?MODULE, start_link, [LimiterId, CountersData]}},
     {UserCounters, ChiSpec}.
 
 -doc false.
@@ -294,37 +299,45 @@ reset_frequency(CounterRef) -> counters:put(CounterRef, 2, 0).
 -spec get_concurrency(Counter :: counter()) -> stats().
 get_concurrency(Counter) -> maps:map(fun(_L, C) -> counters:get(C, 1) end, Counter).
 
+-doc false.
+-spec get_frequency(Counter :: counters:counters_ref()) -> pos_integer().
+get_frequency(Counter) -> counters:get(Counter, 2).
+
 %% -------------------------------------------------------------------------------------------------
 %% gen_server
 
 -doc false.
 -spec start_link(
-    LimiterId :: tuple(), CountersWindows :: [{counters:counters_ref(), pos_integer()}]
+    LimiterId :: tuple(),
+    CountersData :: #{
+        counters:counters_ref() => {TimeWindow :: pos_integer(), Limitable :: temporal_limitable()}
+    }
 ) -> gen_server:start_ret().
-start_link(LimiterId, CountersWindows) ->
-    gen_server:start_link(?MODULE, [LimiterId, CountersWindows], []).
+start_link(LimiterId, CountersData) ->
+    gen_server:start_link(?MODULE, [LimiterId, CountersData], []).
 
 -doc false.
-init([LimiterId, CountersWindows]) ->
+init([LimiterId, _CountersData] = State) ->
     ProcLabel = temporal_sdk_utils_path:string_path([?MODULE | tuple_to_list(LimiterId)]),
     proc_lib:set_label(ProcLabel),
-    {ok, [], {continue, CountersWindows}}.
+    {ok, State, {continue, []}}.
 
 -doc false.
-handle_continue(CountersWindows, []) ->
+handle_continue([], [_LimiterId, CountersData] = State) ->
     maps:foreach(
-        fun(CounterRef, Interval) when is_integer(Interval) ->
+        fun(CounterRef, {Interval, _Limitable}) when is_integer(Interval) ->
             erlang:send_after(jitter(Interval), self(), {reset, CounterRef})
         end,
-        CountersWindows
+        CountersData
     ),
-    {noreply, CountersWindows}.
+    {noreply, State}.
 
 -doc false.
-handle_info({reset, CounterRef}, State) ->
-    reset_frequency(CounterRef),
-    case State of
-        #{CounterRef := Interval} ->
+handle_info({reset, CounterRef}, [LimiterId, CountersData] = State) ->
+    case CountersData of
+        #{CounterRef := {Interval, Limitable}} ->
+            execute_telemetry(LimiterId, Limitable, get_frequency(CounterRef), Interval),
+            reset_frequency(CounterRef),
             erlang:send_after(jitter(Interval), self(), {reset, CounterRef}),
             {noreply, State};
         #{} ->
@@ -332,6 +345,31 @@ handle_info({reset, CounterRef}, State) ->
     end;
 handle_info(_Info, State) ->
     {stop, invalid_request, State}.
+
+execute_telemetry({node}, Limitable, LimitableCount, Interval) ->
+    do_execute_telemetry([node], #{}, Limitable, LimitableCount, Interval);
+execute_telemetry({Cluster}, Limitable, LimitableCount, Interval) ->
+    do_execute_telemetry([cluster], #{cluster => Cluster}, Limitable, LimitableCount, Interval);
+execute_telemetry({Cluster, WorkerType, WorkerId}, Limitable, LimitableCount, Interval) ->
+    do_execute_telemetry(
+        [worker],
+        #{cluster => Cluster, worker_type => WorkerType, worker_id => WorkerId},
+        Limitable,
+        LimitableCount,
+        Interval
+    ).
+
+do_execute_telemetry(EventName, Metadata, Limitable, LimitableCount, Interval) ->
+    SystemTime = erlang:system_time(),
+    temporal_sdk_telemetry:execute(
+        [task_counter | EventName],
+        Metadata,
+        #{
+            system_time => SystemTime,
+            interval => Interval,
+            Limitable => LimitableCount
+        }
+    ).
 
 -doc false.
 handle_call(_Request, _From, State) ->

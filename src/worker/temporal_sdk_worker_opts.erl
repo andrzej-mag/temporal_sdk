@@ -22,7 +22,7 @@
     handle_cast/2
 ]).
 
--define(DEFAULT_LIMITER_TIME_WINDOW, 60_000).
+-define(DEFAULT_LIMITER_TIME_WINDOW, temporal_sdk_limiter:default_time_window()).
 
 %% -------------------------------------------------------------------------------------------------
 %% API

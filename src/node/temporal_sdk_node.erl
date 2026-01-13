@@ -86,7 +86,7 @@ SDK node fixed window rate limiter time windows configuration as a proplist.
 ].
 -export_type([user_limiter_time_windows/0]).
 
--define(DEFAULT_LIMITER_TIME_WINDOW, 60_000).
+-define(DEFAULT_LIMITER_TIME_WINDOW, temporal_sdk_limiter:default_time_window()).
 
 %% -------------------------------------------------------------------------------------------------
 %% API

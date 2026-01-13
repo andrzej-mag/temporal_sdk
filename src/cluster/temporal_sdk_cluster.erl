@@ -44,7 +44,7 @@
 -type cluster_name() :: atom().
 -export_type([cluster_name/0]).
 
--define(DEFAULT_LIMITER_TIME_WINDOW, 60_000).
+-define(DEFAULT_LIMITER_TIME_WINDOW, temporal_sdk_limiter:default_time_window()).
 
 -spec is_ready(Cluster :: cluster_name()) -> true | {error, invalid_cluster}.
 is_ready(Cluster) ->

@@ -198,3 +198,43 @@ Example measurements:
 - [temporal_sdk, grpc, start]
 - [temporal_sdk, grpc, stop]
 - [temporal_sdk, grpc, exception]
+
+## Task Counters - `m:temporal_sdk_limiter`
+
+Events emitted by the fixed window rate limiter before the rate limiter task's frequency counter is reset.
+Events are emitted at time intervals configured by the fixed window rate limiter `limiter_time_windows` option.
+
+Common `task_counter` events measurements:
+
+- `system_time`
+- `interval` - the time window length for the fixed window rate limiter, configured via `limiter_time_windows`
+- task counter, where measurement key is a Temporal limitable `t:temporal_sdk_limiter:temporal_limitable/0` and
+  value is the count of started tasks within the specified `interval` time period
+
+<hr>
+
+### `[temporal_sdk, task_counter, node]`
+
+Emitted by the SDK node-level fixed window rate limiter.
+
+<hr>
+
+### `[temporal_sdk, task_counter, cluster]`
+
+Emitted by the SDK cluster-level fixed window rate limiter.
+
+**Metadata**
+
+- `cluster` - SDK cluster name `t:temporal_sdk_cluster:cluster_name/0`
+
+<hr>
+
+### `[temporal_sdk, task_counter, worker]`
+
+Emitted by the task worker-level fixed window rate limiter.
+
+**Metadata**
+
+- `cluster` - SDK cluster name `t:temporal_sdk_cluster:cluster_name/0`
+- `worker_id` - task worker id `t:temporal_sdk_worker:id/0`
+- `worker_type` - task worker type `t:temporal_sdk_worker:worker_type/0`
