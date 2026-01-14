@@ -40,7 +40,8 @@ Emitted when the SDK node supervisor is started.
 
 ### `[temporal_sdk, node, stats]`
 
-SDK node stats emitted every `telemetry_poll_interval` time interval.
+SDK node stats emitted every `telemetry_poll_interval` time interval set with
+[SDK node configuration](`m:temporal_sdk_node#module-sdk-node-configuration`).
 
 **Measurements**
 
@@ -122,13 +123,13 @@ Metadata common to all task poller telemetry events:
 ### `[temporal_sdk, poller, poll, start]`
 
 Emitted when the task poller enters the `poll` state and begins polling for a new task by sending a
-long-poll request to the Temporal server.
+long-poll gRPC request to the Temporal server.
 
 <hr>
 
 ### `[temporal_sdk, poller, poll, stop]`
 
-Emitted when a task poll request is successful and a task poll response is received.
+Emitted when a task poll request is successful and a task poll gRPC response is received.
 
 <hr>
 
@@ -174,9 +175,9 @@ Emitted when all rate limiter limit checks pass and the task poller is allowed t
 
 **Measurements**
 
-- `limited_by` - list of rate limiter limitables for which rate limits were exceeded, forcing the
-  task poller state machine to remain idle in the `wait` state before polling next task execution
-  from Temporal server.
+- `limited_by` - list of rate limiter [limitables](`t:temporal_sdk_limiter:limitable/0`) for which
+  rate limits were exceeded, forcing the task poller state machine to remain idle in the `wait` state
+  before polling next task execution from Temporal server.
   Expressed as a `map()`.
   Map key is a tuple of `t:temporal_sdk_limiter:level/0` and `t:temporal_sdk_limiter:limitable/0`.
   Map value is a time interval in milliseconds during which given limitable limits were exceeded.
@@ -204,12 +205,13 @@ Example measurements:
 Events emitted by the fixed window rate limiter before the rate limiter task's frequency counter is reset.
 Events are emitted at time intervals configured by the fixed window rate limiter `limiter_time_windows` option.
 
-Common `task_counter` events measurements:
+Measurements common to all `task_counter` events:
 
 - `system_time`
 - `interval` - the time window length for the fixed window rate limiter, configured via `limiter_time_windows`
-- task counter, where measurement key is a Temporal limitable `t:temporal_sdk_limiter:temporal_limitable/0` and
-  value is the count of started tasks within the specified `interval` time period
+- task counter measurement, where measurement key is a
+  [Temporal limitable](`t:temporal_sdk_limiter:temporal_limitable/0`) and value is the count of tasks
+  started within the specified `interval` time period
 
 <hr>
 
