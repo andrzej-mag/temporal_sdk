@@ -5,7 +5,7 @@
 
 -export([
     count/2,
-    is_alive/3,
+    is_started/3,
     list/2,
     options/3,
     stats/3,
@@ -276,12 +276,12 @@ count(Cluster, WorkerType) ->
         V -> {ok, V}
     end.
 
--spec is_alive(
+-spec is_started(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: worker_type(),
     WorkerId :: worker_id()
 ) -> boolean().
-is_alive(Cluster, session, WorkerId) ->
+is_started(Cluster, session, WorkerId) ->
     case temporal_sdk_worker_registry:whereis_name({Cluster, workflow, WorkerId}) of
         undefined ->
             false;
@@ -296,7 +296,7 @@ is_alive(Cluster, session, WorkerId) ->
                     false
             end
     end;
-is_alive(Cluster, WorkerType, WorkerId) ->
+is_started(Cluster, WorkerType, WorkerId) ->
     case temporal_sdk_worker_registry:whereis_name({Cluster, WorkerType, WorkerId}) of
         undefined -> false;
         _Pid -> true
