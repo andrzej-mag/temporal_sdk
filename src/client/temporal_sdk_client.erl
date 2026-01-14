@@ -183,7 +183,7 @@ SDK gRPC client module.
     when
         Type :: msg.
 request(Cluster, Msg, Type, GrpcOpts, RequestInfo) ->
-    case temporal_sdk_cluster:is_ready(Cluster) of
+    case temporal_sdk_cluster:is_started(Cluster) of
         true ->
             do_request(
                 Cluster,

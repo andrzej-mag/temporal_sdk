@@ -342,7 +342,7 @@ maybe_without_limits(UserConfig, Opts) when is_list(UserConfig) ->
     }}
     | temporal_sdk_worker:invalid_error().
 get_state(Cluster, WorkerType, WorkerId) when WorkerType =:= activity; WorkerType =:= workflow ->
-    case temporal_sdk_cluster:is_ready(Cluster) of
+    case temporal_sdk_cluster:is_started(Cluster) of
         true ->
             try
                 {ok, gen_server:call(server_name(Cluster, WorkerType, WorkerId), get)}

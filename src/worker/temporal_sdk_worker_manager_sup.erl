@@ -52,7 +52,7 @@ start_worker(Cluster, WorkerType, WorkerOpts) ->
         cluster => Cluster, worker_type => WorkerType, opts => WorkerOpts
     }),
     maybe
-        true ?= temporal_sdk_cluster:is_ready(Cluster),
+        true ?= temporal_sdk_cluster:is_started(Cluster),
         {ok, LCounters, LChiSpec, Opts} ?=
             temporal_sdk_worker_opts:setup(Cluster, WorkerType, WorkerOpts),
         ok ?= start_child(supervisor_ref(Cluster, WorkerType), [LCounters, LChiSpec, Opts]),
@@ -80,7 +80,7 @@ start_child(SupRef, ExtraArgs) ->
     WorkerId :: temporal_sdk_worker:worker_id()
 ) -> ok | {error, invalid_cluster | not_found | simple_one_for_one}.
 terminate_worker(Cluster, WorkerType, WorkerId) ->
-    case temporal_sdk_cluster:is_ready(Cluster) of
+    case temporal_sdk_cluster:is_started(Cluster) of
         true ->
             case temporal_sdk_worker_registry:whereis_name({Cluster, WorkerType, WorkerId}) of
                 undefined ->
