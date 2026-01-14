@@ -9,10 +9,10 @@ limiter](#module-task-poller-leaky-bucket-rate-limiter).
 
 OS rate limiting is controlled by OS resource usage, including memory, CPU load, and disk capacity.
 Concurrency and fixed window rate limiting are controlled by the Temporal task execution counters.
-Leaky bucket rate limiting is controlled by leak rates derived from user-provided configuration.
+Leaky bucket rate limiting is controlled by task poll leak rates derived from user-provided configuration.
 
-Rate limiting is enforced by task worker task pollers and can limit poll rates for all Temporal tasks
-polled from Temporal server:
+Rate limiting is enforced by task worker task pollers and can limit task poll rates for all Temporal
+tasks polled from Temporal server:
 
 - activity tasks, including regular, session, eager, and direct execution activity tasks,
 - workflow tasks, including eager, continued as new and child workflow tasks,
@@ -20,7 +20,7 @@ polled from Temporal server:
 
 Rate limiters can be used individually or in combination. When using concurrency and fixed window
 rate limiters in combination with a leaky bucket rate limiter, special attention is required as the
-functionality of these limiters overlaps.
+functionality of these limiters may overlap.
 
 See also [SDK Architecture - Rate Limiting](architecture.md#rate-limiting) .
 
@@ -71,7 +71,7 @@ end;
   Updated at time intervals retrieved from `disksup:get_check_interval/0`.
   Requires `m:disksup`.
 
-Values retrieved from the `os_mon` resource utilization supervisors are stored by the SDK using
+Values retrieved from the `os_mon` resource utilization supervisors are stored by the SDK using OTP
 `m:counters`.
 
 OS rate limiter limits are set with the `t:temporal_sdk_worker:opts/0`
@@ -141,7 +141,7 @@ config :temporal_sdk,
 
 Concurrency and fixed window rate limiters control task polling rates using task execution
 concurrency and frequency counters.
-Task execution counters are implemented using `m:counters`.
+Task execution counters are implemented using OTP `m:counters`.
 
 Concurrency and fixed window frequency counters are incremented by task executors when task execution
 begins.
@@ -157,7 +157,7 @@ workers that belong to the given SDK cluster.
 
 Fixed window rate limiter task counters are used to emit
 [`[temporal_sdk, task_counter]`](`m:temporal_sdk_telemetry#module-task-counters-m-temporal_sdk_limiter`)
-telemetry events at time intervals configured by the`limiter_time_windows` option.
+telemetry events at time intervals configured by the `limiter_time_windows` option.
 
 Concurrency rate limiters do not have any configuration options.
 Fixed window rate limiter time windows are configured using the `limiter_time_windows` configuration
@@ -302,9 +302,9 @@ task queue will be limited if:
 - The number of concurrently running workflow tasks spawned by the "worker_1" worker exceeds 5,
 - The fixed window frequency of workflow tasks spawned by the "worker_1" worker exceeds 50.
 
-Notice that `task_poller_pool_size` is set to 1 in the example above.
-The maximum number of concurrently running workflow task executions is limited to 5, so a single task
-poller will be sufficient.
+Notice that "worker_1" has a `task_poller_pool_size` of 1 in the example above.
+The "worker_1" workflow worker limits the maximum number of concurrently running workflow task
+executions to 5, so a single workflow task poller will be sufficient.
 See also [SDK Architecture - Rate Limiting](architecture.md#rate-limiting).
 
 ## Task Poller Leaky Bucket Rate Limiter
@@ -319,14 +319,14 @@ with task poll requests and leaks at a constant rate.
 
 Leaky bucket rate limiting is implemented within the task worker task poller state machine.
 `t:temporal_sdk_worker:task_poller_limiter/0` defines two rate limiter parameters: `Limit` and `TimeWindow`.
-The minimum time interval between task polls executed by the task poller is calculated as:
+The minimum time interval between task poll gRPC requests executed by the task poller is calculated as:
 `TimeWindowMsec / Limit`.
 The wait time between task polls is implemented using `m:gen_statem` timeouts, which have a time
 resolution of 1 millisecond.
 This constraint limits the leak time interval to values greater than or equal to 1 millisecond per
 poll request.
 This corresponds to a rate limiter that limits the task poll rate to <1000 task poll requests per
-second or provides unrestricted capacity.
+second or provides unrestricted task poll rate.
 
 Leaky bucket rate limiting is configured with the `t:temporal_sdk_worker:opts/0` `task_poller_limiter`
 task worker configuration option.
