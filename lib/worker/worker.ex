@@ -2,7 +2,7 @@ defmodule TemporalSdk.Worker do
   @moduledoc File.read!("docs/worker/-module.md")
 
   defdelegate count(cluster, worker_type), to: :temporal_sdk_worker
-  defdelegate is_alive(cluster, worker_type, worker_id), to: :temporal_sdk_worker
+  defdelegate is_started(cluster, worker_type, worker_id), to: :temporal_sdk_worker
   defdelegate list(cluster, worker_type), to: :temporal_sdk_worker
   defdelegate options(cluster, worker_type, worker_id), to: :temporal_sdk_worker
   defdelegate stats(cluster, worker_type, worker_id), to: :temporal_sdk_worker
