@@ -4,12 +4,13 @@ The SDK node is a top level SDK library supervisor process running on the Erlang
 
 SDK node responsibilities:
 
-- configure and start SDK node statistics telemetry poller,
+- configure and start SDK node-level statistics telemetry poller,
 - configure SDK node-level fixed window rate limiter time windows,
 - configure and attach SDK-wide telemetry events handlers,
 - configure SDK node-wide options, such as `scope_config`,
-- configure, start and supervise workflow execution scope processes,
-- configure, start and supervise SDK cluster processes.
+- configure, start and supervise [workflow execution scope](architecture.md#workflow-execution-scope)
+  processes,
+- configure, start and supervise [SDK cluster](`m:temporal_sdk_cluster`) processes.
 
 ## SDK Configuration
 
@@ -35,7 +36,8 @@ The proplist key is a cluster name `t:temporal_sdk_cluster:cluster_name/0`, and 
 is a cluster configuration defined as a map or proplist.
 Refer to `m:temporal_sdk_cluster` for details about SDK cluster configuration.
 
-Example `temporal_sdk` configuration with one SDK cluster `cluster_1`:
+Example `temporal_sdk` configuration with one SDK cluster `cluster_1` and workflow execution scope
+shard size set to 5:
 
 <!-- tabs-open -->
 ### Elixir
@@ -70,7 +72,7 @@ config :temporal_sdk,
 
 **`enable_single_distributed_workflow_execution`** - enables single workflow execution per Erlang
 cluster, see [SDK Architecture - Workflow Execution Scope](architecture.md#workflow-execution-scope)
-section for details.
+for details.
 Setting can be overwritten for each SDK cluster individually by using the SDK cluster
 configuration option with the same name, see `m:temporal_sdk_cluster`.
 Default: `true`.
@@ -86,6 +88,9 @@ Setting must be consistent across all Erlang cluster SDK nodes.
 By default, the shards count is set to 10 for each SDK cluster. Example: `[{cluster_1, 20}]`.
 
 **`limiter_time_windows`** - SDK node fixed window rate limiter time windows configuration.
+Values specified here also serve as the time intervals at which telemetry events
+[`[temporal_sdk, task_counter, node]`](`m:temporal_sdk_telemetry#module-temporal_sdk-task_counter-node`)
+are emitted.
 See `m:temporal_sdk_limiter#module-concurrency-and-fixed-window-rate-limiters` for details.
 By default, the fixed window rate limiter time window is set to 60 seconds:
 
