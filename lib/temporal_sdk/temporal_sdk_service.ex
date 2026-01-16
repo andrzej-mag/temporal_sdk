@@ -1,4 +1,5 @@
 defmodule TemporalSdk.Service do
+  @external_resource "docs/temporal_sdk/service/-module.md"
   @moduledoc File.read!("docs/temporal_sdk/service/-module.md")
 
   defdelegate get_workflow_history(cluster, workflow_execution), to: :temporal_sdk_service

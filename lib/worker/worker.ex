@@ -1,4 +1,5 @@
 defmodule TemporalSdk.Worker do
+  @external_resource "docs/worker/-module.md"
   @moduledoc File.read!("docs/worker/-module.md")
 
   defdelegate count(cluster, worker_type), to: :temporal_sdk_worker
@@ -7,13 +8,16 @@ defmodule TemporalSdk.Worker do
   defdelegate options(cluster, worker_type, worker_id), to: :temporal_sdk_worker
   defdelegate stats(cluster, worker_type, worker_id), to: :temporal_sdk_worker
 
+  @external_resource "docs/worker/get_limiter_config-3.md"
   @doc File.read!("docs/worker/get_limiter_config-3.md")
   defdelegate get_limiter_config(cluster, worker_type, worker_id), to: :temporal_sdk_worker
 
+  @external_resource "docs/worker/set_limiter_config-4.md"
   @doc File.read!("docs/worker/set_limiter_config-4.md")
   defdelegate set_limiter_config(cluster, worker_type, worker_id, new_limiter_config),
     to: :temporal_sdk_worker
 
+  @external_resource "docs/worker/set_limiter_config-5.md"
   @doc File.read!("docs/worker/set_limiter_config-5.md")
   defdelegate set_limiter_config(cluster, worker_type, worker_id, new_limiter_config, nodes),
     to: :temporal_sdk_worker
