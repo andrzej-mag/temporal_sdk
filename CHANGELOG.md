@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.14](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.13..v0.1.14) - 2026-01-16
+
+### 🐛 Bug Fixes
+
+- Elixir @external_resource docs fix - ([49c83fd](https://github.com/andrzej-mag/temporal_sdk/commit/49c83fdc7385592100847b9625bc8dd8d65ec321))
+
 ## [0.1.13](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.12..v0.1.13) - 2026-01-14
 
 ### 🚀 Features
