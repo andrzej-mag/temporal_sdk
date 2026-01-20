@@ -1,4 +1,6 @@
 defmodule TemporalSdk.Utils do
+  @moduledoc false
+
   @spec exdoc!(erlang_docs_path :: Path.t()) :: elixir_docs :: String.t()
   def exdoc!(erlang_docs_path),
     do:
