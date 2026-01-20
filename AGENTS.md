@@ -98,10 +98,10 @@ The Temporal SDK is a framework for authoring workflows and activities using Erl
 - Documentation directory layout corresponds to the Erlang `src` directory layout. For example, `temporal_sdk_node` documentation is stored in the `docs/node` directory
 - By convention, module documentation is stored in the `-module.md` file
 - Erlang module documentation is imported with `-moduledoc {file, FilePath}`, for example: `-moduledoc {file, "../../docs/node/-module.md"}.`
-- Elixir module documentation is imported with `@moduledoc File.read!(file_path)`, for example: `@moduledoc File.read!("docs/node/-module.md")`
+- Elixir module documentation is imported with `@moduledoc TemporalSdk.Utils.exdoc!(file_path)`, for example: `@moduledoc TemporalSdk.Utils.exdoc!("docs/node/-module.md")`
 - By convention, function documentation is stored in separate markdown files, where the file name is a combination of the function name and function arity separated by a dash. For example: `docs/node/list-0.md` contains documentation for `temporal_sdk_node:list/0`
 - Erlang function documentation is imported with `-doc {file, FilePath}`, for example: `-doc {file, "../../docs/node/list-0.md"}.`
-- Elixir function documentation is imported with `@doc File.read!(file_path)`, for example: `@doc File.read!("docs/node/list-0.md")`
+- Elixir function documentation is imported with `@doc TemporalSdk.Utils.exdoc!(file_path)`, for example: `@doc TemporalSdk.Utils.exdoc!("docs/node/list-0.md")`
 - The module documentation file should start with a short paragraph describing the module and then go into greater details
 - The function documentation file should start with a short paragraph describing the function and then go into greater details
 - Exclude documentation generation for modules containing the `-moduledoc false` attribute

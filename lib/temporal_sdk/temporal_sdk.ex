@@ -1,6 +1,6 @@
 defmodule TemporalSdk do
   @external_resource "docs/temporal_sdk/-module.md"
-  @moduledoc File.read!("docs/temporal_sdk/-module.md")
+  @moduledoc TemporalSdk.Utils.exdoc!("docs/temporal_sdk/-module.md")
 
   defdelegate start_workflow(cluster, task_queue, workflow_type), to: :temporal_sdk
   defdelegate start_workflow(cluster, task_queue, workflow_type, opts), to: :temporal_sdk
