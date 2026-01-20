@@ -77,17 +77,7 @@ Setting can be overwritten for each SDK cluster individually by using the SDK cl
 configuration option with the same name, see `m:temporal_sdk_cluster`.
 Default: `true`.
 
-**`scope_config`** - SDK node workflow execution scope configuration defined as a property list.
-Proplist key is the `workflow_scope` scope name set in the SDK cluster configuration and the
-proplist value is the given cluster scope shards count.
-If `workflow_scope` option is not set in the cluster configuration, the scope name will be the same
-as the cluster name.
-See [SDK Architecture - Workflow Execution Scope](architecture.md#workflow-execution-scope) section for
-details.
-Setting must be consistent across all Erlang cluster SDK nodes.
-By default, the shards count is set to 10 for each SDK cluster. Example: `[{cluster_1, 20}]`.
-
-**`limiter_time_windows`** - SDK node fixed window rate limiter time windows configuration.
+**`limiter_time_windows`** - SDK node-level fixed window rate limiter time windows configuration.
 Values specified here also serve as the time intervals at which telemetry events
 [`[temporal_sdk, task_counter, node]`](`m:temporal_sdk_telemetry#module-temporal_sdk-task_counter-node`)
 are emitted.
@@ -124,11 +114,15 @@ By default, the fixed window rate limiter time window is set to 60 seconds:
 ```
 <!-- tabs-close -->
 
-**`telemetry_poll_interval`** - the time interval at which the SDK node telemetry poller polls for
-SDK node statistics and emits
-[`[temporal_sdk, node, stats]`](`m:temporal_sdk_telemetry#module-temporal_sdk-node-stats`)
-telemetry event.
-Default poll time interval is 10 seconds.
+**`scope_config`** - SDK node workflow execution scope configuration defined as a property list.
+Proplist key is the `workflow_scope` scope name set in the SDK cluster configuration and the
+proplist value is the given cluster scope shards count.
+If `workflow_scope` option is not set in the cluster configuration, the scope name will be the same
+as the cluster name.
+See [SDK Architecture - Workflow Execution Scope](architecture.md#workflow-execution-scope) section for
+details.
+Setting must be consistent across all Erlang cluster SDK nodes.
+By default, the shards count is set to 10 for each SDK cluster. Example: `[{cluster_1, 20}]`.
 
 **`telemetry_events_handlers`** - telemetry events handlers.
 See `t:temporal_sdk_telemetry:events_handlers/0` for details.
@@ -143,3 +137,9 @@ level using the built-in telemetry event handler function `temporal_sdk_telemetr
     }
 ]
 ```
+
+**`telemetry_poll_interval`** - the time interval at which the SDK node telemetry poller polls for
+SDK node statistics and emits
+[`[temporal_sdk, node, stats]`](`m:temporal_sdk_telemetry#module-temporal_sdk-node-stats`)
+telemetry event.
+Default poll time interval is 10 seconds.

@@ -14,6 +14,9 @@
     get_counters/1
 ]).
 
+-doc """
+SDK cluster configuration options.
+""".
 -type cluster_config() :: [
     {cluster, opts() | user_opts()}
     | {client, temporal_sdk_client:opts() | temporal_sdk_client:user_opts()}
@@ -23,6 +26,9 @@
 ].
 -export_type([cluster_config/0]).
 
+-doc """
+SDK cluster-specific configuration options as a map.
+""".
 -type opts() :: #{
     limiter_time_windows =>
         temporal_sdk_node:limiter_time_windows() | temporal_sdk_node:user_limiter_time_windows(),
@@ -32,6 +38,9 @@
 }.
 -export_type([opts/0]).
 
+-doc """
+SDK cluster-specific configuration options as a property list.
+""".
 -type user_opts() :: [
     {limiter_time_windows,
         temporal_sdk_node:limiter_time_windows() | temporal_sdk_node:user_limiter_time_windows()}
@@ -41,6 +50,9 @@
 ].
 -export_type([user_opts/0]).
 
+-doc """
+SDK cluster name.
+""".
 -type cluster_name() :: atom().
 -export_type([cluster_name/0]).
 
