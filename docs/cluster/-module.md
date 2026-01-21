@@ -1,10 +1,11 @@
 SDK cluster configuration and management module.
 
-The SDK cluster is a supervised group of processes that facilitates SDK API interaction with the
+The SDK cluster is a supervised group of processes that facilitates SDK interaction with the
 (clustered) Temporal service Temporal server(s).
-Interaction includes handling [gRPC Temporal API services](https://github.com/temporalio/api),
-polling, and processing Temporal task executions.
+Interaction includes polling and processing Temporal task executions and handling
+gRPC [Temporal API](https://github.com/temporalio/api) services.
 SDK cluster supervisors are supervised by the SDK node supervisor.
+SDK cluster supervisor supervises [task workers](`m:temporal_sdk_worker`).
 SDK cluster can only be started at runtime and cannot be started dynamically.
 
 SDK cluster responsibilities:
@@ -21,11 +22,11 @@ SDK cluster responsibilities:
 
 **`client`** - [SDK gRPC client](`m:temporal_sdk_client`) configuration.
 
-**`activities`** - list of runtime activity [task workers configurations](`m:temporal_sdk_worker`).
+**`activities`** - list of runtime activity [task worker configurations](`m:temporal_sdk_worker`).
 
-**`nexuses`** - list of runtime nexus [task workers configurations](`m:temporal_sdk_worker`).
+**`nexuses`** - list of runtime nexus [task worker configurations](`m:temporal_sdk_worker`).
 
-**`workflows`** - list of runtime workflow [task workers configurations](`m:temporal_sdk_worker`).
+**`workflows`** - list of runtime workflow [task worker configurations](`m:temporal_sdk_worker`).
 
 Example `cluster_1` SDK cluster configuration:
 
@@ -73,7 +74,8 @@ config :temporal_sdk,
 Example configuration above sets the following options for the `cluster_1` SDK cluster:
 
 - `telemetry_poll_interval` is set to 20 seconds,
-- gRPC client will use `temporal_sdk_grpc_adapter_gun_pool` adapter running on `localhost:7233`,
+- gRPC client will use `temporal_sdk_grpc_adapter_gun_pool` HTTP/2 adapter and will connect to the
+  Temporal server running on `127.0.0.1:7233`,
 - activity, nexus and workflow task workers are set to poll Temporal server on `"default"` task queues.
 
 ## Cluster-Specific Configuration
@@ -89,7 +91,7 @@ Values specified here also serve as the time intervals at which telemetry events
 [`[temporal_sdk, task_counter, cluster]`](`m:temporal_sdk_telemetry#module-temporal_sdk-task_counter-cluster`)
 are emitted.
 By default, the fixed window rate limiter time window is set to 60 seconds. See also
-`m:temporal_sdk_node#module-sdk-node-configuration` configuration and
+`m:temporal_sdk_node#module-sdk-node-configuration` `limiter_time_windows` configuration option and
 `m:temporal_sdk_limiter#module-concurrency-and-fixed-window-rate-limiters`.
 
 **`telemetry_poll_interval`** - the time interval at which the SDK cluster telemetry poller polls for
