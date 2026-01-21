@@ -7,9 +7,14 @@ The number of task executions at the SDK node-level corresponds to the sum of ta
 all SDK clusters.
 A limitable here refers to a Temporal task, such as a Temporal activity, nexus, or workflow task,
 that is capable of rate limiting the polling rate of Temporal tasks.
-See `m:temporal_sdk_limiter#module-concurrency-and-fixed-window-rate-limiters` for more details.
 
-## Example
+See also:
+
+- `m:temporal_sdk_limiter#module-concurrency-and-fixed-window-rate-limiters`,
+- `temporal_sdk_cluster:stats/1`,
+- `temporal_sdk_worker:stats/3`.
+
+Example:
 
 <!-- tabs-open -->
 ### Elixir

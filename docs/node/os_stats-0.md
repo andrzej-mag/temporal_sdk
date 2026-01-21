@@ -3,7 +3,7 @@ Retrieves the current OS statistics from the SDK OS rate limiter.
 Function returns OS rate limiter limitables statistics as a `map()`.
 See `m:temporal_sdk_limiter#module-os-rate-limiter` for details about OS limitables.
 
-## Example
+Example:
 
 <!-- tabs-open -->
 ### Elixir

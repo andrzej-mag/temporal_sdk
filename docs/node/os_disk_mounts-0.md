@@ -9,7 +9,7 @@ task workers.
 
 Requires `m:disksup`.
 
-## Example
+Example:
 
 <!-- tabs-open -->
 ### Elixir
