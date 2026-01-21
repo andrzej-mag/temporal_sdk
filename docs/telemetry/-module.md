@@ -30,7 +30,7 @@ Emitted when the SDK node supervisor is initialized.
 
 ### `[temporal_sdk, node, start]`
 
-Emitted when the SDK node supervisor is started.
+Emitted when the SDK node supervisor has been successfully initialized and is started.
 
 **Metadata**
 
@@ -52,10 +52,71 @@ SDK node stats emitted every `telemetry_poll_interval` time interval set with
 
 ## SDK Cluster - `m:temporal_sdk_cluster`
 
-- [temporal_sdk, cluster, init]
-- [temporal_sdk, cluster, start]
-- [temporal_sdk, cluster, exception]
-- [temporal_sdk, cluster, stats]
+Metadata common to all SDK cluster telemetry events:
+
+- `cluster` - cluster name `t:temporal_sdk_cluster:cluster_name/0`
+
+<hr>
+
+### `[temporal_sdk, cluster, init]`
+
+Emitted when the SDK cluster supervisor is initialized.
+
+**Metadata**
+
+- `opts` - user-provided SDK cluster `t:temporal_sdk_cluster:cluster_config/0` configuration
+
+<hr>
+
+### `[temporal_sdk, cluster, start]`
+
+Emitted when the SDK cluster supervisor has been successfully initialized and is started.
+
+**Metadata**
+
+- `opts` - parsed SDK cluster configuration
+
+<hr>
+
+### `[temporal_sdk, cluster, exception]`
+
+Emitted when the SDK cluster supervisor fails to start.
+
+**Metadata**
+
+- `error` - reason for failure
+- `opts` - user-provided SDK cluster `t:temporal_sdk_cluster:cluster_config/0` configuration
+
+<hr>
+
+### `[temporal_sdk, cluster, stats]`
+
+SDK cluster stats emitted every `telemetry_poll_interval` time interval set with
+[SDK cluster-specific configuration](`m:temporal_sdk_cluster#module-cluster-specific-configuration`).
+
+**Measurements**
+
+- `activity_count` - number of activity task workers
+- `activity_list` - list of activity task workers
+- `nexus_count` - number of nexus task workers
+- `nexus_list` - list of nexus task workers
+- `stats` - equal to `temporal_sdk_cluster:stats/1`
+- `workflow_count` - number of workflow task workers
+- `workflow_list` - list of workflow task workers
+
+Example measurements:
+
+```erlang
+#{stats =>
+      #{nexus => 0,workflow => 1,activity_session => 0,activity_regular => 1,
+        activity_eager => 0,activity_direct => 0},
+  activity_list => ["a1"],
+  activity_count => 1,
+  nexus_list => ["n1"],
+  nexus_count => 1,
+  workflow_list => [w1],
+  workflow_count => 1}
+```
 
 ## Task Worker - `m:temporal_sdk_worker`
 
