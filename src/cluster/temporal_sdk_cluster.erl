@@ -58,6 +58,7 @@ SDK cluster name.
 
 -define(DEFAULT_LIMITER_TIME_WINDOW, temporal_sdk_limiter:default_time_window()).
 
+-doc {file, "../../docs/cluster/is_started-1.md"}.
 -spec is_started(Cluster :: cluster_name()) -> true | {error, invalid_cluster}.
 is_started(Cluster) ->
     case erlang:whereis(temporal_sdk_cluster_sup:local_name(Cluster)) of
@@ -65,6 +66,7 @@ is_started(Cluster) ->
         _ -> true
     end.
 
+-doc {file, "../../docs/cluster/list-0.md"}.
 -spec list() -> [cluster_name()].
 list() ->
     Fn = fun
@@ -75,6 +77,7 @@ list() ->
     end,
     lists:filtermap(Fn, supervisor:which_children(temporal_sdk_node_sup)).
 
+-doc {file, "../../docs/cluster/stats-1.md"}.
 -spec stats(Cluster :: cluster_name()) ->
     {ok, temporal_sdk_limiter:stats()} | {error, invalid_cluster}.
 stats(Cluster) ->
