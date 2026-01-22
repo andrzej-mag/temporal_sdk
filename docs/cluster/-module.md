@@ -22,11 +22,11 @@ SDK cluster responsibilities:
 
 **`client`** - [SDK gRPC client](`m:temporal_sdk_client`) configuration.
 
-**`activities`** - list of runtime activity [task worker configurations](`m:temporal_sdk_worker`).
+**`activities`** - list of runtime activity [task workers](`m:temporal_sdk_worker`).
 
-**`nexuses`** - list of runtime nexus [task worker configurations](`m:temporal_sdk_worker`).
+**`nexuses`** - list of runtime nexus [task workers](`m:temporal_sdk_worker`).
 
-**`workflows`** - list of runtime workflow [task worker configurations](`m:temporal_sdk_worker`).
+**`workflows`** - list of runtime workflow [task workers](`m:temporal_sdk_worker`).
 
 Example `cluster_1` SDK cluster configuration:
 
@@ -42,9 +42,9 @@ config :temporal_sdk,
         :adapter =>
           {:temporal_sdk_grpc_adapter_gun_pool, [{:endpoints, [{{127, 0, 0, 1}, 7233}]}]}
       },
-      activities: [[task_queue: "default"]],
-      nexuses: [[task_queue: "default"]],
-      workflows: [[task_queue: "default"]]
+      activities: [[task_queue: "activity_tq1"], [task_queue: "activity_tq2"]],
+      nexuses: [[task_queue: "nexus_tq"]],
+      workflows: [[task_queue: "workflow_tq"]]
     ]
   ]
 ```
@@ -62,9 +62,9 @@ config :temporal_sdk,
                         {endpoints, [{{127, 0, 0, 1}, 7233}]}
                     ]}
             }},
-            {activities, [[{task_queue, "default"}]]},
-            {nexuses, [[{task_queue, "default"}]]},
-            {workflows, [[{task_queue, "default"}]]}
+            {activities, [[{task_queue, "activity_tq1"}], [{task_queue, "activity_tq2"}]]},
+            {nexuses, [[{task_queue, "nexus_tq"}]]},
+            {workflows, [[{task_queue, "workflow_tq"}]]}
         ]}
     ]}
 ]}
@@ -74,9 +74,12 @@ config :temporal_sdk,
 Example configuration above sets the following options for the `cluster_1` SDK cluster:
 
 - `telemetry_poll_interval` is set to 20 seconds,
-- gRPC client will use `temporal_sdk_grpc_adapter_gun_pool` HTTP/2 adapter and will connect to the
-  Temporal server running on `127.0.0.1:7233`,
-- activity, nexus and workflow task workers are set to poll Temporal server on `"default"` task queues.
+- the [SDK gRPC client](`m:temporal_sdk_client`) will utilize the `m:temporal_sdk_grpc_adapter_gun_pool`
+  HTTP/2 adapter to connect to the Temporal server running on `127.0.0.1:7233`,
+- two activity runtime task workers are started to poll Temporal server on `"activity_tq1"` and
+  `"activity_tq2"` activity task queues,
+- nexus runtime task worker is started to poll Temporal server on `"nexus_tq"` nexus task queue,
+- workflow runtime task worker is started to poll Temporal server on `"workflow_tq"` workflow task queue.
 
 ## Cluster-Specific Configuration
 
