@@ -5,7 +5,7 @@ defmodule TemporalSdk.MixProject do
 
   @elixir_deps [
     {:dialyxir, "~> 1.4.0", only: [:dev, :test], runtime: false},
-    {:ex_doc, "~> 0.39.0", only: :dev, runtime: false}
+    {:ex_doc, "~> 0.40.0", only: :dev, runtime: false}
   ]
 
   @shared_deps_opts [
