@@ -112,6 +112,16 @@ defmodule TemporalSdk.MixProject do
         TemporalSdk.Service,
         TemporalSdk.Versioning
       ],
+      "Tasks (Elixir)": [
+        TemporalSdk.Activity,
+        TemporalSdk.Nexus,
+        TemporalSdk.Workflow
+      ],
+      "Operations (Elixir)": [
+        TemporalSdk.Cluster,
+        TemporalSdk.Node,
+        TemporalSdk.Worker
+      ],
       "Services (Erlang)": [
         :temporal_sdk,
         :temporal_sdk_batch,
@@ -120,20 +130,10 @@ defmodule TemporalSdk.MixProject do
         :temporal_sdk_service,
         :temporal_sdk_versioning
       ],
-      "Tasks (Elixir)": [
-        TemporalSdk.Activity,
-        TemporalSdk.Nexus,
-        TemporalSdk.Workflow
-      ],
       "Tasks (Erlang)": [
         :temporal_sdk_activity,
         :temporal_sdk_nexus,
         :temporal_sdk_workflow
-      ],
-      "Operations (Elixir)": [
-        TemporalSdk.Cluster,
-        TemporalSdk.Node,
-        TemporalSdk.Worker
       ],
       "Operations (Erlang)": [
         :temporal_sdk_cluster,
