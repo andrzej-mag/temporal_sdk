@@ -2,7 +2,7 @@
 
 % elp:ignore W0012 W0040
 -moduledoc """
-gRPC client module.
+Basic gRPC request module.
 """.
 
 -export([

@@ -11,13 +11,13 @@
 
 -define(DEFAULT_GRPC_OPTS_CONVERTER,
     {temporal_sdk_proto_converter, {
-        %% default global codecs
+        %% default global payload codecs:
         [
             temporal_sdk_codec_payload_binary,
             temporal_sdk_codec_payload_json,
             temporal_sdk_codec_payload_erl
         ],
-        %% custom codecs defined per messages list
+        %% custom payload codecs defined per messages list:
         [
             {
                 %% failure codecs

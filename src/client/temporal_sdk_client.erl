@@ -1,10 +1,8 @@
 -module(temporal_sdk_client).
 -behaviour(gen_server).
 
-% elp:ignore W0012 W0040
--moduledoc """
-SDK gRPC client module.
-""".
+% elp:ignore W0012 W0040 E1599
+-moduledoc {file, "../../docs/client/-module.md"}.
 
 -export([
     request/5
@@ -24,6 +22,9 @@ SDK gRPC client module.
 -include("grpc.hrl").
 -include("proto.hrl").
 
+-doc """
+SDK gRPC client configuration options as a map.
+""".
 -type opts() :: #{
     adapter => temporal_sdk_grpc:adapter(),
     pool_size => pos_integer(),
@@ -34,6 +35,9 @@ SDK gRPC client module.
 }.
 -export_type([opts/0]).
 
+-doc """
+SDK gRPC client configuration options as a property list.
+""".
 -type user_opts() :: [
     {adapter, temporal_sdk_grpc:adapter()}
     | {pool_size, pos_integer()}
@@ -44,39 +48,94 @@ SDK gRPC client module.
 ].
 -export_type([user_opts/0]).
 
+-doc """
+Temporal API gRPC service type specification.
+For example: 'temporal.api.workflowservice.v1.RegisterNamespaceRequest'().
+""".
+
 -type msg() :: temporal_msg().
 -export_type([msg/0]).
 
+-doc """
+Temporal API gRPC service name.
+For example: 'temporal.api.workflowservice.v1.RegisterNamespaceRequest'
+""".
 -type msg_name() :: temporal_msg_name().
 -export_type([msg_name/0]).
 
+-doc """
+gRPC request options.
+""".
 -type grpc_opts() :: temporal_sdk_grpc:opts().
 -export_type([grpc_opts/0]).
 
+-doc """
+gRPC request type.
+
+gRPC request types:
+- `call` - blocking request where response result is of type `t:call_result/0`,
+- `cast` - non-blocking "fire-and-forget" request where response is not returned,
+- `msg` - asynchronous request where response result is received as an OTP message.
+""".
 -type request_type() :: call | cast | msg.
 -export_type([request_type/0]).
 
+-doc """
+gRPC request common error.
+""".
 -type request_error() ::
     {error, timeout | {invalid_opts, Details :: term()} | invalid_cluster | invalid_request_type}.
 
+-doc """
+gRPC `call` request succesfull response result.
+""".
 -type call_result_success() :: {ok, dynamic()}.
 -export_type([call_result_success/0]).
 
+-doc """
+gRPC `call` request failed response result.
+""".
 -type call_result_error() :: temporal_sdk_grpc:result_error() | request_error().
 -export_type([call_result_error/0]).
 
+-doc """
+gRPC `call` request succesfull or failed response result.
+""".
 -type call_result() :: call_result_success() | call_result_error().
 -export_type([call_result/0]).
 
+-doc """
+gRPC `cast` request return result.
+""".
 -type cast_result() :: ok | request_error().
 -export_type([cast_result/0]).
 
+-doc """
+gRPC `msg` request return result.
+""".
 -type msg_result() :: reference() | request_error().
 -export_type([msg_result/0]).
 
+-doc """
+gRPC request response result or return result.
+""".
 -type result() :: call_result() | cast_result() | msg_result().
 -export_type([result/0]).
 
+-doc """
+SDK gRPC client request processing helper functions.
+""".
+-type helpers() :: #{
+    id => helpers_id_fun(),
+    identity => helpers_identity_fun(),
+    to_payload_mapper => to_payload_mapper(),
+    from_payload_mapper => from_payload_mapper(),
+    serializer => helpers_serializer_fun()
+}.
+
+-doc """
+SDK gRPC client helper function mapping Erlang term to Temporal payload.
+""".
 -type to_payload_mapper() :: fun(
     (
         Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -88,6 +147,9 @@ SDK gRPC client module.
 ).
 -export_type([to_payload_mapper/0]).
 
+-doc """
+SDK gRPC client helper function mapping from Temporal payload to Erlang term.
+""".
 -type from_payload_mapper() :: fun(
     (
         Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -99,33 +161,43 @@ SDK gRPC client module.
 ).
 -export_type([from_payload_mapper/0]).
 
--type helpers() :: #{
-    id => fun(
-        (
-            Cluster :: temporal_sdk_cluster:cluster_name(),
-            MsgName :: msg_name(),
-            IdKey :: term(),
-            Msg :: map()
-        ) -> unicode:chardata()
-    ),
-    identity => fun(
-        (
-            Cluster :: temporal_sdk_cluster:cluster_name(),
-            Id :: temporal_sdk:serializable(),
-            MsgName :: msg_name()
-        ) -> unicode:chardata()
-    ),
-    to_payload_mapper => to_payload_mapper(),
-    from_payload_mapper => from_payload_mapper(),
-    serializer => fun(
-        (
-            Cluster :: temporal_sdk_cluster:cluster_name(),
-            MsgName :: temporal_sdk_client:msg_name() | 'temporal.api.command.v1.*' | atom(),
-            Key :: term(),
-            Term :: temporal_sdk:serializable()
-        ) -> unicode:chardata()
-    )
-}.
+-doc """
+Function generating gRPC request identifiers.
+""".
+-type helpers_id_fun() :: fun(
+    (
+        Cluster :: temporal_sdk_cluster:cluster_name(),
+        MsgName :: msg_name(),
+        IdKey :: term(),
+        Msg :: map()
+    ) -> unicode:chardata()
+).
+-export_type([helpers_id_fun/0]).
+
+-doc """
+Function generating gRPC request worker/client identities.
+""".
+-type helpers_identity_fun() :: fun(
+    (
+        Cluster :: temporal_sdk_cluster:cluster_name(),
+        Id :: temporal_sdk:serializable(),
+        MsgName :: msg_name()
+    ) -> unicode:chardata()
+).
+-export_type([helpers_identity_fun/0]).
+
+-doc """
+Function serializing Erlang terms to Unicode characters.
+""".
+-type helpers_serializer_fun() :: fun(
+    (
+        Cluster :: temporal_sdk_cluster:cluster_name(),
+        MsgName :: temporal_sdk_client:msg_name() | 'temporal.api.command.v1.*' | atom(),
+        Key :: term(),
+        Term :: temporal_sdk:serializable()
+    ) -> unicode:chardata()
+).
+-export_type([helpers_serializer_fun/0]).
 
 -record(req_info, {
     from :: gen_server:from() | pid() | noreply,
@@ -149,8 +221,9 @@ SDK gRPC client module.
 -define(INTERNAL_REQUEST_MSG_TAG, temporal_sdk_internal_grpc_request).
 
 %% -------------------------------------------------------------------------------------------------
-%% public
+%% internal
 
+-doc false.
 -spec request
     (
         Cluster :: temporal_sdk_cluster:cluster_name(),
