@@ -5,6 +5,7 @@
 -module(temporal_sdk_proto_service_operator_strings).
 
 % elp:ignore W0012
+-moduledoc true.
 
 -compile([
     nowarn_shadow_vars,
