@@ -3,6 +3,18 @@ Updates the dynamic configuration of the rate limiter.
 Default values for the `limits` limiter levels are set to `#{}`, which means that setting
 `limits => #{}` will reset all rate limiter concurrency and fixed window limits.
 
+Task worker will not start new tasks until the new rate limiter limits, defined in the updated limiter
+configuration, are satisfied.
+For example, if the number of currently ongoing task executions exceeds the concurrency limits set by
+the new rate limiter configuration, new tasks will not be started until the overflow task executions
+are drained to meet the new limits.
+
+See also [SDK Samples repository](https://github.com/andrzej-mag/temporal_sdk_samples)
+rate limiter examples:
+
+- [Elixir](https://hexdocs.pm/temporal_sdk_samples/RateLimiter.html),
+- [Erlang](https://hexdocs.pm/temporal_sdk_samples/rate_limiter.html).
+
 Example:
 <!-- tabs-open -->
 ### Elixir

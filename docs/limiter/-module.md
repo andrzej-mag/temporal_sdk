@@ -11,18 +11,22 @@ OS rate limiting is controlled by OS resource usage, including memory, CPU load,
 Concurrency and fixed window rate limiting are controlled by the Temporal task execution counters.
 Leaky bucket rate limiting is controlled by task poll leak rates derived from user-provided configuration.
 
-Rate limiting is enforced by task worker task pollers and can limit task poll rates for all Temporal
-tasks polled from Temporal server:
+Rate limiter limits are checked and enforced during the following operations:
 
-- activity tasks, including regular, session, eager, and direct execution activity tasks,
-- workflow tasks, including eager, continued as new and child workflow tasks,
-- nexus tasks.
+- starting an eager workflow execution using `temporal_sdk:start_workflow/3` or
+  `temporal_sdk:start_workflow/4` with the `request_eager_execution` option set,
+- polling for a new task execution from the Temporal server by the task worker's task poller.
 
 Rate limiters can be used individually or in combination. When using concurrency and fixed window
 rate limiters in combination with a leaky bucket rate limiter, special attention is required as the
 functionality of these limiters may overlap.
 
-See also [SDK Architecture - Rate Limiting](architecture.md#rate-limiting) .
+See also:
+
+- [SDK Architecture - Rate Limiting](architecture.md#rate-limiting),
+- [SDK Samples repository](https://github.com/andrzej-mag/temporal_sdk_samples) rate limiter examples
+for [Elixir](https://hexdocs.pm/temporal_sdk_samples/RateLimiter.html) and
+[Erlang](https://hexdocs.pm/temporal_sdk_samples/rate_limiter.html).
 
 ## OS Rate Limiter
 
