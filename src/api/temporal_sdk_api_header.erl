@@ -12,9 +12,9 @@
 -include("proto.hrl").
 
 -spec put_sdk(
-    RequestWithMaybeUserHeader :: temporal_msg(),
+    RequestWithMaybeUserHeader :: temporal_sdk_client:msg(),
     SDKData :: temporal_sdk:term_to_mapstring_payload(),
-    MsgName :: temporal_msg_name(),
+    MsgName :: temporal_sdk_client:msg_name(),
     ApiCtx :: temporal_sdk_api:context()
 ) -> RequestWithSDKData :: map().
 put_sdk(#{header := #{fields := #{} = RHF}} = R, #{} = SDKD, MsgName, ApiCtx) when
@@ -36,7 +36,7 @@ do_map_to(SDKData, MsgName, ApiCtx) ->
 -spec get_sdk(
     DefaultSDKData :: map(),
     Task :: map(),
-    MsgName :: temporal_msg_name(),
+    MsgName :: temporal_sdk_client:msg_name(),
     ApiCtx :: temporal_sdk_api:context()
 ) -> {UserData :: #{header => temporal_sdk:term_from_mapstring_payload()}, SDKHeader :: map()}.
 get_sdk(DefaultSDK, Task, MsgName, ApiCtx) ->
@@ -49,7 +49,7 @@ get_sdk(DefaultSDK, Task, MsgName, ApiCtx) ->
 
 -spec get_sdk(
     Task :: map(),
-    MsgName :: temporal_msg_name(),
+    MsgName :: temporal_sdk_client:msg_name(),
     ApiCtx :: temporal_sdk_api:context()
 ) -> {UserHeader :: temporal_sdk:term_from_mapstring_payload(), SDKHeader :: map()}.
 get_sdk(Task, MsgName, ApiCtx) ->

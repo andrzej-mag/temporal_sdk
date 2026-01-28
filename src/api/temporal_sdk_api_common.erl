@@ -135,7 +135,7 @@ marker_decode_value({DM, DF}, Value) when is_atom(DM), is_atom(DF) -> DM:DF(Valu
     Opts :: proplists:proplist(),
     DefaultOpts :: temporal_sdk_utils_opts:defaults(),
     ServiceName :: temporal_sdk_api:temporal_service(),
-    MessageName :: temporal_msg_name()
+    MessageName :: temporal_sdk_client:msg_name()
 ) -> temporal_sdk:response().
 run_request(Cluster, Opts, DefaultOpts, ServiceName, MessageName) ->
     maybe
@@ -149,9 +149,9 @@ run_request(Cluster, Opts, DefaultOpts, ServiceName, MessageName) ->
     end.
 
 -spec format_response(
-    MessageName :: temporal_msg_name(),
+    MessageName :: temporal_sdk_client:msg_name(),
     ResponseType :: temporal_sdk:response_type(),
-    Response :: {ok, temporal_msg()} | {error, term()},
+    Response :: {ok, temporal_sdk_client:msg()} | {error, term()},
     ApiCtx :: temporal_sdk_api:context()
 ) -> temporal_sdk:response().
 format_response(MessageName, call_formatted, {ok, Response}, ApiCtx) ->
@@ -169,8 +169,8 @@ format_response(_MessageName, _Opts, Response, _ApiCtx) ->
     Response.
 
 -spec t2e(
-    MessageName :: temporal_msg_name(),
-    Message :: temporal_msg(),
+    MessageName :: temporal_sdk_client:msg_name(),
+    Message :: temporal_sdk_client:msg(),
     ApiCtx :: temporal_sdk_api:context()
 ) -> ConvertedMessage :: map().
 t2e(MessageName, Message, ApiCtx) when is_map(Message) ->

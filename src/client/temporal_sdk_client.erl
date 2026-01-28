@@ -49,18 +49,16 @@ SDK gRPC client configuration options as a property list.
 -export_type([user_opts/0]).
 
 -doc """
-Temporal API gRPC service type specification.
-For example: 'temporal.api.workflowservice.v1.RegisterNamespaceRequest'().
+Temporal API gRPC service message type specification.
 """.
 
--type msg() :: temporal_msg().
+-type msg() :: ?TEMPORAL_SPEC:'$msg'() | ?TEMPORAL_SPEC_OPERATOR:'$msg'().
 -export_type([msg/0]).
 
 -doc """
-Temporal API gRPC service name.
-For example: 'temporal.api.workflowservice.v1.RegisterNamespaceRequest'
+Temporal API gRPC service message name.
 """.
--type msg_name() :: temporal_msg_name().
+-type msg_name() :: ?TEMPORAL_SPEC:'$msg_name'() | ?TEMPORAL_SPEC_OPERATOR:'$msg_name'().
 -export_type([msg_name/0]).
 
 -doc """

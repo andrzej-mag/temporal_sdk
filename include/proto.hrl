@@ -4,12 +4,6 @@
 %% -define(TEMPORAL_SPEC, temporal_sdk_proto_service_workflow_strings).
 %% -define(TEMPORAL_SPEC_OPERATOR, temporal_sdk_proto_service_operator_strings).
 
-%% For example: 'temporal.api.workflowservice.v1.RegisterNamespaceRequest'()
--type temporal_msg() :: ?TEMPORAL_SPEC:'$msg'() | ?TEMPORAL_SPEC_OPERATOR:'$msg'().
-
-%% For example: 'temporal.api.workflowservice.v1.RegisterNamespaceRequest'
--type temporal_msg_name() :: ?TEMPORAL_SPEC:'$msg_name'() | ?TEMPORAL_SPEC_OPERATOR:'$msg_name'().
-
 %% -------------------------------------------------------------------------------------------------
 %% Temporal API Erlang SDK extensions
 
