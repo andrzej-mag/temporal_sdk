@@ -81,6 +81,14 @@ Example configuration above sets the following options for the `cluster_1` SDK c
 - nexus runtime task worker is started to poll Temporal server on `"nexus_tq"` nexus task queue,
 - workflow runtime task worker is started to poll Temporal server on `"workflow_tq"` workflow task queue.
 
+Multiple *virtual* SDK clusters can be configured, each with its own cluster-specific configuration,
+connecting to the same Temporal server.
+See [SDK samples repository](https://github.com/andrzej-mag/temporal_sdk_samples)
+Payload Converter sample for SDK virtual clusters example:
+
+- Elixir: [lib/payload_converter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/lib/payload_converter),
+- Erlang: [src/payload_converter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/src/payload_converter).
+
 ## Cluster-Specific Configuration
 
 **`enable_single_distributed_workflow_execution`** - enables single workflow execution per SDK
