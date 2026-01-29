@@ -86,9 +86,8 @@ Temporal API helpers.
 
 -define(LONGPOLL_SERVICES, [
     'PollActivityTaskQueue',
-    'PollWorkflowTaskQueue',
-    'PollWorkflowExecutionUpdate',
-    'PollNexusTaskQueue'
+    'PollNexusTaskQueue',
+    'PollWorkflowTaskQueue'
 ]).
 
 %% -------------------------------------------------------------------------------------------------
