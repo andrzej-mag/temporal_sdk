@@ -32,15 +32,15 @@ Add `temporal_sdk` to your application dependencies list:
 
 Configure `:cluster_1` [SDK cluster](https://hexdocs.pm/temporal_sdk/TemporalSdk.Cluster.html) with
 activity and workflow runtime [task workers](https://docs.temporal.io/workers) that poll for tasks
-from the `"default"` [task queue](https://docs.temporal.io/task-queue):
+from the `"default"` activity and workflow [task queues](https://docs.temporal.io/task-queue):
 
 ```elixir
 # config/config.exs
 config :temporal_sdk,
   clusters: [
     cluster_1: [
-      activities: [%{:task_queue => "default"}],
-      workflows: [%{:task_queue => "default"}]
+      activities: [[task_queue: "default"]],
+      workflows: [[task_queue: "default"]]
     ]
   ]
 ```
@@ -53,11 +53,12 @@ defmodule HelloWorld.Activity do
   use TemporalSdk.Activity
 
   @impl true
-  def execute(_context, [string]), do: [String.upcase(string)]
+  def execute(_context, [[string]]), do: [[String.upcase(string)]]
 end
 ```
 
-Implement Temporal [workflow definition](https://docs.temporal.io/workflow-definition):
+Implement Temporal [workflow definition](https://docs.temporal.io/workflow-definition) and a
+`start/0` helper function that starts and awaits the execution of `HelloWorld.Workflow` workflow:
 
 ```elixir
 # lib/hello_world_workflow.ex
@@ -66,8 +67,8 @@ defmodule HelloWorld.Workflow do
 
   @impl true
   def execute(_context, input) do
-    a1 = start_activity(HelloWorld.Activity, ["hello"])
-    a2 = start_activity(HelloWorld.Activity, ["world"])
+    a1 = start_activity(HelloWorld.Activity, [["hello"]])
+    a2 = start_activity(HelloWorld.Activity, [["world"]])
     [%{result: a1_result}, %{result: a2_result}] = wait_all([a1, a2])
     IO.puts("#{a1_result} #{a2_result} #{input} \n")
   end
@@ -75,7 +76,7 @@ defmodule HelloWorld.Workflow do
   def start do
     TemporalSdk.start_workflow(:cluster_1, "default", HelloWorld.Workflow, [
       :wait,
-      input: ["from Temporal"]
+      input: [["from Temporal"]]
     ])
   end
 end

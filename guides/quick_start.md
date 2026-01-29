@@ -48,8 +48,8 @@ Configure activity and workflow runtime [task workers](https://docs.temporal.io/
 config :temporal_sdk,
   clusters: [
     cluster_1: [
-      activities: [%{:task_queue => "default"}],
-      workflows: [%{:task_queue => "default"}]
+      activities: [[task_queue: "default"]],
+      workflows: [[task_queue: "default"]]
     ]
   ]
 ```
@@ -64,8 +64,9 @@ See: `m:TemporalSdk.Node`, `m:TemporalSdk.Cluster` and `m:TemporalSdk.Worker`
     {temporal_sdk, [
         {clusters, [
             {cluster_1, [
-                {activities, [#{task_queue => "default"}]},
-                {workflows, [#{task_queue => "default"}]}
+                {activities, [[{task_queue, "default"}]]},
+                {workflows, [[{task_queue, "default"}]]}
+
             ]}
         ]}
     ]}
@@ -88,7 +89,7 @@ defmodule HelloWorld.Activity do
   use TemporalSdk.Activity
 
   @impl true
-  def execute(_context, [string]), do: [String.upcase(string)]
+  def execute(_context, [[string]]), do: [[String.upcase(string)]]
 end
 ```
 
@@ -104,7 +105,7 @@ See: `m:TemporalSdk.Activity`
 
 -include_lib("temporal_sdk/include/activity.hrl").
 
-execute(_Context, [String]) -> [string:uppercase(String)].
+execute(_Context, [[String]]) -> [[string:uppercase(String)]].
 ```
 
 See: `m::temporal_sdk_activity`
@@ -124,8 +125,8 @@ defmodule HelloWorld.Workflow do
 
   @impl true
   def execute(_context, input) do
-    a1 = start_activity(HelloWorld.Activity, ["hello"])
-    a2 = start_activity(HelloWorld.Activity, ["world"])
+    a1 = start_activity(HelloWorld.Activity, [["hello"]])
+    a2 = start_activity(HelloWorld.Activity, [["world"]])
     [%{result: a1_result}, %{result: a2_result}] = wait_all([a1, a2])
     IO.puts("#{a1_result} #{a2_result} #{input} \n")
   end
@@ -133,7 +134,7 @@ defmodule HelloWorld.Workflow do
   def start do
     TemporalSdk.start_workflow(:cluster_1, "default", HelloWorld.Workflow, [
       :wait,
-      input: ["from Temporal"]
+      input: [["from Temporal"]]
     ])
   end
 end
@@ -152,14 +153,14 @@ See: `m:TemporalSdk.Workflow`
 -include_lib("temporal_sdk/include/workflow.hrl").
 
 execute(_Context, Input) ->
-    A1 = start_activity(hello_world_activity, ["hello"]),
-    A2 = start_activity(hello_world_activity, ["world"]),
+    A1 = start_activity(hello_world_activity, [[~b"hello"]]),
+    A2 = start_activity(hello_world_activity, [[~b"world"]]),
     [#{result := A1Result}, #{result := A2Result}] = wait_all([A1, A2]),
     io:fwrite("~s ~s ~s~n~n", [A1Result, A2Result, Input]).
 
 start() ->
     temporal_sdk:start_workflow(cluster_1, "default", hello_world_workflow, [
-        wait, {input, ["from Temporal"]}
+        wait, {input, [[~b"from Temporal"]]}
     ]).
 ```
 
