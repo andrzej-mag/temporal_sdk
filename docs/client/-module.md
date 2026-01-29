@@ -2,7 +2,7 @@ SDK gRPC client module.
 
 SDK gRPC client is a supervised gRPC connections pool that connects to the Temporal server
 [Frontend Service](https://docs.temporal.io/temporal-service/temporal-server#frontend-service)
-gRPC service handler port.
+gRPC service handler port (default 7233).
 Each [SDK cluster](`m:temporal_sdk_cluster`) owns its individual SDK gRPC client.
 
 ## SDK gRPC Client Configuration
@@ -11,14 +11,14 @@ Each [SDK cluster](`m:temporal_sdk_cluster`) owns its individual SDK gRPC client
 gRPC requests. Default: `{temporal_sdk_grpc_adapter_gun, []}`.
 
 **`pool_size`** - gRPC client connection pool size.
-When increasing the connection pool size, also consider increasing the OS file descriptor (FD) limits
-simultaneously.
+When increasing the connection pool size, also consider increasing the OS file descriptor (FD) limits.
 Default: `10`.
 
 **`pool_strategy`** - gRPC client connection pool strategy, one of: `round_robin` or `random`.
 Default: `round_robin`.
 
-**`grpc_opts`** - `t:temporal_sdk_grpc:opts/0` gRPC request options.
+**`grpc_opts`** - `t:temporal_sdk_grpc:opts/0` gRPC request options for all gRPC requests except
+long-poll gRPC requests.
 
 Default:
 
@@ -73,7 +73,6 @@ Temporal gRPC long-poll requests:
 
 - `PollActivityTaskQueue`,
 - `PollWorkflowTaskQueue`,
-- `PollWorkflowExecutionUpdate`,
 - `PollNexusTaskQueue`.
 
 Default value is the same as for the `grpc_opts` above, except for `timeout` and `retry_policy`
@@ -105,16 +104,21 @@ Default:
 
 **`id`** - `t:temporal_sdk_client:helpers_id_fun/0` function used to generate gRPC request
 identifiers.
+See `temporal_sdk_api:id/4` for the default SDK implementation.
 
 **`identity`** - `t:temporal_sdk_client:helpers_identity_fun/0` function used to generate gRPC
 request worker/client identities.
+See `temporal_sdk_api:identity/3` for the default SDK implementation.
 
 **`to_payload_mapper`** - `t:temporal_sdk_client:to_payload_mapper/0` function mapping Erlang term
 `t:temporal_sdk:term_to_payload/0` to Temporal payload `t:temporal_sdk:temporal_payload/0`.
+See `temporal_sdk_api:to_payload_mapper/5` for the default SDK implementation.
 
 **`from_payload_mapper`** - `t:temporal_sdk_client:from_payload_mapper/0` function mapping from
 Temporal payload `t:temporal_sdk:temporal_payload/0` to Erlang term
 `t:temporal_sdk:term_from_payload/0`.
+See `temporal_sdk_api:from_payload_mapper/5` for the default SDK implementation.
 
 **`serializer`** - `t:temporal_sdk_client:helpers_serializer_fun/0` function used to serialize
 Erlang terms to Unicode characters before sending them to the Temporal server.
+See `temporal_sdk_api:serializer/4` for the default SDK implementation.
