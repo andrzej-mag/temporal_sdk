@@ -68,15 +68,17 @@ Default:
 ]
 ```
 
-**`grpc_opts_longpoll`** - `t:temporal_sdk_grpc:opts/0` gRPC long-poll request options.
+**`grpc_opts_longpoll`** - `t:temporal_sdk_grpc:opts/0` overwrites for gRPC long-poll request options.
+Long-poll gRPC request options are evaluated by merging overwrites defined here with the values
+provided in the `grpc_opts`.
+
 Temporal gRPC long-poll requests:
 
 - `PollActivityTaskQueue`,
 - `PollWorkflowTaskQueue`,
 - `PollNexusTaskQueue`.
 
-Default value is the same as for the `grpc_opts` above, except for `timeout` and `retry_policy`
-options:
+Default:
 
 ```erlang
 [

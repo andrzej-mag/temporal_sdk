@@ -81,10 +81,11 @@
     {ok, temporal_sdk_client:opts()} | {error, {invalid_opts, Reason :: term()}}.
 init_opts(Cluster, ClientOpts) ->
     case temporal_sdk_utils_opts:build(defaults(user_opts), ClientOpts) of
-        {ok, Opts} ->
-            persist_opts(Cluster, Opts),
-            persist_pool_strategy(Cluster, Opts),
-            {ok, Opts};
+        {ok, #{grpc_opts := GO, grpc_opts_longpoll := GOL} = Opts} ->
+            NewOpts = Opts#{grpc_opts_longpoll := maps:merge(GO, GOL)},
+            persist_opts(Cluster, NewOpts),
+            persist_pool_strategy(Cluster, NewOpts),
+            {ok, NewOpts};
         Err ->
             Err
     end.
@@ -106,19 +107,19 @@ defaults(grpc_opts) ->
         {interceptor, tuple, ?DEFAULT_GRPC_OPTS_INTERCEPTOR},
         {headers, map, ?DEFAULT_GRPC_OPTS_HEADERS, merge},
         {timeout, pos_integer, 5_000},
-        {retry_policy, map, ?DEFAULT_GRPC_OPTS_RETRY_POLICY, merge},
+        {retry_policy, [atom, map], ?DEFAULT_GRPC_OPTS_RETRY_POLICY, merge},
         {maximum_request_size, pos_integer, ?DEFAULT_GRPC_OPTS_MAXIMUM_REQUEST_SIZE}
     ];
 defaults(grpc_opts_longpoll) ->
     [
-        {converter, tuple, ?DEFAULT_GRPC_OPTS_CONVERTER},
-        {codec, tuple, ?DEFAULT_GRPC_OPTS_CODEC},
-        {compressor, tuple, ?DEFAULT_GRPC_OPTS_COMPRESSOR},
-        {interceptor, tuple, ?DEFAULT_GRPC_OPTS_INTERCEPTOR},
-        {headers, map, ?DEFAULT_GRPC_OPTS_HEADERS, merge},
+        {converter, tuple, '$_optional'},
+        {codec, tuple, '$_optional'},
+        {compressor, tuple, '$_optional'},
+        {interceptor, tuple, '$_optional'},
+        {headers, map, '$_optional'},
         {timeout, pos_integer, 70_000},
         {retry_policy, [atom, map], disabled},
-        {maximum_request_size, pos_integer, ?DEFAULT_GRPC_OPTS_MAXIMUM_REQUEST_SIZE}
+        {maximum_request_size, pos_integer, '$_optional'}
     ];
 defaults(helpers) ->
     [
