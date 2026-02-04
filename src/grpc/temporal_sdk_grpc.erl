@@ -1,9 +1,7 @@
 -module(temporal_sdk_grpc).
 
-% elp:ignore W0012 W0040
--moduledoc """
-Basic gRPC request module.
-""".
+% elp:ignore W0012 W0040 E1599
+-moduledoc {file, "../../docs/grpc/-module.md"}.
 
 -export([
     start_grpc/2,
@@ -20,35 +18,147 @@ Basic gRPC request module.
 
 -define(EVENT_ORIGIN, grpc).
 
+-doc """
+gRPC service message type specification.
+""".
 -type msg() :: dynamic().
 -export_type([msg/0]).
 
+-doc """
+gRPC service message name.
+""".
 -type msg_name() :: term().
 -export_type([msg_name/0]).
 
--type rpc_name() :: term().
--export_type([rpc_name/0]).
-
+-doc """
+gRPC service server/cluster name.
+""".
 -type cluster_name() :: atom().
 -export_type([cluster_name/0]).
 
+-doc """
+gRPC HTTP/2 adapter configuration.
+
+Adapter configuration is expressed as a tuple.
+The first tuple element is an HTTP/2 adapter module that implements the `m:temporal_sdk_grpc_adapter`
+behaviour.
+The second tuple element is an adapter configuration that is specific to that adapter.
+SDK provides two HTTP/2 adapter implementations, both based on the `m:gun` library:
+- `temporal_sdk_grpc_adapter_gun` (default),
+- `temporal_sdk_grpc_adapter_gun_pool`.
+""".
 -type adapter() :: {AdapterModule :: module(), AdapterConfig :: term()}.
 -export_type([adapter/0]).
 
--type converter() :: {ConverterModule :: module(), ConverterOpts :: term()}.
+-doc """
+Payload converter configuration.
+
+Payload converter configuration is defined as a tuple.
+Tuple first element is a payload converter module implementing `m:temporal_sdk_grpc_converter` behaviour.
+Tuple second element is a payload converter codecs configuration, see `t:converter_codecs/0`.
+SDK provides a built-in Temporal payload converter: `temporal_sdk_proto_converter`.
+""".
+-type converter() :: {ConverterModule :: module(), ConverterCodecs :: converter_codecs()}.
 -export_type([converter/0]).
 
+-doc """
+Payload converter codecs configuration.
+
+Payload converter codecs configuration can be expressed in two alternative ways:
+- as a list of default codecs that will be applied to all gRPC messages,
+- as a tuple containing two elements: a list of default codecs and a list of gRPC message-specific codecs.
+
+Codecs are applied in the order specified in the configuration list.
+""".
+-type converter_codecs() ::
+    {
+        ConverterDefaultCodecs :: converter_default_codecs(),
+        ConverterCustomCodecs :: converter_custom_codecs()
+    }
+    | ConverterDefaultCodecs :: converter_default_codecs().
+-export_type([converter_codecs/0]).
+
+-doc """
+Payload converter default codecs configuration.
+""".
+-type converter_default_codecs() :: [converter_codec()].
+
+-doc """
+Payload converter gRPC message-specific codecs configuration.
+""".
+-type converter_custom_codecs() :: [
+    {[converter_codec()], [MsgName :: atom() | {MsgName :: atom(), MsgKey :: atom()}]}
+].
+
+-doc """
+Payload converter codec configuration.
+
+Payload converter codec configuration can be expressed in two alternative ways:
+- as a codec module implementing the `m:temporal_sdk_codec_payload` behaviour,
+- as a tuple containing a codec module implementing the `m:temporal_sdk_codec_payload` behaviour, and
+  encode and decode operation options.
+
+SDK provides following built-in payload converter codecs:
+- `temporal_sdk_codec_payload_binary`,
+- `temporal_sdk_codec_payload_erl`,
+- `temporal_sdk_codec_payload_json`,
+- `temporal_sdk_codec_payload_text`.
+""".
+-type converter_codec() ::
+    Module :: module() | {Module :: module(), EncodeOpts :: term(), DecodeOpts :: term()}.
+-export_type([converter_codec/0]).
+
+-doc """
+gRPC Protocol Buffers (protobuf) codec.
+
+Codec configuration is expressed as a tuple.
+First tuple element is a codec module implementing `m:temporal_sdk_grpc_codec` behaviour.
+Second and third tuple elements are the encode and decode operation options respectively.
+SDK provides two built-in protobuf codecs:
+- `temporal_sdk_codec_binaries` (default),
+- `temporal_sdk_codec_strings`.
+""".
 -type codec() :: {Module :: module(), EncodeOpts :: term(), DecodeOpts :: term()}.
 -export_type([codec/0]).
 
+-doc """
+gRPC compressor configuration.
+
+Compressor configuration is expressed as a tuple.
+First tuple element is a compressor module implementing `m:temporal_sdk_grpc_compressor` behaviour.
+Second and third tuple elements are the compress and decompress operation options respectively.
+SDK provides two built-in compressors:
+- `temporal_sdk_grpc_compressor_gzip`,
+- `temporal_sdk_grpc_compressor_identity` (default).
+""".
 -type compressor() ::
     {Module :: module(), CompressOpts :: term(), DecompressOpts :: term()}.
 -export_type([compressor/0]).
 
+-doc """
+gRPC interceptor configuration.
+
+Interceptor configuration is expressed as a tuple.
+First tuple element is a interceptor module implementing `m:temporal_sdk_grpc_interceptor` behaviour.
+Second and third tuple elements are the intercept request and response handler options respectively.
+SDK provides one built-in interceptor: `temporal_sdk_grpc_interceptor_identity`.
+""".
 -type interceptor() :: {
     Module :: module(), HandleRequestOpts :: term(), HandleResponseOpts :: term()
 }.
 -export_type([interceptor/0]).
+
+-doc """
+gRPC request retry policy.
+
+Retry policy is configured as a map with following configuration options:
+- `initial_interval` - amount of time that must elapse before the first retry occurs,
+- `backoff_coefficient` - value dictating how much the retry interval increases,
+- `maximum_interval` - specifies the maximum interval between retries,
+- `max_attempts` - specifies the maximum number of execution attempts that can be made in the presence
+  of failures,
+- `is_retryable` - function evaluating if given request failure is retryable.
+""".
 
 -type retry_policy() ::
     disabled
@@ -64,11 +174,17 @@ Basic gRPC request module.
     }.
 -export_type([retry_policy/0]).
 
+-doc """
+gRPC request HTTP/2 headers.
+""".
 -type headers() ::
     [{nonempty_binary() | string() | atom(), iodata()}]
     | #{nonempty_binary() | string() | atom() => iodata()}.
 -export_type([headers/0]).
 
+-doc """
+gRPC request options.
+""".
 -type opts() :: #{
     converter => converter(),
     codec => codec(),
@@ -81,15 +197,27 @@ Basic gRPC request module.
 }.
 -export_type([opts/0]).
 
--type result_success() :: {ok, ResponseMsg :: temporal_sdk_grpc:msg()}.
+-doc """
+Result of a successful gRPC request.
+""".
+-type result_success() :: {ok, ResponseMsg :: msg()}.
 -export_type([result_success/0]).
 
+-doc """
+Result of a failed gRPC request.
+""".
 -type result_error() :: {error, Reason :: term()}.
 -export_type([result_error/0]).
 
+-doc """
+Result of a gRPC request.
+""".
 -type result() :: result_success() | result_error().
 -export_type([result/0]).
 
+-doc """
+gRPC service info.
+""".
 -type request_info() ::
     #{
         type := request | response,
@@ -106,13 +234,15 @@ Basic gRPC request module.
 -export_type([request_info/0]).
 
 %% -------------------------------------------------------------------------------------------------
-%% public
+%% internal
 
+-doc false.
 -spec start_grpc(Cluster :: cluster_name(), Adapter :: adapter()) -> ok | {error, term()}.
 start_grpc(Cluster, {AdapterModule, AdapterConfig}) ->
     temporal_sdk_grpc_opts:init_opts(Cluster, AdapterModule),
     temporal_sdk_grpc_adapter:init_adapter(AdapterModule, Cluster, AdapterConfig).
 
+-doc false.
 -spec max_timeout(Opts :: opts()) -> pos_integer().
 max_timeout(#{
     timeout := Timeout,
@@ -140,6 +270,7 @@ max_timeout(#{
 max_timeout(#{timeout := Timeout, retry_policy := disabled}) ->
     Timeout.
 
+-doc false.
 -spec request(
     From :: erlang:send_destination() | noreply,
     Cluster :: cluster_name(),
@@ -166,18 +297,21 @@ request(From, _Cluster, _Msg, _Opts, _RequestInfo) ->
         From, {error, {invalid_opts, "Invalid <opts> or <request_info>."}}
     ).
 
+-doc false.
 -spec from_json(Json :: map(), MsgName :: msg_name(), Opts :: opts()) ->
     {ok, msg()} | {error, Reason :: term()}.
 from_json(Json, MsgName, Opts) ->
     #{codec := {Codec, _EncodeOpts, DecodeOpts}} = Opts,
     temporal_sdk_grpc_codec:from_json(Codec, Json, MsgName, DecodeOpts).
 
+-doc false.
 -spec to_json(Msg :: msg(), MsgName :: msg_name(), Opts :: opts()) ->
     {ok, map()} | {error, Reason :: term()}.
 to_json(Json, MsgName, Opts) ->
     #{codec := {Codec, EncodeOpts, _DecodeOpts}} = Opts,
     temporal_sdk_grpc_codec:to_json(Codec, Json, MsgName, EncodeOpts).
 
+-doc false.
 -spec convert_request(
     Cluster :: cluster_name(),
     Msg :: msg(),
@@ -199,6 +333,7 @@ convert_request(Cluster, Msg, MsgName, Opts) ->
     },
     temporal_sdk_grpc_converter:run(Cluster, Msg, RequestInfo, Opts).
 
+-doc false.
 -spec convert_response(
     Cluster :: cluster_name(),
     Msg :: msg(),

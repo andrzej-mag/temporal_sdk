@@ -2,7 +2,7 @@
 
 % elp:ignore W0012 W0040
 -moduledoc """
-gRPC client codec behaviour module.
+gRPC Protocol Buffers (protobuf) codec behaviour module.
 """.
 
 -export([

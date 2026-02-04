@@ -2,7 +2,7 @@
 
 % elp:ignore W0012 W0040
 -moduledoc """
-gRPC client converter behaviour module.
+gRPC payload converter behaviour module.
 """.
 
 -export([

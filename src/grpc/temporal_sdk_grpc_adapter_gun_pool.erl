@@ -3,7 +3,7 @@
 
 % elp:ignore W0012 W0040
 -moduledoc """
-gRPC client adapter using `m:gun_pool`.
+gRPC HTTP/2 adapter implementation using `m:gun_pool`.
 """.
 
 -export([

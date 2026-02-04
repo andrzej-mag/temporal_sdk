@@ -2,7 +2,7 @@
 
 % elp:ignore W0012 W0040
 -moduledoc """
-gRPC client adapter behaviour module.
+gRPC HTTP/2 adapter behaviour module.
 """.
 
 -export([

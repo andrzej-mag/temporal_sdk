@@ -2,7 +2,7 @@
 
 % elp:ignore W0012 W0040
 -moduledoc """
-gRPC client interceptor behaviour module.
+gRPC interceptor behaviour module.
 """.
 
 -export([

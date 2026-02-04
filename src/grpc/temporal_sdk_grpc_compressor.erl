@@ -2,7 +2,7 @@
 
 % elp:ignore W0012 W0040
 -moduledoc """
-gRPC client compressor behaviour module.
+gRPC compressor behaviour module.
 """.
 
 -export([
