@@ -142,19 +142,6 @@ defmodule TemporalSdk.MixProject do
         :temporal_sdk_telemetry,
         :temporal_sdk_worker
       ],
-      API: [
-        :temporal_sdk_api,
-        :temporal_sdk_api_workflow_check,
-        :temporal_sdk_api_workflow_check_strict
-      ],
-      "gRPC protocol": [
-        :temporal_sdk_codec_payload,
-        :temporal_sdk_proto,
-        :temporal_sdk_proto_service_operator_binaries,
-        :temporal_sdk_proto_service_operator_strings,
-        :temporal_sdk_proto_service_workflow_binaries,
-        :temporal_sdk_proto_service_workflow_strings
-      ],
       "gRPC client": [
         :temporal_sdk_client,
         :temporal_sdk_grpc,
@@ -165,6 +152,19 @@ defmodule TemporalSdk.MixProject do
         :temporal_sdk_grpc_compressor,
         :temporal_sdk_grpc_converter,
         :temporal_sdk_grpc_interceptor
+      ],
+      "gRPC protocol": [
+        :temporal_sdk_codec_payload,
+        :temporal_sdk_proto,
+        :temporal_sdk_proto_service_operator_binaries,
+        :temporal_sdk_proto_service_operator_strings,
+        :temporal_sdk_proto_service_workflow_binaries,
+        :temporal_sdk_proto_service_workflow_strings
+      ],
+      API: [
+        :temporal_sdk_api,
+        :temporal_sdk_api_workflow_check,
+        :temporal_sdk_api_workflow_check_strict
       ]
     ]
 
