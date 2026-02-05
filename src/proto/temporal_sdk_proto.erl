@@ -15,12 +15,12 @@ Temporal gRPC services module.
 -type service_info() :: #{
     content_type := binary(),
     input :=
-        temporal_sdk_proto_service_workflow_strings:'$msg_name'()
-        | temporal_sdk_proto_service_operator_strings:'$msg_name'(),
+        temporal_sdk_proto_service_workflow_binaries:'$msg_name'()
+        | temporal_sdk_proto_service_operator_binaries:'$msg_name'(),
     input_stream := boolean(),
     output :=
-        temporal_sdk_proto_service_workflow_strings:'$msg_name'()
-        | temporal_sdk_proto_service_operator_strings:'$msg_name'(),
+        temporal_sdk_proto_service_workflow_binaries:'$msg_name'()
+        | temporal_sdk_proto_service_operator_binaries:'$msg_name'(),
     output_stream := boolean(),
     msg_type := binary(),
     name := atom(),
