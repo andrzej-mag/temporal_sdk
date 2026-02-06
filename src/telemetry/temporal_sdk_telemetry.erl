@@ -122,8 +122,8 @@ events() ->
         [temporal_sdk, workflow, execution, stop],
         [temporal_sdk, workflow, execution, exception],
         %% temporal_sdk_client
+        [temporal_sdk, client, init],
         [temporal_sdk, client, start],
-        [temporal_sdk, client, stop],
         [temporal_sdk, client, exception],
         %% temporal_sdk_grpc
         [temporal_sdk, grpc, start],

@@ -251,9 +251,37 @@ Example measurements:
 
 ## gRPC Client - `m:temporal_sdk_client`
 
-- [temporal_sdk, client, start]
-- [temporal_sdk, client, stop]
-- [temporal_sdk, client, exception]
+### `[temporal_sdk, client, init]`
+
+Emitted when the SDK gRPC client supervisor is initialized.
+
+**Metadata**
+
+- `cluster` - cluster name `t:temporal_sdk_cluster:cluster_name/0`
+- `opts` - user-provided SDK gRPC client configuration options
+
+<hr>
+
+### `[temporal_sdk, client, start]`
+
+Emitted when the SDK gRPC client supervisor has been successfully initialized and is started.
+
+**Metadata**
+
+- `cluster` - cluster name `t:temporal_sdk_cluster:cluster_name/0`
+- `opts` - parsed SDK gRPC client configuration options
+
+<hr>
+
+### `[temporal_sdk, client, exception]`
+
+Emitted when the SDK gRPC client supervisor fails to start.
+
+**Metadata**
+
+- `cluster` - cluster name `t:temporal_sdk_cluster:cluster_name/0`
+- `opts` - user-provided SDK gRPC client configuration options
+- `error` - reason for failure
 
 ## gRPC Request - `m:temporal_sdk_grpc`
 
