@@ -104,15 +104,18 @@ Default:
 
 ## gRPC Helpers
 
-**`id`** - `t:temporal_sdk_client:helpers_id_fun/0` function used to generate gRPC request
+SDK gRPC client gRPC helpers functions must be implemented as non-raising and non-blocking functions.
+Violating this requirement will cause SDK failures or unexpected behavior.
+
+**`id`** - `t:temporal_sdk_client:helpers_id_fun/0` function used to generate Temporal API gRPC request
 identifiers.
 See `temporal_sdk_api:id/4` for the default SDK implementation.
 
-**`identity`** - `t:temporal_sdk_client:helpers_identity_fun/0` function used to generate gRPC
-request worker/client identities.
+**`identity`** - `t:temporal_sdk_client:helpers_identity_fun/0` function used to generate Temporal API
+gRPC request worker or client identities.
 See `temporal_sdk_api:identity/3` for the default SDK implementation.
 
-**`to_payload_mapper`** - `t:temporal_sdk_client:to_payload_mapper/0` function mapping Erlang term
+**`to_payload_mapper`** - `t:temporal_sdk_client:to_payload_mapper/0` function mapping from Erlang term
 `t:temporal_sdk:term_to_payload/0` to Temporal payload `t:temporal_sdk:temporal_payload/0`.
 See `temporal_sdk_api:to_payload_mapper/5` for the default SDK implementation.
 
