@@ -285,9 +285,41 @@ Emitted when the SDK gRPC client supervisor fails to start.
 
 ## gRPC Request - `m:temporal_sdk_grpc`
 
-- [temporal_sdk, grpc, start]
-- [temporal_sdk, grpc, stop]
-- [temporal_sdk, grpc, exception]
+### `[temporal_sdk, grpc, start]`
+
+Emitted when a gRPC request starts.
+
+**Metadata**
+
+- `cluster` - cluster name `t:temporal_sdk_cluster:cluster_name/0`
+- `request_name` - Temporal gRPC request service name `t:temporal_sdk_proto:service/0`
+
+<hr>
+
+### `[temporal_sdk, grpc, stop]`
+
+Emitted when a gRPC request stops.
+
+**Metadata**
+
+- `cluster` - cluster name `t:temporal_sdk_cluster:cluster_name/0`
+- `request_name` - Temporal gRPC request service name `t:temporal_sdk_proto:service/0`
+- `endpoint` - the gRPC service endpoint that processed the given request,
+  for example: `<<"127.0.0.1:7233">>`
+
+<hr>
+
+### `[temporal_sdk, grpc, exception]`
+
+Emitted when a gRPC request fails.
+
+**Metadata**
+
+- `cluster` - cluster name `t:temporal_sdk_cluster:cluster_name/0`
+- `request_name` - Temporal gRPC request service name `t:temporal_sdk_proto:service/0`
+- `endpoint` - the gRPC service endpoint that processed the given request, set to `undefined` if
+  endpoint is unknown
+- `error` - reason for failure
 
 ## Task Counters - `m:temporal_sdk_limiter`
 
