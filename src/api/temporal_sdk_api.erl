@@ -1,22 +1,20 @@
 -module(temporal_sdk_api).
 
-% elp:ignore W0012 W0040
--moduledoc """
-Temporal API helpers.
-""".
+% elp:ignore W0012 W0040 E1599
+-moduledoc {file, "../../docs/api/-module.md"}.
 
 %% public SDK functions:
 -export([
     request/3,
-    request/5,
-    from_json/3,
-    from_json/4,
-    to_json/3,
-    to_json/4
+    request/5
 ]).
 %% public internal functions:
 -export([
     request/4,
+    from_json/3,
+    from_json/4,
+    to_json/3,
+    to_json/4,
     map_from_payload/4,
     map_from_payloads/4,
     map_from_mapstring_payload/4,
@@ -93,6 +91,7 @@ Temporal API helpers.
 %% -------------------------------------------------------------------------------------------------
 %% public SDK functions
 
+-doc {file, "../../docs/api/request-3.md"}.
 -spec request(
     ServiceName :: temporal_service(),
     Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -101,6 +100,7 @@ Temporal API helpers.
 request(ServiceName, Cluster, Msg) ->
     request(ServiceName, Cluster, Msg, call, #{}).
 
+-doc {file, "../../docs/api/request-5.md"}.
 -spec request
     (
         ServiceName :: temporal_service(),
@@ -150,6 +150,7 @@ request(ServiceName, Cluster, Msg, ReqType, EnvGrpcOpts) ->
         Err -> Err
     end.
 
+-doc false.
 -spec from_json(
     MsgName :: temporal_sdk_client:msg_name(),
     Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -158,6 +159,7 @@ request(ServiceName, Cluster, Msg, ReqType, EnvGrpcOpts) ->
     {ok, Msg :: temporal_sdk_client:msg()} | {error, Reason :: term()}.
 from_json(MsgName, Cluster, JsonBin) -> from_json(MsgName, Cluster, JsonBin, #{}).
 
+-doc false.
 -spec from_json(
     MsgName :: temporal_sdk_client:msg_name(),
     Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -175,6 +177,7 @@ from_json(MsgName, Cluster, JsonBin, EnvGrpcOpts) ->
         Err -> Err
     end.
 
+-doc false.
 -spec to_json(
     MsgName :: temporal_sdk_client:msg_name(),
     Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -184,6 +187,7 @@ from_json(MsgName, Cluster, JsonBin, EnvGrpcOpts) ->
 to_json(MsgName, Cluster, Message) ->
     to_json(MsgName, Cluster, Message, #{}).
 
+-doc false.
 -spec to_json(
     MsgName :: temporal_sdk_client:msg_name(),
     Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -453,6 +457,29 @@ serialize_term(Term) ->
 %% -------------------------------------------------------------------------------------------------
 %% callback functions referenced in `temporal_sdk_client:opts` and `temporal_sdk_worker:opts`
 
+-doc """
+Generates Temporal API gRPC request identifier.
+
+Returns the Temporal API gRPC request identifier as a string generated from:
+- the cluster name,
+- optionally, the activity or workflow type,
+- and a UUID4.
+
+Function used as a default value in the
+[SDK gRPC client gRPC helpers](`m:temporal_sdk_client#module-grpc-helpers`)
+`id` configuration option.
+
+Example:
+```erlang
+1> temporal_sdk_api:id(
+    cluster_1,
+    'temporal.api.workflowservice.v1.StartWorkflowExecutionRequest',
+    request_id,
+    #{workflow_type => #{name => "test_workflow"}}
+   ).
+"cluster_1-test_workflow-b6a1141b-3193-4008-b9c3-c0327015bb3e"
+```
+""".
 -spec id(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     MsgName :: temporal_sdk_client:msg_name(),
@@ -466,6 +493,27 @@ id(Cluster, _MsgName, _IdKey, #{workflow_type := #{name := Name}}) ->
 id(Cluster, _MsgName, _IdKey, _Msg) ->
     temporal_sdk_utils_path:string_path([Cluster, temporal_sdk_utils:uuid4()], "-").
 
+-doc """
+Generates Temporal API gRPC request worker and client identities.
+
+Returns the Temporal API gRPC request worker or client identity as a string generated from:
+- the hostname, obtained by calling: `{ok, Hostname} = inet:gethostname()`,
+- the Erlang node name, obtained by calling: `node()`,
+- the cluster name,
+- the local worker or client identity.
+
+Function used as a default value in the
+[SDK gRPC client gRPC helpers](`m:temporal_sdk_client#module-grpc-helpers`)
+`identity` configuration option.
+
+Example:
+```erlang
+1> temporal_sdk_api:identity(
+    cluster_1, 'temporal.api.workflowservice.v1.PollWorkflowTaskQueueRequest', [w1, workflow, 1]
+   ).
+"hostname/nonode@nohost/cluster_1/w1/workflow/1"
+```
+""".
 -spec identity(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     MsgName :: temporal_sdk_client:msg_name(),
@@ -487,6 +535,14 @@ is_retryable({error, {no_connection_available, _}}, _RequestInfo, _Attempt) ->
 is_retryable(_Result, _RequestInfo, _Attempt) ->
     false.
 
+-doc """
+Mapping from Temporal payload `t:temporal_sdk:temporal_payload/0` to Erlang term
+`t:temporal_sdk:term_from_payload/0`.
+
+Function used as a default value in the
+[SDK gRPC client gRPC helpers](`m:temporal_sdk_client#module-grpc-helpers`)
+`from_payload_mapper` configuration option.
+""".
 -spec from_payload_mapper(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     MsgName :: temporal_sdk_client:msg_name(),
@@ -496,6 +552,14 @@ is_retryable(_Result, _RequestInfo, _Attempt) ->
 ) -> Arg :: temporal_sdk:term_from_payload().
 from_payload_mapper(_Cluster, _MsgName, _Key, _Position, #{data := Data}) -> Data.
 
+-doc """
+Mapping from Erlang term `t:temporal_sdk:term_to_payload/0` to Temporal payload
+`t:temporal_sdk:temporal_payload/0`.
+
+Function used as a default value in the
+[SDK gRPC client gRPC helpers](`m:temporal_sdk_client#module-grpc-helpers`)
+`to_payload_mapper` configuration option.
+""".
 -spec to_payload_mapper(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     MsgName :: temporal_sdk_client:msg_name(),
@@ -505,6 +569,13 @@ from_payload_mapper(_Cluster, _MsgName, _Key, _Position, #{data := Data}) -> Dat
 ) -> Payload :: temporal_sdk:temporal_payload().
 to_payload_mapper(_Cluster, _MsgName, _Key, _Position, Data) -> #{data => Data}.
 
+-doc """
+Serializes Erlang terms to Unicode characters before sending them to the Temporal server.
+
+Function used as a default value in the
+[SDK gRPC client gRPC helpers](`m:temporal_sdk_client#module-grpc-helpers`)
+`serializer` configuration option.
+""".
 -spec serializer(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     MsgName :: temporal_sdk_client:msg_name(),
