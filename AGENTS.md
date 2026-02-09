@@ -24,17 +24,22 @@ The Temporal SDK is a framework for authoring workflows and activities using Erl
 ├── guides/                 # SDK user guides files
 ├── include/                # Erlang include files
 ├── lib/                    # Elixir syntactic wrapper SDK implementation
+├── proto/                  # Temporal API Github repository as a submodule
 ├── src/                    # Erlang core SDK implementation
-│   ├── node/               # SDK node implementation
 │   ├── api/                # API definitions and interfaces
 │   ├── client/             # gRPC client implementation
 │   ├── cluster/            # SDK cluster management
-│   ├── executor/           # Temporal workflow, activity and nexus execution logic
+│   ├── codec/              # Temporal payload codec
+│   ├── executor/           # Temporal activity, nexus and workflow task executors
 │   ├── grpc/               # gRPC communication layer
+│   ├── limiter/            # concurency, fixed window and OS rate limiters
+│   ├── node/               # SDK node implementation
 │   ├── poller/             # Polling mechanisms for task queues
 │   ├── proto/              # Temporal API protocol buffer definitions
 │   ├── scope/              # SDK scoping mechanisms
 │   ├── telemetry/          # Telemetry collection and reporting
+│   ├── temporal_sdk/       # SDK user interface
+│   ├── utils/              # Utilities
 │   └── worker/             # Temporal workers management
 ├── test/                   # Erlang eunit tests
 ├── test_ex/                # Elixir wrapper ExUnit tests
@@ -43,21 +48,22 @@ The Temporal SDK is a framework for authoring workflows and activities using Erl
 ├── rebar.config            # Rebar3 project configuration
 ├── README.md               # Project README documentation
 ├── AGENTS.md               # This file - guidance for AI agents
-└── .gitignore              # Files and directories to ignore
+└── .gitignore              # Files and directories to git-ignore
 ```
 
 ## CORE COMPONENTS
 
 - **Elixir Wrapper**: Elixir syntactic sugar in `lib/` directory
 - **Core Implementation**: Erlang-based implementation in `src/` directory
-- **API Layer**: Contains the core API definitions in `src/api/`
+- **Temporal API Layer**: Contains the core Temporal API definitions in `src/api/`
 - **Execution Engine**: Temporal workflow, activity and nexus execution logic in `src/executor/`
 - **Communication**: gRPC layer in `src/grpc/` for interacting with Temporal server
 - **Workers**: Temporal task workers management in `src/worker/`
-- **Cluster Management**: SDK cluster management in `src/cluster/`
+- **SDK Node Management**: SDK node management in `src/node/`
+- **SDK Cluster Management**: SDK cluster management in `src/cluster/`
 - **Polling**: Task queue polling mechanisms in `src/poller/`
 - **Protocol Buffers**: Temporal API protocol buffer definitions in `src/proto/`
-- **Telemetry**: Metrics, logs, and traces collection in `src/telemetry/`
+- **Telemetry**: Telemetry in `src/telemetry/`
 
 ## TEMPORAL CONCEPTS TO UNDERSTAND
 
