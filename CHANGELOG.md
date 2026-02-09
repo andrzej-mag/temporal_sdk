@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.1.15](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.14..v0.1.15) - 2026-02-09
+
+### 🚀 Features
+
+- [**breaking**] Improve temporal_sdk_client grpc_opts_longpoll handling - ([e861d94](https://github.com/andrzej-mag/temporal_sdk/commit/e861d94d72aa0146ee0b2b58d771f71bc5381601))
+- Add temporal_sdk_cluster virtual cluster docs - ([5ca9d4c](https://github.com/andrzej-mag/temporal_sdk/commit/5ca9d4c12f16d10de584e03e4b14fd1f20596459))
+- Add nexus for [temporal_sdk, cluster, stats] telemetry event - ([2c61715](https://github.com/andrzej-mag/temporal_sdk/commit/2c61715bc54831a42169e8c2bd7c6a60d19f9cff))
+
+### 🐛 Bug Fixes
+
+- Fix temporal_sdk_proto service_info typespecs - ([0547921](https://github.com/andrzej-mag/temporal_sdk/commit/05479217fbd1cef6ac299968dfebaf901054388d))
+- Fix gRPC long-poll services list - ([9ef9084](https://github.com/andrzej-mag/temporal_sdk/commit/9ef9084df51c7c75b2e8220b98218bb6ed6a697f))
+- Erlang-Elixir docs interop plumbing - ([885bbad](https://github.com/andrzej-mag/temporal_sdk/commit/885bbad42e77a0cd0494c23faeb0dabba0b15184))
+
+### 📚 Documentation
+
+- Add temporal_sdk_telemetry gRPC request events docs - ([4d6d876](https://github.com/andrzej-mag/temporal_sdk/commit/4d6d87635f1ae41706bd006a608e7b2496ed914f))
+- Add temporal_sdk_telemetry SDK gRPC client events docs - ([4afcbcf](https://github.com/andrzej-mag/temporal_sdk/commit/4afcbcf16bbc348a5be83276b3be177aa8edbf38))
+- Add temporal_sdk_api docs - ([974ebc9](https://github.com/andrzej-mag/temporal_sdk/commit/974ebc9313505813a913e25c6c49f250eed3e6bf))
+- Improve temporal_sdk_grpc docs - ([02b7008](https://github.com/andrzej-mag/temporal_sdk/commit/02b70081912b4392bd64dbfb457fbe7ac3aaad5a))
+- Improve temporal_sdk_cluster docs - ([312f5fa](https://github.com/andrzej-mag/temporal_sdk/commit/312f5fa3745d18e9cc2de3556a0b6cda9c509d2f))
+- Improve temporal_sdk_client docs - ([a7acc70](https://github.com/andrzej-mag/temporal_sdk/commit/a7acc700d8917dcfd6fb262cb4186324629f6632))
+- Improve module docs ordering - ([107fd15](https://github.com/andrzej-mag/temporal_sdk/commit/107fd155f484b9ccca75d077cf4671a11f208370))
+- Add temporal_sdk_grpc docs - ([61da7db](https://github.com/andrzej-mag/temporal_sdk/commit/61da7dbd68120b112ff8ae543845aa1bf7e2b920))
+- Improve quick start docs - ([2e52d2e](https://github.com/andrzej-mag/temporal_sdk/commit/2e52d2e555f840d44020acf897d0cc0c28e4ddcc))
+- Improve temporal_sdk_client docs - ([611e8f6](https://github.com/andrzej-mag/temporal_sdk/commit/611e8f6df0dbaa924ecb1aac2c1253a803411d63))
+- Improve rate limiter docs - ([93d510a](https://github.com/andrzej-mag/temporal_sdk/commit/93d510a26cde8f4f31db989cf7f6b34469bdb65c))
+- Fix missing temporal_sdk_proto_service_* docs - ([1fbf9b3](https://github.com/andrzej-mag/temporal_sdk/commit/1fbf9b301b236a195a0961868ec92f270cd451c1))
+- Improve Elixir/Erlang module docs layout - ([5270483](https://github.com/andrzej-mag/temporal_sdk/commit/527048331b67472e1c4fa911697acf5eb8ac28ed))
+- Add temporal_sdk_client docs - ([eabc91a](https://github.com/andrzej-mag/temporal_sdk/commit/eabc91a84f47becacc51d89ea9fe2fdb9815f9a4))
+- Improve temporal_sdk_cluster config example docs - ([1b40896](https://github.com/andrzej-mag/temporal_sdk/commit/1b4089645be2d6eb1135de02909b1c2bb019f547))
+- Add temporal_sdk_telemetry SDK cluster events docs - ([86b6fa3](https://github.com/andrzej-mag/temporal_sdk/commit/86b6fa3a0b187b4fee7f19c55917d16dbf300dab))
+- Update temporal_sdk_node docs - ([8659d23](https://github.com/andrzej-mag/temporal_sdk/commit/8659d23a7296a886dfd2dbc993dd138819307f84))
+- Add temporal_sdk_cluster functions docs - ([025002d](https://github.com/andrzej-mag/temporal_sdk/commit/025002d41fd737c8a49d782116fcdad3f4325bf6))
+- Improve temporal_sdk_cluster docs - ([3e908fb](https://github.com/andrzej-mag/temporal_sdk/commit/3e908fb4ce85ec074ec108a34bcd74974e72ba87))
+- Fix TemporalSdk.Utils docs - ([6b0d673](https://github.com/andrzej-mag/temporal_sdk/commit/6b0d673602fe1e92f3982e387bb772350c77ab4d))
+- Update temporal_sdk_cluster docs - ([61efe6a](https://github.com/andrzej-mag/temporal_sdk/commit/61efe6a88770f3d36a167038452098e03fd2d625))
+
+### ⚙️ Miscellaneous
+
+- Update AGENTS.md - ([28cc876](https://github.com/andrzej-mag/temporal_sdk/commit/28cc87661752e6a5ba3290c97ee8e7e5d733a257))
+- Remove redundant t:temporal_msg/0 and t:temporal_msg_name/0 - ([d365501](https://github.com/andrzej-mag/temporal_sdk/commit/d3655013e2050cb76383ac189470af3bb1abaea5))
+- Bump ex_doc version - ([837c50b](https://github.com/andrzej-mag/temporal_sdk/commit/837c50b5796832deb7e4910bf88013dd701f1333))
+
 ## [0.1.14](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.13..v0.1.14) - 2026-01-16
 
 ### 🐛 Bug Fixes
