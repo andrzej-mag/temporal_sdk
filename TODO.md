@@ -2,13 +2,13 @@ Add temporal_sdk_api_workflow_check_default deterministic check module inline wi
 
 Better "temporal_sdk_api_awaitable_index:merge_data/3": merge using `event_id` instead of `state` only.
 
-Update `gun`.
+Update `gun` version.
 
 Implement workflow updates and remaining workflow commands.
 
 Gradually add remaining Temporal services commands.
 
-Finalize `start_activity`: session_execution, direct_execution, direct_result.
+Finalize workflow command `start_activity`: session_execution, direct_execution, direct_result.
 
 Workflow query: add conventional handle and special `{query, QueryType}` info handler.
 
@@ -20,43 +20,19 @@ Implement Nexus.
 
 Implement Worker Versioning.
 
-Gradually add documentation.
-
 Implement in-SDK `temporal.api.enums.v1.WorkflowIdConflictPolicy` for child workflows.
-
-Gradually add more `temporal_sdk_samples`:
-
-* suggest_continue_as_new with activities
-* bench_activity
-* pubsub counter based on process groups
-* Phoenix LiveView pubsub
-* sharding Temporal
-* time skipping mock test
-* mock activity test
-* event iterator
-* limiters
-* benchmark dynamic task worker start/terminate
-* parallel executions
-* telemetry logs, metrics and traces/otel
-* TLS/mTLS config example
 
 Activity, workflow and nexus tasks: node_execution.
 
 Asynchronous activity completion by heartbeat.
 
-Testing:
-
-* recover tons of (currently offline) unit tests outdated/invalidated during numerous SDK refactors
-* add pending unit tests, including Elixir
-* add pending integration tests
-* add pending replay tests
-* add endpoint load balancing tests
-
 Add heartbeat throttle to activity executor.
 
-Finalize telemetry and metrics, logs and traces.
+Finalize telemetry.
 
-Activity, workflow and nexus tasks: opentelemetry context.
+Implement workflow flow opentelemetry tracing.
+
+Add temporal_sdk_prometheus metrics repository.
 
 Add ability to disable telemetry and otel in executors - important during user WF replay.
 
@@ -64,8 +40,16 @@ Add GitHub CI/CD (including ICLA signing automation?).
 
 Migrate currently private API proto generation app to public e-script, integrate with CI/CD.
 
-Add zstd (new in OTP 28) as a compressor to grpc client.
+Add zstd (new in OTP 28) as a compressor to grpc client if zstd supported by Temporal server.
 
 Add Gleam SDK syntactic wrapper if possible.
 
-Move pricing info from repo README to an external project website.
+Unit testing:
+
+* recover tons of (currently offline) unit tests outdated/invalidated during numerous SDK refactors
+* add pending unit tests, including Elixir
+* add pending integration tests
+* add pending replay tests
+* add endpoint load balancing tests
+
+Move pricing info from repository README to an external project website.
