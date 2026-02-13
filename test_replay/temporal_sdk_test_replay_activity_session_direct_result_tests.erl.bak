@@ -297,7 +297,7 @@ a_cancel_3_nde1() ->
     EFn = fun(_Context, _Input) ->
         A1 = start_activity(?A_TYPE, [], ?OPTS),
         A2 = start_activity(?A_TYPE, ["ok", 1_000], [{heartbeat_timeout, 1_000} | ?OPTS]),
-        [#{state := completed}, #{state := completed}] = wait(A1, A2)
+        [#{state := completed}, #{state := completed}] = wait_all([A1, A2])
     end,
     ?assertReplayMatch({error, _}, EFn, ?LPATH ++ [a_cancel_3]).
 
