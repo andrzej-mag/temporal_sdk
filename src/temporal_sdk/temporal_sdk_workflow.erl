@@ -162,7 +162,7 @@
 -type start_execution_opts() :: [
     {execution_id, execution_id()}
     | {awaitable_id, awaitable_id()}
-    | {awaitable_event, [cmd | close]}
+    | {awaitable_event, cmd | close}
     | {wait, boolean()}
     | wait
 ].
@@ -202,7 +202,7 @@
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.command.v1.ScheduleActivityTaskCommandAttributes'()}
     | {awaitable_id, awaitable_id()}
-    | {awaitable_event, [cmd | cancel_request | result | schedule | start | close]}
+    | {awaitable_event, cmd | cancel_request | result | schedule | start | close}
     | {wait, boolean()}
     | wait
     | {direct_execution, boolean()}
@@ -243,7 +243,7 @@
     | {header, temporal_sdk:term_to_mapstring_payload()}
     %% SDK
     | {awaitable_id, awaitable_id()}
-    | {awaitable_event, [cmd | value | close]}
+    | {awaitable_event, cmd | value | close}
     | {wait, boolean()}
     | wait
     | {type, temporal_sdk:convertable()}
@@ -265,7 +265,7 @@
     {timer_id, atom() | unicode:chardata()}
     %% SDK
     | {awaitable_id, awaitable_id()}
-    | {awaitable_event, [cmd | cancel_request | close]}
+    | {awaitable_event, cmd | cancel_request | close}
     | {wait, boolean()}
     | wait
 ].
@@ -293,7 +293,7 @@
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.command.v1.ScheduleActivityTaskCommandAttributes'()}
     | {awaitable_id, awaitable_id()}
-    | {awaitable_event, [cmd | initiate | start | close]}
+    | {awaitable_event, cmd | initiate | start | close}
     | {wait, boolean()}
     | wait
 ].
@@ -309,7 +309,7 @@
     %% map<string, string> nexus_header = 6;
     %% SDK options
     | {awaitable_id, awaitable_id()}
-    | {awaitable_event, [cmd | cancel_request | close]}
+    | {awaitable_event, cmd | cancel_request | close}
     | {wait, boolean()}
     | wait
 ].
@@ -333,7 +333,7 @@
 -type admit_signal_opts() :: [
     {details, term()}
     %% SDK options
-    | {awaitable_event, [request | admit | close]}
+    | {awaitable_event, request | admit | close}
     | {wait, boolean()}
     | wait
 ].
@@ -348,7 +348,7 @@
         temporal_sdk:application_failure()
         | temporal_sdk:user_application_failure()}
     %% SDK options
-    | {awaitable_event, [request | response | close]}
+    | {awaitable_event, request | response | close}
     | {wait, boolean()}
     | wait
 ].
@@ -1733,7 +1733,7 @@ cancel_activity(#{state := _} = ActivityData) ->
     ActivityOrActivityData :: activity() | activity_data(),
     Opts ::
         [
-            {awaitable_event, [cmd | cancel_request | result | schedule | start | close]}
+            {awaitable_event, cmd | cancel_request | result | schedule | start | close}
             | {wait, boolean()}
             | wait
         ]
@@ -1893,7 +1893,7 @@ cancel_timer(TimerId) ->
     TimerOrTimerDataOrTimerId :: timer() | timer_data() | unicode:chardata() | atom(),
     Opts ::
         [
-            {awaitable_event, [cmd | cancel_request | result | schedule | start | close]}
+            {awaitable_event, cmd | cancel_request | result | schedule | start | close}
             | {wait, boolean()}
             | wait
         ]
@@ -2053,7 +2053,7 @@ modify_workflow_properties(UpsertedMemoFields) ->
 -doc #{group => "Temporal commands"}.
 -spec modify_workflow_properties(
     UpsertedMemoFields :: temporal_sdk:term_to_mapstring_payload(),
-    Opts :: [{awaitable_event, [cmd | close]} | {wait, boolean()} | wait]
+    Opts :: [{awaitable_event, cmd | close} | {wait, boolean()} | wait]
 ) ->
     workflow_properties() | workflow_properties_data() | no_return().
 modify_workflow_properties(UpsertedMemoFields, Opts) ->
