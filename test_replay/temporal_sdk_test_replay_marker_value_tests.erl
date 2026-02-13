@@ -48,6 +48,7 @@ base() ->
     EFn = fun(_Context, _Input) ->
         M = record_marker(?MFn, ?OPTS),
         #{value := ?DATA} = wait(M),
+        % eqwalizer:ignore
         #{value := ?DATA} = wait(setelement(1, M, marker))
     end,
     ?assertReplayEqualF({completed, []}, EFn, ?LPATH).

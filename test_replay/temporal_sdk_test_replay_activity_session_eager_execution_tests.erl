@@ -270,10 +270,14 @@ a_cancel_1() ->
 a_cancel_2() ->
     EFn = fun(_Context, _Input) ->
         A = start_activity(?A_TYPE, ["ok", 10_000], [{heartbeat_timeout, 1_000} | ?OPTS]),
+        % eqwalizer:ignore
         #{state := cmd} = wait(setelement(1, A, activity_cmd)),
+        % eqwalizer:ignore
         #{state := cmd} = wait(setelement(1, A, activity_cmd), 100),
+        % eqwalizer:ignore
         #{state := scheduled} = wait(setelement(1, A, activity_schedule), 100),
         {noevent, #{state := scheduled}} = await(A, 100),
+        % eqwalizer:ignore
         #{state := scheduled} = wait(setelement(1, A, activity_schedule)),
         cancel_activity(A),
         #{state := canceled} = wait(A)
@@ -285,7 +289,9 @@ a_cancel_3() ->
         A1 = start_activity(?A_TYPE, [], ?OPTS),
         A2 = start_activity(?A_TYPE, ["ok", 10_000], [{heartbeat_timeout, 1_000} | ?OPTS]),
         [#{state := completed}, #{state := scheduled}] = wait_all([
-            A1, setelement(1, A2, activity_schedule)
+            A1,
+            % eqwalizer:ignore
+            setelement(1, A2, activity_schedule)
         ]),
         cancel_activity(A2),
         #{state := canceled} = wait(A2)
