@@ -1,3 +1,7 @@
+Finalize telemetry.
+
+Implement workflow execution eviction.
+
 Add temporal_sdk_api_workflow_check_default deterministic check module inline with other SDKs behaviour.
 
 Better "temporal_sdk_api_awaitable_index:merge_data/3": merge using `event_id` instead of `state` only.
@@ -28,11 +32,9 @@ Asynchronous activity completion by heartbeat.
 
 Add heartbeat throttle to activity executor.
 
-Finalize telemetry.
-
 Implement workflow flow opentelemetry tracing.
 
-Add temporal_sdk_prometheus metrics repository.
+Add temporal_sdk_prometheus/otel metrics repository.
 
 Add ability to disable telemetry and otel in executors - important during user WF replay.
 
