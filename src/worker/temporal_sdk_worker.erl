@@ -48,7 +48,8 @@
             | limiter_time_windows_workflow()
             | limiter_time_windows_session()
             | limiter_time_windows_nexus(),
-        telemetry_poll_interval => temporal_sdk:time()
+        telemetry_poll_interval => temporal_sdk:time(),
+        disable_telemetry => boolean()
     }.
 -export_type([opts/0]).
 
@@ -78,6 +79,8 @@
             | user_limiter_time_windows_session()
             | user_limiter_time_windows_nexus()}
         | {telemetry_poll_interval, temporal_sdk:time()}
+        | {disable_telemetry, boolean()}
+        | disable_telemetry
     ].
 -export_type([user_opts/0]).
 

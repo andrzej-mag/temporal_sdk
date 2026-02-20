@@ -71,7 +71,7 @@ init([ApiContext, LimiterCounters, PollCounter, WorkerSupPid, W]) ->
             task_poller_limiter := TaskPollerLimiter,
             limits := Limits,
             limiter_check_frequency := LimiterCheckFrequency
-        },
+        } = WorkerOpts,
         worker_type := WorkerType
     } = ApiContext,
     ProcLabel = temporal_sdk_utils_path:string_path([?MODULE, Cluster, WorkerType, WorkerId, W]),
@@ -79,6 +79,21 @@ init([ApiContext, LimiterCounters, PollCounter, WorkerSupPid, W]) ->
 
     TaskExecInterval = task_exec_interval(TaskPollerLimiter),
     Backoff = max(TaskExecInterval, 1),
+
+    EvMetadata =
+        case WorkerOpts of
+            #{disable_telemetry := true} ->
+                #{disable_telemetry => true};
+            #{} ->
+                #{
+                    cluster => Cluster,
+                    namespace => Namespace,
+                    task_queue => TQ,
+                    worker_type => WorkerType,
+                    poller_id => [WorkerSupPid, W],
+                    worker_id => WorkerId
+                }
+        end,
 
     StateData = #state{
         %% --------------- input
@@ -97,14 +112,7 @@ init([ApiContext, LimiterCounters, PollCounter, WorkerSupPid, W]) ->
         %% task_poll_status = undefined
         %% task_execute_status = undefined
         %% --------------- telemetry
-        ev_metadata = #{
-            cluster => Cluster,
-            namespace => Namespace,
-            task_queue => TQ,
-            worker_type => WorkerType,
-            poller_id => [WorkerSupPid, W],
-            worker_id => WorkerId
-        }
+        ev_metadata = EvMetadata
         %% ev_poll_at = 0
         %% ev_wait_at = 0
     },
@@ -332,7 +340,12 @@ ev_origin() -> ?EVENT_ORIGIN.
 
 ev_metadata(StateData) ->
     Metadata = StateData#state.ev_metadata,
-    Metadata#{
-        task_poll_status => StateData#state.task_poll_status,
-        task_execute_status => StateData#state.task_execute_status
-    }.
+    case Metadata of
+        #{disable_telemetry := true} ->
+            #{disable_telemetry => true};
+        #{} ->
+            Metadata#{
+                task_poll_status => StateData#state.task_poll_status,
+                task_execute_status => StateData#state.task_execute_status
+            }
+    end.

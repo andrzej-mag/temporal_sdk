@@ -199,7 +199,8 @@ gRPC request options.
     timeout => non_neg_integer(),
     retry_policy => retry_policy(),
     headers => headers(),
-    maximum_request_size => pos_integer()
+    maximum_request_size => pos_integer(),
+    disable_telemetry => boolean()
 }.
 -export_type([opts/0]).
 
@@ -420,10 +421,11 @@ update_interval(Interval, BackoffCoefficient, MaximumInterval) ->
 ) ->
     result().
 do_request(Cluster, Msg0, Opts, RequestInfo) ->
-    Metadata = #{
-        cluster => Cluster,
-        request_name => map_get(name, RequestInfo)
-    },
+    Metadata =
+        case Opts of
+            #{disable_telemetry := true} -> #{disable_telemetry => true};
+            #{} -> #{cluster => Cluster, request_name => map_get(name, RequestInfo)}
+        end,
     T = ?EV(Metadata, [start]),
     maybe
         %% request preparation

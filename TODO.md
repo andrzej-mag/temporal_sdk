@@ -36,8 +36,6 @@ Implement workflow flow opentelemetry tracing.
 
 Add temporal_sdk_prometheus/otel metrics repository.
 
-Add ability to disable telemetry and otel in executors - important during user WF replay.
-
 Add GitHub CI/CD (including ICLA signing automation?).
 
 Migrate currently private API proto generation app to public e-script, integrate with CI/CD.

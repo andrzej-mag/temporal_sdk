@@ -101,6 +101,26 @@ init([ApiContext, Task, TaskMod]) ->
 
     SdkData = temporal_sdk_api_nexus_task:fetch_header_sdk_data(Task),
 
+    EvMetadata =
+        case WorkerOpts of
+            #{disable_telemetry := true} ->
+                #{disable_telemetry => true};
+            #{} ->
+                #{
+                    cluster => Cluster,
+                    worker_id => WorkerId,
+                    namespace => Namespace,
+                    task_queue => TaskQueue,
+                    service => Service,
+                    operation => Operation,
+
+                    worker_identity => WorkerIdentity,
+                    task_module => TaskMod,
+
+                    scheduled_time => temporal_sdk_utils_time:protobuf_to_nanos(ScheduledTime)
+                }
+        end,
+
     SD = #state{
         %% --------------- input
         api_ctx = ApiContext,
@@ -122,19 +142,7 @@ init([ApiContext, Task, TaskMod]) ->
         %% --------------- telemetry
         %% started_at = 0
         otel_ctx = maps:get(otel_context, SdkData, #{}),
-        ev_metadata = #{
-            cluster => Cluster,
-            worker_id => WorkerId,
-            namespace => Namespace,
-            task_queue => TaskQueue,
-            service => Service,
-            operation => Operation,
-
-            worker_identity => WorkerIdentity,
-            task_module => TaskMod,
-
-            scheduled_time => temporal_sdk_utils_time:protobuf_to_nanos(ScheduledTime)
-        }
+        ev_metadata = EvMetadata
     },
     T = ?EV(SD, [executor, start]),
     ?EV(SD, [task, start]),
@@ -457,4 +465,8 @@ fetch_task_timeout(#{task_settings := #{task_timeout_ratio := Ratio}}, Task) ->
 ev_origin() -> ?EVENT_ORIGIN.
 
 ev_metadata(StateData) ->
-    maps:merge(StateData#state.ev_metadata, build_handler_context(StateData)).
+    Metadata = StateData#state.ev_metadata,
+    case Metadata of
+        #{disable_telemetry := true} -> #{disable_telemetry => true};
+        #{} -> maps:merge(Metadata, build_handler_context(StateData))
+    end.

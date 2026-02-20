@@ -234,6 +234,30 @@ init([ApiContext, Task, CallerPid]) ->
     RunTimeout = fetch_run_timeout(WorkerOpts, Task),
     TaskTimeout = fetch_task_timeout(WorkerOpts, Task),
 
+    EvMetadata =
+        case WorkerOpts of
+            #{disable_telemetry := true} ->
+                #{disable_telemetry => true};
+            #{} ->
+                #{
+                    cluster => Cluster,
+                    worker_id => WorkerId,
+                    namespace => Namespace,
+                    task_queue => TaskQueue,
+                    workflow_type => WorkflowType,
+                    workflow_id => WorkflowId,
+                    workflow_run_id => RunId,
+
+                    worker_identity => WorkerIdentity,
+                    execution_module => ExecutionModule,
+
+                    scheduled_time => ScheduledTime,
+                    started_time => StartedTime,
+
+                    executor_pid => self()
+                }
+        end,
+
     SD = #state{
         %% --------------- input
         api_ctx = ApiContext,
@@ -290,23 +314,7 @@ init([ApiContext, Task, CallerPid]) ->
         %% --------------- telemetry
         %% started_at = 0
         otel_ctx = OtelCtx,
-        ev_metadata = #{
-            cluster => Cluster,
-            worker_id => WorkerId,
-            namespace => Namespace,
-            task_queue => TaskQueue,
-            workflow_type => WorkflowType,
-            workflow_id => WorkflowId,
-            workflow_run_id => RunId,
-
-            worker_identity => WorkerIdentity,
-            execution_module => ExecutionModule,
-
-            scheduled_time => ScheduledTime,
-            started_time => StartedTime,
-
-            executor_pid => self()
-        }
+        ev_metadata = EvMetadata
     },
     T = ?EV(SD, [executor, start]),
     ?EV(SD, [task, start]),
@@ -2335,6 +2343,7 @@ ev_origin() -> ?EVENT_ORIGIN.
 ev_metadata(StateData) ->
     Metadata = StateData#state.ev_metadata,
     case Metadata of
+        #{disable_telemetry := true} -> #{disable_telemetry => true};
         #{closing_state := _} -> Metadata#{workflow_info => get_workflow_info(StateData)};
         #{} -> Metadata
     end.

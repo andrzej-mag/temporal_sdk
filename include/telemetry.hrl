@@ -6,19 +6,30 @@
 end).
 
 -define(EV(StateData, Event),
-    temporal_sdk_telemetry:execute(
-        [ev_origin() | Event], ev_metadata(StateData)
-    )
+    case ev_metadata(StateData) of
+        #{disable_telemetry := true} -> erlang:system_time();
+        #{} -> temporal_sdk_telemetry:execute([ev_origin() | Event], ev_metadata(StateData))
+    end
 ).
 
 -define(EV(StateData, Event, MeasurementsOrStartTime),
-    temporal_sdk_telemetry:execute(
-        [ev_origin() | Event], ev_metadata(StateData), MeasurementsOrStartTime
-    )
+    case ev_metadata(StateData) of
+        #{disable_telemetry := true} ->
+            ok;
+        #{} ->
+            temporal_sdk_telemetry:execute(
+                [ev_origin() | Event], ev_metadata(StateData), MeasurementsOrStartTime
+            )
+    end
 ).
 
 -define(EV(StateData, Event, StartTime, MeasurementsOrException),
-    temporal_sdk_telemetry:execute(
-        [ev_origin() | Event], ev_metadata(StateData), StartTime, MeasurementsOrException
-    )
+    case ev_metadata(StateData) of
+        #{disable_telemetry := true} ->
+            ok;
+        #{} ->
+            temporal_sdk_telemetry:execute(
+                [ev_origin() | Event], ev_metadata(StateData), StartTime, MeasurementsOrException
+            )
+    end
 ).

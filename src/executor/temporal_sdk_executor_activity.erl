@@ -145,6 +145,33 @@ init([ApiContext, Task, WorkflowExecutorPid]) ->
             #{} -> otel_ctx:new()
         end,
 
+    EvMetadata =
+        case WorkerOpts of
+            #{disable_telemetry := true} ->
+                #{disable_telemetry => true};
+            #{} ->
+                #{
+                    cluster => Cluster,
+                    worker_id => WorkerId,
+                    namespace => Namespace,
+                    workflow_namespace => WorkflowNamespace,
+                    task_queue => TaskQueue,
+                    workflow_type => WorkflowType,
+                    activity_type => ActivityType,
+                    activity_id => ActivityId,
+
+                    worker_identity => WorkerIdentity,
+                    execution_module => ExecutionModule,
+
+                    attempt => Attempt,
+                    scheduled_time => temporal_sdk_utils_time:protobuf_to_nanos(ScheduledTime),
+                    current_attempt_scheduled_time => temporal_sdk_utils_time:protobuf_to_nanos(
+                        CurrentAttemptScheduledTime
+                    ),
+                    started_time => temporal_sdk_utils_time:protobuf_to_nanos(StartedTime)
+                }
+        end,
+
     SD = #state{
         %% --------------- input
         api_ctx = ApiContext,
@@ -173,26 +200,7 @@ init([ApiContext, Task, WorkflowExecutorPid]) ->
         %% --------------- telemetry
         %% started_at = 0
         otel_ctx = OtelCtx,
-        ev_metadata = #{
-            cluster => Cluster,
-            worker_id => WorkerId,
-            namespace => Namespace,
-            workflow_namespace => WorkflowNamespace,
-            task_queue => TaskQueue,
-            workflow_type => WorkflowType,
-            activity_type => ActivityType,
-            activity_id => ActivityId,
-
-            worker_identity => WorkerIdentity,
-            execution_module => ExecutionModule,
-
-            attempt => Attempt,
-            scheduled_time => temporal_sdk_utils_time:protobuf_to_nanos(ScheduledTime),
-            current_attempt_scheduled_time => temporal_sdk_utils_time:protobuf_to_nanos(
-                CurrentAttemptScheduledTime
-            ),
-            started_time => temporal_sdk_utils_time:protobuf_to_nanos(StartedTime)
-        }
+        ev_metadata = EvMetadata
     },
     T = ?EV(SD, [executor, start]),
     ?EV(SD, [task, start]),
@@ -821,4 +829,8 @@ get_task_schedule_to_close_timeout(
 ev_origin() -> ?EVENT_ORIGIN.
 
 ev_metadata(StateData) ->
-    maps:merge(StateData#state.ev_metadata, build_handler_context(StateData)).
+    Metadata = StateData#state.ev_metadata,
+    case Metadata of
+        #{disable_telemetry := true} -> #{disable_telemetry => true};
+        #{} -> maps:merge(Metadata, build_handler_context(StateData))
+    end.

@@ -133,8 +133,9 @@ defaults(worker_opts, session) ->
         {task_poller_limiter, nested, defaults(task_poller_limiter, session)},
         {limits, nested, defaults(limits, session)},
         {limiter_check_frequency, pos_integer, 500},
-        {limiter_time_windows, nested, defaults(limiter_time_windows, session)}
+        {limiter_time_windows, nested, defaults(limiter_time_windows, session)},
         %% {telemetry_poll_interval, time, 10_000}
+        {disable_telemetry, boolean, '$_optional'}
     ];
 defaults(worker_opts, WorkerType) ->
     [
@@ -151,7 +152,8 @@ defaults(worker_opts, WorkerType) ->
         {limits, nested, defaults(limits, WorkerType)},
         {limiter_check_frequency, pos_integer, 500},
         {limiter_time_windows, nested, defaults(limiter_time_windows, WorkerType)},
-        {telemetry_poll_interval, time, 10_000}
+        {telemetry_poll_interval, time, 10_000},
+        {disable_telemetry, boolean, '$_optional'}
     ];
 defaults(task_settings, activity) ->
     [
