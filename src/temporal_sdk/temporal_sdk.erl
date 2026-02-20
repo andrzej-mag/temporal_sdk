@@ -326,6 +326,7 @@
             | malformed_history
             | invalid_cluster
             | {invalid_opts, map()}
+            | {nondeterministic, map()}
             | term()}.
 -export_type([replay_json_ret/0]).
 
@@ -453,6 +454,7 @@ replay_json(Cluster, WorkflowMod, Json, Opts) ->
         {ok, JsonBinary} ?= temporal_sdk_utils_unicode:characters_to_binary(Json),
         {ok, Pid, Timeout} ?= do_replay_workflow(Cluster, WorkflowMod, JsonBinary, Opts),
         receive
+            {?TEMPORAL_SDK_REPLAY_TAG, {error, {error, Err, _StackTrace}}} -> {error, Err};
             {?TEMPORAL_SDK_REPLAY_TAG, {error, Err}} -> {error, Err};
             {?TEMPORAL_SDK_REPLAY_TAG, Result} -> {ok, Result}
         after Timeout ->
