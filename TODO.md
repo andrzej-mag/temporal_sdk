@@ -6,6 +6,8 @@ Add temporal_sdk_api_workflow_check_default deterministic check module inline wi
 
 Better "temporal_sdk_api_awaitable_index:merge_data/3": merge using `event_id` instead of `state` only.
 
+Rename temporal_sdk_workflow await/wait "one" to "any".
+
 Update `gun` version.
 
 Implement workflow updates and remaining workflow commands.
