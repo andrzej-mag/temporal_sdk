@@ -441,7 +441,7 @@ get_workflow_state(Cluster, WorkflowExecution, Opts) ->
     Json :: unicode:chardata()
 ) -> replay_json_ret().
 replay_json(Cluster, WorkflowMod, Json) ->
-    replay_json(Cluster, WorkflowMod, Json, [{worker_opts, []}]).
+    replay_json(Cluster, WorkflowMod, Json, [{worker_opts, [{disable_telemetry, true}]}]).
 
 -spec replay_json(
     Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -466,11 +466,16 @@ replay_json(Cluster, WorkflowMod, Json, Opts) ->
     end.
 
 do_replay_workflow(Cluster, WorkflowMod, JsonBinary, Opts) ->
+    WO =
+        case proplists:is_defined(worker_id, Opts) of
+            true -> '$_optional';
+            false -> [{disable_telemetry, true}]
+        end,
     DefaultOpts = [
         {timeout, [infinity, non_neg_integer], infinity},
         {grpc_opts, map, #{}},
         {worker_id, [atom, unicode], '$_optional'},
-        {worker_opts, [list, map], '$_optional'}
+        {worker_opts, [list, map], WO}
     ],
     maybe
         {ok, #{grpc_opts := GrpcOpts, timeout := Timeout} = O} ?=
@@ -524,7 +529,7 @@ w_opts_replay_wf(_Opts, _Cluster, Task) ->
     replay_json_ret()
     | {error, Reason :: file:posix() | badarg | terminated | system_limit}.
 replay_file(Cluster, WorkflowMod, Filename) ->
-    replay_file(Cluster, WorkflowMod, Filename, [{worker_opts, []}]).
+    replay_file(Cluster, WorkflowMod, Filename, [{worker_opts, [disable_telemetry]}]).
 
 -spec replay_file(
     Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -564,7 +569,7 @@ replay_task(Cluster, TaskQueue, WorkflowType, WorkflowMod) ->
 replay_task(Cluster, TaskQueue, WorkflowType, WorkflowMod, Opts) ->
     DefaultOpts = [
         {start_workflow_opts, list, [await]},
-        {replay_workflow_opts, list, [{worker_opts, []}]},
+        {replay_workflow_opts, list, [{worker_opts, [disable_telemetry]}]},
         {history_file, [boolean, atom, unicode], false},
         {history_file_write_modes, list, []}
     ],
