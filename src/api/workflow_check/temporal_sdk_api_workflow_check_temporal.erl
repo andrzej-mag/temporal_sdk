@@ -8,7 +8,6 @@
     is_deterministic/4
 ]).
 
--doc false.
 is_deterministic(
     {ActualAwaitable, #{event_id := EventId, state := ActualState}},
     {ReceivedAwaitable, #{event_id := EventId, state := ReceivedState}},
