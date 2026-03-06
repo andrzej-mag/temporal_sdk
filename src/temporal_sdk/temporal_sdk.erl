@@ -454,9 +454,19 @@ replay_json(Cluster, WorkflowMod, Json, Opts) ->
         {ok, JsonBinary} ?= temporal_sdk_utils_unicode:characters_to_binary(Json),
         {ok, Pid, Timeout} ?= do_replay_workflow(Cluster, WorkflowMod, JsonBinary, Opts),
         receive
-            {?TEMPORAL_SDK_REPLAY_TAG, {error, {error, Err, _StackTrace}}} -> {error, Err};
-            {?TEMPORAL_SDK_REPLAY_TAG, {error, Err}} -> {error, Err};
-            {?TEMPORAL_SDK_REPLAY_TAG, Result} -> {ok, Result}
+            {?TEMPORAL_SDK_REPLAY_TAG, {error, {error, Err, _StackTrace}}} ->
+                case Err of
+                    {error, #{reason := nondeterministic} = E} ->
+                        {error, {nondeterministic, maps:without([reason], E)}};
+                    #{reason := nondeterministic} = E ->
+                        {error, {nondeterministic, maps:without([reason], E)}};
+                    E ->
+                        {error, E}
+                end;
+            {?TEMPORAL_SDK_REPLAY_TAG, {error, Err}} ->
+                {error, Err};
+            {?TEMPORAL_SDK_REPLAY_TAG, Result} ->
+                {ok, Result}
         after Timeout ->
             exit(Pid, timeout),
             {error, timeout}

@@ -14,10 +14,20 @@
     set_event/2,
     to_event/2,
     to_key/1,
-    transit/3,
     is_closed/2,
     is_ready/2,
-    merge_data/3,
+
+    tstc/3,
+    tste/3,
+    tstn/3,
+    tstx/3,
+
+    merge_data_cmd/3,
+    merge_data_event/3,
+    merge_data_event_nocmd/3,
+    merge_data_ext/3,
+    merge_data_event_id/4,
+
     from_event/5,
     from_poll/2
 ]).
@@ -219,136 +229,6 @@ to_key({query, N}) -> {query, N};
 %% invalid
 to_key(_Invalid) -> invalid_pattern.
 
-%% Function counts only commands closings and non-deadlocking cancelations.
-%% Commands openings are counted with temporal_sdk_api_command:awaitable_command_count/1.
-%% Deadlocking cancelation commands are counted with temporal_sdk_executor_workflow:do_cmds/5.
-%% Additionally there are exceptions in temporal_sdk_api_awaitable_index_table:upsert_and_count/2.
--spec transit(
-    AwaitableType :: atom(),
-    OldData :: temporal_sdk_workflow:awaitable_index_data() | noevent,
-    NewData :: temporal_sdk_workflow:awaitable_data()
-) -> 1 | 0 | invalid.
-%
-transit(execution, noevent, #{state := cmd}) -> 0;
-transit(execution, #{state := cmd}, #{state := started}) -> 0;
-transit(execution, #{state := started}, #{state := started}) -> 0;
-transit(execution, #{state := started}, #{state := completed}) -> 0;
-transit(execution, #{state := completed}, #{state := completed}) -> 0;
-%
-transit(activity, noevent, #{state := cmd}) -> 0;
-transit(activity, #{state := cmd}, #{state := cmd, cancel_requested := true}) -> 0;
-transit(activity, #{state := cmd, event_id := A}, #{state := cmd, event_id := B}) when B > A -> 0;
-transit(activity, #{state := cmd}, #{state := scheduled}) -> 0;
-transit(activity, #{state := cmd, direct_execution := true}, #{result := _}) -> 0;
-transit(activity, #{state := cmd, direct_execution := true}, #{last_failure := _}) -> 0;
-transit(activity, #{state := scheduled}, #{state := scheduled, cancel_requested := true}) -> 0;
-transit(activity, #{state := scheduled}, #{state := started}) -> 0;
-transit(activity, #{state := scheduled}, #{state := canceled}) -> 1;
-transit(activity, #{state := scheduled, direct_execution := true}, #{result := _}) -> 0;
-transit(activity, #{state := scheduled, direct_execution := true}, #{last_failure := _}) -> 0;
-transit(activity, #{state := started}, #{state := started, cancel_requested := true}) -> 0;
-transit(activity, #{state := started}, #{state := completed}) -> 1;
-transit(activity, #{state := started}, #{state := canceled}) -> 1;
-transit(activity, #{state := started}, #{state := failed}) -> 1;
-transit(activity, #{state := started}, #{state := timedout}) -> 1;
-transit(activity, #{state := started, direct_execution := true}, #{result := _}) -> 0;
-transit(activity, #{state := started, direct_execution := true}, #{last_failure := _}) -> 0;
-transit(activity, #{state := completed}, #{state := cmd}) -> 0;
-transit(activity, #{state := canceled}, #{state := cmd}) -> 0;
-transit(activity, #{state := failed}, #{state := cmd}) -> 0;
-transit(activity, #{state := timedout}, #{state := cmd}) -> 0;
-%
-%% Message markers are excepted in temporal_sdk_api_awaitable_index_table:upsert_and_count/2.
-transit(marker, #{state := cmd}, #{state := cmd, mutable := true, value := _}) -> 0;
-transit(marker, #{state := cmd}, #{state := cmd, mutable := true}) -> invalid;
-transit(marker, noevent, #{state := cmd}) -> 0;
-transit(marker, #{state := cmd}, #{state := cmd}) -> 0;
-transit(marker, #{state := cmd}, #{state := recorded}) -> 0;
-transit(marker, #{state := recorded}, #{state := cmd}) -> 0;
-transit(marker, #{state := recorded, event_id := _}, #{state := recorded, event_id := _}) -> 0;
-%
-transit(timer, noevent, #{state := cmd}) -> 0;
-transit(timer, #{state := cmd}, #{state := cmd}) -> 0;
-transit(timer, #{state := cmd}, #{state := started}) -> 0;
-transit(timer, #{state := started}, #{state := started, cancel_requested := true}) -> 0;
-transit(timer, #{state := started}, #{state := fired}) -> 1;
-%% 'COMMAND_TYPE_CANCEL_TIMER' is deadlocking
-transit(timer, #{state := started}, #{state := canceled}) -> 0;
-transit(timer, #{state := fired}, #{state := cmd}) -> 0;
-transit(timer, #{state := canceled}, #{state := cmd}) -> 0;
-%
-%% Temporal server allows multiple open child workflow executions with the same child workflow id.
-%% Erlang SDK doesn't allow duplicate open child workflow executions with the same workflow id.
-%% Starting a child workflow with the same workflow id (and the same type) as already opened child
-%% workflow will cause parent workflow execution failure. Such behavior corresponds to the
-%% StartWorkflowExecutionRequest behavior set with <workflow_id_conflict_policy> to
-%% WORKFLOW_ID_CONFLICT_POLICY_FAIL. This is default behavior of regular workflows.
-%% Using temporal.api.enums.v1.WorkflowIdConflictPolicy is not supported by Temporal server for
-%% child workflows.
-%% Additionally above behavior is consistent with activities behavior: workflow execution fails on
-%% duplicate activity id for open activities.
-transit(child_workflow, noevent, #{state := cmd}) -> 0;
-transit(child_workflow, #{state := cmd}, #{state := initiated}) -> 0;
-transit(child_workflow, #{state := initiated}, #{state := initiate_failed}) -> 1;
-transit(child_workflow, #{state := initiated}, #{state := started}) -> 0;
-transit(child_workflow, #{state := started}, #{state := completed}) -> 1;
-transit(child_workflow, #{state := started}, #{state := failed}) -> 1;
-transit(child_workflow, #{state := started}, #{state := canceled}) -> 1;
-transit(child_workflow, #{state := started}, #{state := timedout}) -> 1;
-transit(child_workflow, #{state := started}, #{state := terminated}) -> 1;
-transit(child_workflow, #{state := initiate_failed}, #{state := cmd}) -> 0;
-transit(child_workflow, #{state := completed}, #{state := cmd}) -> 0;
-transit(child_workflow, #{state := failed}, #{state := cmd}) -> 0;
-transit(child_workflow, #{state := canceled}, #{state := cmd}) -> 0;
-transit(child_workflow, #{state := timedout}, #{state := cmd}) -> 0;
-transit(child_workflow, #{state := terminated}, #{state := cmd}) -> 0;
-%
-transit(nexus, noevent, #{state := cmd}) -> 0;
-transit(nexus, #{state := cmd}, #{state := cmd}) -> 0;
-transit(nexus, #{state := cmd}, #{state := scheduled}) -> 0;
-transit(nexus, #{state := scheduled}, #{state := scheduled, cancel_requested := true}) -> 0;
-transit(nexus, #{state := scheduled}, #{state := started}) -> 0;
-transit(nexus, #{state := started}, #{state := started, cancel_requested := true}) -> 0;
-transit(nexus, #{state := started}, #{state := completed}) -> 1;
-transit(nexus, #{state := started}, #{state := canceled}) -> 1;
-transit(nexus, #{state := completed}, #{state := cmd}) -> 0;
-transit(nexus, #{state := canceled}, #{state := cmd}) -> 0;
-%
-transit(workflow_properties, noevent, #{state := cmd}) -> 0;
-transit(workflow_properties, #{state := cmd}, #{state := cmd}) -> 0;
-transit(workflow_properties, #{state := cmd}, #{state := modified}) -> 0;
-transit(workflow_properties, #{state := modified}, #{state := cmd}) -> 0;
-transit(workflow_properties, #{state := modified}, #{state := modified}) -> 0;
-%
-transit(complete_workflow_execution, noevent, #{state := cmd}) -> 0;
-transit(complete_workflow_execution, #{state := cmd}, #{state := cmd}) -> 0;
-transit(complete_workflow_execution, #{state := cmd}, #{state := completed}) -> 0;
-transit(cancel_workflow_execution, noevent, #{state := cmd}) -> 0;
-transit(cancel_workflow_execution, #{state := cmd}, #{state := cmd}) -> 0;
-transit(cancel_workflow_execution, #{state := cmd}, #{state := canceled}) -> 0;
-transit(fail_workflow_execution, noevent, #{state := cmd}) -> 0;
-transit(fail_workflow_execution, #{state := cmd}, #{state := cmd}) -> 0;
-transit(fail_workflow_execution, #{state := cmd}, #{state := failed}) -> 0;
-transit(continue_as_new_workflow, noevent, #{state := cmd}) -> 0;
-transit(continue_as_new_workflow, #{state := cmd}, #{state := cmd}) -> 0;
-transit(continue_as_new_workflow, #{state := cmd}, #{state := continued}) -> 0;
-%
-transit(signal, noevent, #{state := requested}) -> 0;
-transit(signal, #{state := requested}, #{state := requested}) -> 0;
-transit(signal, #{state := requested}, #{state := admitted}) -> 0;
-transit(signal, #{state := admitted}, #{state := requested}) -> 0;
-%
-transit(query, noevent, #{state := requested}) -> 0;
-transit(query, #{state := requested}, #{state := requested}) -> 0;
-transit(query, #{state := requested}, #{state := responded}) -> 0;
-transit(query, #{state := responded}, #{state := requested}) -> 0;
-%
-transit(cancel_request, noevent, #{state := requested}) -> 0;
-%
-transit(suggest_continue_as_new, noevent, #{state := suggested}) -> 0;
-%
-transit(_, _, _) -> invalid.
-
 -spec is_closed(AwaitableType :: atom(), Match :: temporal_sdk_workflow:awaitable_match()) ->
     boolean().
 is_closed(_AwaitableType, noevent) ->
@@ -527,78 +407,292 @@ is_ready(suggest_continue_as_new, #{state := suggested}) ->
 is_ready(_AwaitableType, _Match) ->
     false.
 
--spec merge_data(
+%% Test state transition functions count only commands closings and non-deadlocking cancelations.
+%% Commands openings are counted with temporal_sdk_api_command:awaitable_command_count/1.
+%% Deadlocking cancelation commands are counted with temporal_sdk_executor_workflow:do_cmds/5.
+
+%% tstc - test state transition when Temporal or SDK command or SDK event is translated into awaitable.
+-spec tstc(
     AwaitableType :: atom(),
     OldData :: temporal_sdk_workflow:awaitable_index_data(),
     NewData :: temporal_sdk_workflow:awaitable_index_data()
-) ->
-    MergedData :: temporal_sdk_workflow:awaitable_index_data().
-merge_data(_, noevent, NewData) ->
-    NewData;
-merge_data(_, #{state := S, history := H} = OD, #{state := S} = ND) when
-    S =:= modified; S =:= recorded; S =:= requested
+) -> 0 | invalid.
+tstc(info, _, _) ->
+    0;
+%
+tstc(execution, noevent, #{state := cmd}) ->
+    0;
+tstc(execution, #{state := cmd}, #{state := started}) ->
+    0;
+tstc(execution, #{state := started}, #{state := completed}) ->
+    0;
+%
+tstc(activity, noevent, #{state := cmd}) ->
+    0;
+tstc(activity, #{state := S, result := _}, #{state := S, result := _}) ->
+    invalid;
+tstc(activity, #{state := S, direct_execution := true}, #{state := S, result := _}) when
+    S =:= cmd; S =:= scheduled; S =:= started
 ->
-    % eqwalizer:ignore
-    ND#{history => [maps:without([history], OD) | H]};
-merge_data(_, #{state := S} = OD, #{state := S} = ND) when
-    S =:= modified; S =:= recorded; S =:= requested
+    0;
+tstc(activity, #{state := S, last_failure := _}, #{state := S, last_failure := _}) ->
+    invalid;
+tstc(activity, #{state := S, direct_execution := true}, #{state := S, last_failure := _}) when
+    S =:= cmd; S =:= scheduled; S =:= started
 ->
-    ND#{history => [OD]};
-merge_data(_, #{state := S, history := H} = OD, #{state := cmd} = ND) when
-    S =:= completed;
-    S =:= canceled;
-    S =:= failed;
-    S =:= fired;
-    S =:= modified;
-    S =:= recorded;
-    S =:= requested;
-    S =:= initiate_fail;
-    S =:= timedout;
-    S =:= terminated;
-    S =:= upserted
+    0;
+tstc(activity, #{state := S}, #{state := S, cancel_requested := true}) when
+    S =:= cmd; S =:= scheduled; S =:= started
 ->
-    % eqwalizer:ignore
-    ND#{history => [maps:without([history], OD) | H]};
-merge_data(_, #{state := S} = OD, #{state := cmd} = ND) when
-    S =:= completed;
-    S =:= canceled;
-    S =:= failed;
-    S =:= fired;
-    S =:= modified;
-    S =:= recorded;
-    S =:= requested;
-    S =:= initiate_fail;
-    S =:= timedout;
-    S =:= terminated;
-    S =:= upserted
-->
-    ND#{history => [OD]};
-merge_data(_, #{state := responded, history := H} = OD, #{state := requested} = ND) ->
-    % eqwalizer:ignore
-    ND#{history => [maps:without([history], OD) | H]};
-merge_data(_, #{state := responded} = OD, #{state := requested} = ND) ->
-    ND#{history => [OD]};
-merge_data(_, #{state := requested}, #{state := responded} = ND) ->
-    ND;
-%% signal
-merge_data(signal, #{state := admitted, history := H} = OD, #{state := requested} = ND) ->
-    % eqwalizer:ignore
-    ND#{history => [maps:without([history], OD) | H]};
-merge_data(signal, #{state := admitted} = OD, #{state := requested} = ND) ->
-    ND#{history => [OD]};
-merge_data(signal, #{state := requested, history := H} = OD, #{state := admitted} = ND) ->
-    maps:merge(OD, ND#{history => admit_signal_history(H)});
-%% remaining other
-merge_data(_, OldData, NewData) ->
-    % eqwalizer:ignore
-    maps:merge(OldData, NewData).
+    0;
+tstc(activity, #{state := completed}, #{state := cmd}) ->
+    0;
+tstc(activity, #{state := canceled}, #{state := cmd}) ->
+    0;
+tstc(activity, #{state := failed}, #{state := cmd}) ->
+    0;
+tstc(activity, #{state := timedout}, #{state := cmd}) ->
+    0;
+%
+tstc(marker, noevent, #{state := cmd}) ->
+    0;
+tstc(marker, #{state := cmd, value := _}, #{state := cmd, value := _}) ->
+    invalid;
+tstc(marker, #{state := cmd}, #{state := cmd, value := _}) ->
+    0;
+tstc(marker, #{state := cmd}, #{state := cmd, mutable := true}) ->
+    invalid;
+tstc(marker, #{state := recorded}, #{state := cmd}) ->
+    0;
+%
+tstc(timer, noevent, #{state := cmd}) ->
+    0;
+tstc(timer, #{state := S}, #{state := S, cancel_requested := true}) when S =:= cmd; S =:= started ->
+    0;
+tstc(timer, #{state := fired}, #{state := cmd}) ->
+    0;
+tstc(timer, #{state := canceled}, #{state := cmd}) ->
+    0;
+%
+tstc(child_workflow, noevent, #{state := cmd}) ->
+    0;
+tstc(child_workflow, #{state := initiate_failed}, #{state := cmd}) ->
+    0;
+tstc(child_workflow, #{state := completed}, #{state := cmd}) ->
+    0;
+tstc(child_workflow, #{state := failed}, #{state := cmd}) ->
+    0;
+tstc(child_workflow, #{state := canceled}, #{state := cmd}) ->
+    0;
+tstc(child_workflow, #{state := timedout}, #{state := cmd}) ->
+    0;
+tstc(child_workflow, #{state := terminated}, #{state := cmd}) ->
+    0;
+%
+tstc(signal, #{state := requested}, #{state := admitted}) ->
+    0;
+%
+tstc(workflow_properties, noevent, #{state := cmd}) ->
+    0;
+tstc(workflow_properties, #{state := modified}, #{state := cmd}) ->
+    0;
+%
+tstc(complete_workflow_execution, noevent, #{state := cmd}) ->
+    0;
+tstc(cancel_workflow_execution, noevent, #{state := cmd}) ->
+    0;
+tstc(fail_workflow_execution, noevent, #{state := cmd}) ->
+    0;
+tstc(continue_as_new_workflow, noevent, #{state := cmd}) ->
+    0;
+%
+tstc(suggest_continue_as_new, noevent, #{state := suggested}) ->
+    0;
+%
+tstc(_AwaitableType, _OldData, _NewData) ->
+    invalid.
 
-admit_signal_history(History) ->
-    Fn = fun
-        (#{state := requested} = SignalData) -> SignalData#{state := admitted};
-        (#{state := admitted} = SignalData) -> SignalData
-    end,
-    lists:map(Fn, History).
+%% tste - test state transition when Temporal event is translated to SDK awaitable.
+-spec tste(
+    AwaitableType :: atom(),
+    OldData :: temporal_sdk_workflow:awaitable_index_data(),
+    NewData :: temporal_sdk_workflow:awaitable_index_data()
+) -> 0 | 1 | invalid.
+tste(activity, #{state := cmd, event_id := E}, #{state := scheduled, event_id := E}) ->
+    0;
+tste(activity, #{state := S, cancel_requested := true}, #{state := S, cancel_requested := true}) when
+    S =:= scheduled; S =:= started
+->
+    0;
+tste(activity, #{state := scheduled, event_id := E}, #{state := started, scheduled_event_id := E}) ->
+    0;
+tste(activity, #{state := scheduled, scheduled_event_id := E}, #{
+    state := started, scheduled_event_id := E
+}) ->
+    0;
+tste(activity, #{state := scheduled, cancel_requested := true}, #{state := canceled}) ->
+    1;
+tste(activity, #{state := started, cancel_requested := true}, #{state := canceled}) ->
+    1;
+tste(activity, #{state := started, event_id := E}, #{state := completed, started_event_id := E}) ->
+    1;
+tste(activity, #{state := started, event_id := E}, #{state := canceled, started_event_id := E}) ->
+    1;
+tste(activity, #{state := started, event_id := E}, #{state := failed, started_event_id := E}) ->
+    1;
+tste(activity, #{state := started, event_id := E}, #{state := timedout, started_event_id := E}) ->
+    1;
+%
+tste(marker, #{state := cmd, event_id := E}, #{state := recorded, event_id := E}) ->
+    0;
+%
+tste(timer, #{state := cmd, event_id := E}, #{state := started, event_id := E}) ->
+    0;
+tste(timer, #{state := cmd, cancel_requested := true}, #{state := started}) ->
+    0;
+tste(timer, #{state := started, event_id := E}, #{state := fired, started_event_id := E}) ->
+    1;
+%% 'COMMAND_TYPE_CANCEL_TIMER' is deadlocking
+tste(timer, #{state := started, event_id := E}, #{state := canceled, started_event_id := E}) ->
+    0;
+%
+tste(child_workflow, #{state := cmd, event_id := E}, #{state := initiated, event_id := E}) ->
+    0;
+tste(child_workflow, #{state := initiated}, #{state := initiate_failed}) ->
+    1;
+tste(child_workflow, #{state := initiated, event_id := E}, #{
+    state := started, initiated_event_id := E
+}) ->
+    0;
+tste(child_workflow, #{state := started, event_id := E}, #{
+    state := completed, started_event_id := E
+}) ->
+    1;
+tste(child_workflow, #{state := started, event_id := E}, #{state := failed, started_event_id := E}) ->
+    1;
+tste(child_workflow, #{state := started, event_id := E}, #{state := canceled, started_event_id := E}) ->
+    1;
+tste(child_workflow, #{state := started, event_id := E}, #{state := timedout, started_event_id := E}) ->
+    1;
+tste(child_workflow, #{state := started, event_id := E}, #{
+    state := terminated, started_event_id := E
+}) ->
+    1;
+%
+%% signal awaitable state transitions are tested with tstn.
+%
+tste(workflow_properties, #{state := cmd, event_id := E}, #{state := modified, event_id := E}) ->
+    0;
+%
+tste(complete_workflow_execution, #{state := cmd}, #{state := completed}) ->
+    0;
+tste(cancel_workflow_execution, #{state := cmd}, #{state := canceled}) ->
+    0;
+tste(fail_workflow_execution, #{state := cmd}, #{state := failed}) ->
+    0;
+tste(continue_as_new_workflow, #{state := cmd}, #{state := continued}) ->
+    0;
+%
+tste(_AwaitableType, _OldData, _NewData) ->
+    invalid.
+
+%% tstn - test state transition when Temporal not commanded event is translated to SDK awaitable.
+-spec tstn(
+    AwaitableType :: atom(),
+    OldData :: temporal_sdk_workflow:awaitable_index_data(),
+    NewData :: temporal_sdk_workflow:awaitable_index_data()
+) -> 0 | invalid.
+% OTP message marker
+tstn(marker, noevent, #{state := recorded}) -> 0;
+tstn(marker, #{state := recorded}, #{state := recorded}) -> 0;
+%
+tstn(signal, noevent, #{state := requested}) -> 0;
+tstn(signal, #{state := requested}, #{state := requested}) -> 0;
+tstn(signal, #{state := admitted}, #{state := requested}) -> 0;
+%
+tstn(_AwaitableType, _OldData, _NewData) -> invalid.
+
+%% tstx - test state transition when Temporal external event (eg. query) is translated to SDK awaitable.
+-spec tstx(
+    AwaitableType :: atom(),
+    OldData :: temporal_sdk_workflow:awaitable_index_data(),
+    NewData :: temporal_sdk_workflow:awaitable_index_data()
+) -> 0 | invalid.
+tstx(query, noevent, #{state := requested}) -> 0;
+tstx(query, #{state := requested}, #{state := responded}) -> 0;
+tstx(query, #{state := requested}, #{state := requested}) -> 0;
+tstx(query, #{state := responded}, #{state := requested}) -> 0;
+tstx(_AwaitableType, _OldData, _NewData) -> invalid.
+
+%% merge_data_cmd - merge awaitable data when command is translated to awaitable.
+-spec merge_data_cmd(
+    AwaitableType :: atom(),
+    OldData :: temporal_sdk_workflow:awaitable_index_data(),
+    NewData :: temporal_sdk_workflow:awaitable_index_data()
+) -> MergedData :: temporal_sdk_workflow:awaitable_index_data().
+merge_data_cmd(info, _OldData, NewData) ->
+    NewData;
+merge_data_cmd(_A, noevent, NewData) ->
+    NewData;
+merge_data_cmd(A, #{} = OldData, #{} = NewData) when A =:= execution; A =:= signal ->
+    maps:merge(OldData, NewData);
+merge_data_cmd(_A, #{state := S} = OldData, #{state := S} = NewData) ->
+    maps:merge(OldData, NewData);
+merge_data_cmd(_A, #{history := H} = OldData, #{} = NewData) when is_list(H) ->
+    NewData#{history => [maps:without([history], OldData) | H]};
+merge_data_cmd(_A, OldData, #{} = NewData) ->
+    NewData#{history => [OldData]}.
+
+%% merge_data_event - merge awaitable data when event is translated to awaitable.
+-spec merge_data_event(
+    AwaitableType :: atom(),
+    OldData :: temporal_sdk_workflow:awaitable_index_data(),
+    NewData :: temporal_sdk_workflow:awaitable_index_data()
+) -> MergedData :: temporal_sdk_workflow:awaitable_index_data().
+merge_data_event(info, _OldData, NewData) -> NewData;
+merge_data_event(_A, #{} = OldData, #{} = NewData) -> maps:merge(OldData, NewData).
+
+%% merge_data_event_nocmd - merge awaitable data when not commanded event is translated to awaitable.
+-spec merge_data_event_nocmd(
+    AwaitableType :: atom(),
+    OldData :: noevent | temporal_sdk_workflow:signal_data(),
+    NewData :: temporal_sdk_workflow:signal_data()
+) -> MergedData :: temporal_sdk_workflow:signal_data().
+merge_data_event_nocmd(_A, noevent, NewData) ->
+    NewData;
+merge_data_event_nocmd(_A, #{history := H} = OldData, #{} = NewData) when is_list(H) ->
+    NewData#{history => [maps:without([history], OldData) | H]};
+merge_data_event_nocmd(_A, OldData, #{} = NewData) ->
+    NewData#{history => [OldData]}.
+
+%% merge_data_event_id - merge awaitable data and EventId when event_id must be updated.
+-spec merge_data_event_id(
+    AwaitableType :: atom(),
+    EventId :: pos_integer(),
+    OldData :: temporal_sdk_workflow:awaitable_index_data(),
+    NewData :: temporal_sdk_workflow:awaitable_index_data()
+) -> MergedData :: temporal_sdk_workflow:awaitable_index_data().
+merge_data_event_id(info, _EventId, _OldData, NewData) ->
+    NewData;
+merge_data_event_id(execution, _EventId, #{} = OldData, #{} = NewData) ->
+    maps:merge(OldData, NewData);
+merge_data_event_id(_, EventId, #{} = OldData, #{} = NewData) ->
+    maps:merge(OldData, NewData#{event_id => EventId}).
+
+%% merge_data_ext - merge awaitable data when external event is translated to awaitable.
+-spec merge_data_ext(
+    AwaitableType :: atom(),
+    OldData :: temporal_sdk_workflow:awaitable_index_data(),
+    NewData :: temporal_sdk_workflow:awaitable_index_data()
+) -> MergedData :: temporal_sdk_workflow:awaitable_index_data().
+merge_data_ext(
+    query, #{state := responded, history := H} = OldData, #{state := requested} = NewData
+) when is_list(H) ->
+    NewData#{history => [maps:without([history], OldData) | H]};
+merge_data_ext(query, #{state := responded} = OldData, #{state := requested} = NewData) ->
+    NewData#{history => [OldData]};
+merge_data_ext(_A, _OldData, NewData) ->
+    NewData.
 
 %% nexus
 from_event(
@@ -700,6 +794,7 @@ from_event(
             ),
             {IdxK, IdxV#{
                 event_id := EventId,
+                scheduled_event_id => ScheduledEventId,
                 cancel_requested => true
             }};
         InvalidEvent ->

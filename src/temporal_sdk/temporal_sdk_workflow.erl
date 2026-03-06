@@ -1,7 +1,7 @@
 -module(temporal_sdk_workflow).
 
 % elp:ignore W0012 W0040 E1599
--moduledoc {file, "../../docs/temporal_sdk/operator/-module.md"}.
+-moduledoc {file, "../../docs/temporal_sdk/workflow/-module.md"}.
 
 %% Temporal commands
 -export([
@@ -507,7 +507,6 @@
 -type execution_index_key() :: {execution, ExecutionId :: execution_id()}.
 -doc #{group => "Awaitables types"}.
 -type execution_index_key_pattern() :: {execution, ets_matchvar() | ExecutionId :: execution_id()}.
-
 -doc #{group => "Awaitables types"}.
 -type execution_result() :: term().
 -export_type([execution_result/0]).
@@ -592,7 +591,8 @@
         last_failure => temporal_sdk_telemetry:exception(),
         heartbeat_timeout => pos_integer(),
         cancel_requested => true,
-        history => [map()]
+        history => [map()],
+        replay_id => activity_index_key()
     }
     | #{
         state := started,
@@ -610,7 +610,8 @@
         heartbeat_timeout => pos_integer(),
         cancel_requested => true,
         scheduled_event_id := event_id(),
-        history => [map()]
+        history => [map()],
+        replay_id => activity_index_key()
     }
     | #{
         state := completed,
@@ -630,7 +631,8 @@
         scheduled_event_id := event_id(),
         started_event_id := event_id(),
         attempt := pos_integer(),
-        history => [map()]
+        history => [map()],
+        replay_id => activity_index_key()
     }
     | #{
         state := canceled,
@@ -651,7 +653,8 @@
         started_event_id := event_id(),
         attempt := pos_integer(),
         details := temporal_sdk:term_from_payloads(),
-        history => [map()]
+        history => [map()],
+        replay_id => activity_index_key()
     }
     | #{
         state := failed,
@@ -672,7 +675,8 @@
         started_event_id := event_id(),
         failure => temporal_sdk:failure_from_temporal(),
         retry_state := ?TEMPORAL_SPEC:'temporal.api.enums.v1.RetryState'(),
-        history => [map()]
+        history => [map()],
+        replay_id => activity_index_key()
     }
     | #{
         state := timedout,
@@ -693,7 +697,8 @@
         started_event_id := event_id(),
         failure => temporal_sdk:failure_from_temporal(),
         retry_state := ?TEMPORAL_SPEC:'temporal.api.enums.v1.RetryState'(),
-        history => [map()]
+        history => [map()],
+        replay_id => activity_index_key()
     }.
 -export_type([activity_data/0]).
 
@@ -746,7 +751,8 @@
         mutations_count => non_neg_integer(),
         details := temporal_sdk:term_from_mapstring_payload(),
         value := temporal_sdk:term_from_payloads() | term(),
-        history => [map()]
+        history => [map()],
+        replay_id => marker_index_key()
     }
     %% OTP message marker
     | #{
@@ -754,7 +760,8 @@
         execution_id := undefined,
         event_id := event_id(),
         value := temporal_sdk:term_from_payloads(),
-        history => [map()]
+        history => [map()],
+        replay_id => marker_index_key()
     }.
 -export_type([marker_data/0]).
 
@@ -789,7 +796,8 @@
         execution_id := execution_id(),
         event_id := event_id(),
         cancel_requested => true,
-        history => [map()]
+        history => [map()],
+        replay_id => timer_index_key()
     }
     | #{
         state := fired,
@@ -797,7 +805,8 @@
         event_id := event_id(),
         started_event_id := event_id(),
         cancel_requested => true,
-        history => [map()]
+        history => [map()],
+        replay_id => timer_index_key()
     }
     | #{
         state := canceled,
@@ -805,7 +814,8 @@
         event_id := event_id(),
         started_event_id := event_id(),
         cancel_requested := true,
-        history => [map()]
+        history => [map()],
+        replay_id => timer_index_key()
     }.
 -export_type([timer_data/0]).
 
@@ -847,7 +857,8 @@
         namespace := unicode:chardata(),
         task_queue := unicode:chardata(),
         workflow_type := unicode:chardata() | atom(),
-        history => [map()]
+        history => [map()],
+        replay_id => child_workflow_index_key()
     }
     | #{
         state := initiate_failed,
@@ -856,9 +867,10 @@
         namespace := unicode:chardata(),
         task_queue := unicode:chardata(),
         workflow_type := unicode:chardata() | atom(),
-        history => [map()],
         initiated_event_id := event_id(),
-        cause := ?TEMPORAL_SPEC:'temporal.api.enums.v1.StartChildWorkflowExecutionFailedCause'()
+        cause := ?TEMPORAL_SPEC:'temporal.api.enums.v1.StartChildWorkflowExecutionFailedCause'(),
+        history => [map()],
+        replay_id => child_workflow_index_key()
     }
     | #{
         state := started,
@@ -867,9 +879,10 @@
         namespace := unicode:chardata(),
         task_queue := unicode:chardata(),
         workflow_type := unicode:chardata() | atom(),
-        history => [map()],
         initiated_event_id := event_id(),
-        run_id := unicode:chardata()
+        run_id := unicode:chardata(),
+        history => [map()],
+        replay_id => child_workflow_index_key()
     }
     | #{
         state := completed,
@@ -878,11 +891,12 @@
         namespace := unicode:chardata(),
         task_queue := unicode:chardata(),
         workflow_type := unicode:chardata() | atom(),
-        history => [map()],
         initiated_event_id := event_id(),
         run_id := unicode:chardata(),
         started_event_id := event_id(),
-        result := temporal_sdk:term_from_payloads()
+        result := temporal_sdk:term_from_payloads(),
+        history => [map()],
+        replay_id => child_workflow_index_key()
     }
     | #{
         state := failed,
@@ -891,11 +905,12 @@
         namespace := unicode:chardata(),
         task_queue := unicode:chardata(),
         workflow_type := unicode:chardata() | atom(),
-        history => [map()],
         initiated_event_id := event_id(),
         run_id := unicode:chardata(),
         started_event_id := event_id(),
-        failure => temporal_sdk:failure_from_temporal()
+        failure => temporal_sdk:failure_from_temporal(),
+        history => [map()],
+        replay_id => child_workflow_index_key()
     }
     | #{
         state := canceled,
@@ -904,11 +919,12 @@
         namespace := unicode:chardata(),
         task_queue := unicode:chardata(),
         workflow_type := unicode:chardata() | atom(),
-        history => [map()],
         initiated_event_id := event_id(),
         run_id := unicode:chardata(),
         started_event_id := event_id(),
-        details := temporal_sdk:term_from_payloads()
+        details := temporal_sdk:term_from_payloads(),
+        history => [map()],
+        replay_id => child_workflow_index_key()
     }
     | #{
         state := timedout,
@@ -917,11 +933,12 @@
         namespace := unicode:chardata(),
         task_queue := unicode:chardata(),
         workflow_type := unicode:chardata() | atom(),
-        history => [map()],
         initiated_event_id := event_id(),
         run_id := unicode:chardata(),
         started_event_id := event_id(),
-        retry_state := ?TEMPORAL_SPEC:'temporal.api.enums.v1.RetryState'()
+        retry_state := ?TEMPORAL_SPEC:'temporal.api.enums.v1.RetryState'(),
+        history => [map()],
+        replay_id => child_workflow_index_key()
     }
     | #{
         state := terminated,
@@ -930,10 +947,11 @@
         namespace := unicode:chardata(),
         task_queue := unicode:chardata(),
         workflow_type := unicode:chardata() | atom(),
-        history => [map()],
         initiated_event_id := event_id(),
         run_id := unicode:chardata(),
-        started_event_id := event_id()
+        started_event_id := event_id(),
+        history => [map()],
+        replay_id => child_workflow_index_key()
     }.
 -export_type([child_workflow_data/0]).
 
@@ -990,7 +1008,8 @@
         event_id := event_id(),
         input := temporal_sdk:term_from_payload(),
         cancel_requested => true,
-        history => [map()]
+        history => [map()],
+        replay_id => nexus_index_key()
     }
     | #{
         state := started,
@@ -998,7 +1017,8 @@
         event_id := event_id(),
         input := temporal_sdk:term_from_payload(),
         cancel_requested => true,
-        history => [map()]
+        history => [map()],
+        replay_id => nexus_index_key()
     }
     | #{
         state := completed,
@@ -1007,7 +1027,8 @@
         input := temporal_sdk:term_from_payload(),
         result => temporal_sdk:term_from_payload(),
         cancel_requested => true,
-        history => [map()]
+        history => [map()],
+        replay_id => nexus_index_key()
     }
     | #{
         state := canceled,
@@ -1016,7 +1037,8 @@
         input := temporal_sdk:term_from_payload(),
         failure => ?TEMPORAL_SPEC:'temporal.api.failure.v1.Failure'(),
         cancel_requested := true,
-        history => [map()]
+        history => [map()],
+        replay_id => nexus_index_key()
     }.
 -export_type([nexus_data/0]).
 
@@ -1087,6 +1109,7 @@
     #{
         state := cmd,
         execution_id := execution_id(),
+        event_id => event_id(),
         details := temporal_sdk:term_to_payloads()
     }
     | #{
@@ -1110,9 +1133,8 @@
     #{
         state := cmd,
         execution_id := execution_id(),
-        failure :=
-            temporal_sdk:application_failure()
-            | temporal_sdk:user_application_failure()
+        event_id => event_id(),
+        failure := temporal_sdk:application_failure() | temporal_sdk:user_application_failure()
     }
     | #{
         state := failed,
@@ -1135,6 +1157,7 @@
     #{
         state := cmd,
         execution_id := execution_id(),
+        event_id => event_id(),
         task_queue := unicode:chardata(),
         workflow_type := unicode:chardata()
     }

@@ -179,12 +179,13 @@ fail_prohibited_nde() ->
 
 duplicate_id() ->
     EFn = fun(_Context, _Input) ->
-        M1 = record_marker(fun() -> [1] end, [{marker_name, marker_1} | ?OPTS]),
-        ?assertMatch(#{value := [_]}, wait(M1)),
-        M1 = record_marker(fun() -> [2] end, [{marker_name, marker_1} | ?OPTS]),
-        ?assertMatch(#{value := [_]}, wait(M1)),
-        M1 = record_marker(fun() -> [3] end, [{marker_name, marker_1} | ?OPTS]),
-        ?assertMatch(#{value := [_]}, wait(M1))
+        O = [{marker_name, marker_1}, {awaitable_event, close}],
+        M = record_marker(fun() -> [1] end, O ++ ?OPTS),
+        ?assertMatch(#{value := [1]}, wait(M)),
+        M = record_marker(fun() -> [2] end, O ++ ?OPTS),
+        ?assertMatch(#{value := [1]}, wait(M)),
+        #{result := [?DATA]} = start_activity(?A_TYPE, [?DATA], [wait]),
+        ?assertMatch(#{value := [2], history := [#{value := [1]}]}, wait(M))
     end,
     ?assertReplayEqual({completed, []}, EFn).
 

@@ -308,7 +308,7 @@ unblock_awaitable(
             ),
             Index = {IdxKey, #{result => R}},
             % eqwalizer:ignore
-            temporal_sdk_api_awaitable_index_table:upsert_index(IndexTable, Index);
+            temporal_sdk_api_awaitable_index_table:upsert_cmd(IndexTable, Index);
         {value, {_, 'EVENT_TYPE_ACTIVITY_TASK_COMPLETED', #{}, _}} ->
             R = temporal_sdk_api:map_from_payloads(
                 ApiCtx,
@@ -318,11 +318,11 @@ unblock_awaitable(
             ),
             Index = {IdxKey, #{result => R}},
             % eqwalizer:ignore
-            temporal_sdk_api_awaitable_index_table:upsert_index(IndexTable, Index);
+            temporal_sdk_api_awaitable_index_table:upsert_cmd(IndexTable, Index);
         {value, {_, 'EVENT_TYPE_ACTIVITY_TASK_CANCELED', #{}, _}} ->
             Index = {IdxKey, #{result => 'ACTIVITY_TASK_CANCELED'}},
             % eqwalizer:ignore
-            temporal_sdk_api_awaitable_index_table:upsert_index(IndexTable, Index);
+            temporal_sdk_api_awaitable_index_table:upsert_cmd(IndexTable, Index);
         _ ->
             noevent
     end;

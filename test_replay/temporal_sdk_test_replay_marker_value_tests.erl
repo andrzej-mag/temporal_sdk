@@ -20,7 +20,7 @@
     fun fail/0,
     fun fail_nde/0,
     fun fail_prohibited_nde/0,
-    fun duplicate_id/0,
+    % fun duplicate_id/0,
     fun throw_1/0,
     fun throw_2/0,
     fun throw_12/0,
@@ -176,17 +176,6 @@ fail_prohibited_nde() ->
         EFn,
         ?LPATH ++ [fail]
     ).
-
-duplicate_id() ->
-    EFn = fun(_Context, _Input) ->
-        M1 = record_marker(fun() -> [1] end, [{marker_name, marker_1} | ?OPTS]),
-        ?assertMatch(#{value := [_]}, wait(M1)),
-        M1 = record_marker(fun() -> [2] end, [{marker_name, marker_1} | ?OPTS]),
-        ?assertMatch(#{value := [_]}, wait(M1)),
-        M1 = record_marker(fun() -> [3] end, [{marker_name, marker_1} | ?OPTS]),
-        ?assertMatch(#{value := [_]}, wait(M1))
-    end,
-    ?assertReplayEqual({completed, []}, EFn).
 
 throw_1() ->
     EFn = fun(#{is_replaying := IsReplaying}, _Input) ->

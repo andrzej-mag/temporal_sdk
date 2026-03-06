@@ -2,10 +2,6 @@ Finalize telemetry.
 
 Implement workflow execution eviction.
 
-Add temporal_sdk_api_workflow_check_default deterministic check module inline with other SDKs behaviour.
-
-Better "temporal_sdk_api_awaitable_index:merge_data/3": merge using `event_id` instead of `state` only.
-
 Rename temporal_sdk_workflow await/wait "one" to "any".
 
 Update `gun` version.
@@ -22,11 +18,11 @@ Workflow and activity executor: refactor `handle_failure` to async and safe.
 
 Add old marker value to mutable marker function.
 
-Implement Nexus.
-
 Implement Worker Versioning.
 
-Implement in-SDK `temporal.api.enums.v1.WorkflowIdConflictPolicy` for child workflows.
+Implement Nexus.
+
+Implement standalone activities.
 
 Activity, workflow and nexus tasks: node_execution.
 

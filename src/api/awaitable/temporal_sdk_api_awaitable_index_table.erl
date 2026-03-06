@@ -4,66 +4,140 @@
 -moduledoc false.
 
 -export([
-    upsert_and_count/2,
-    upsert_index/2,
+    upsert_cmd/2,
+    upsert_event/2,
+    upsert_ext/2,
+    update_event_id/3,
     upsert_polled/3,
     upsert_cancelation/2,
     update_cancelation/3,
-    fetch/2
+    fetch/2,
+    respond_queries/7
 ]).
 
--spec upsert_and_count(
-    Table :: ets:table(), Index :: temporal_sdk_workflow:awaitable_index() | ignore_index
+-spec upsert_cmd(IndexTable :: ets:table(), Index :: temporal_sdk_workflow:awaitable_index()) ->
+    ok | {error, Reason :: map()}.
+upsert_cmd(IndexTable, {IndexKey, NewIndexVal}) ->
+    OldIndexVal = match_by_idx(IndexTable, IndexKey),
+    A = element(1, IndexKey),
+    case temporal_sdk_api_awaitable_index:tstc(A, OldIndexVal, NewIndexVal) of
+        invalid ->
+            {error, #{
+                reason => nondeterministic,
+                details => "Invalid awaitable command state transition.",
+                awaitable => IndexKey,
+                new_awaitable_data => NewIndexVal,
+                old_awaitable_data => OldIndexVal
+            }};
+        0 ->
+            IVal = temporal_sdk_api_awaitable_index:merge_data_cmd(A, OldIndexVal, NewIndexVal),
+            ets:insert(IndexTable, {IndexKey, IVal}),
+            ok
+    end.
+
+-spec upsert_event(
+    IndexTable :: ets:table(), Index :: temporal_sdk_workflow:awaitable_index() | ignore_index
 ) ->
     {ok, TemporalOpenTasksCount :: integer()} | {error, Reason :: map()}.
-upsert_and_count(_Table, ignore_index) ->
+upsert_event(_IndexTable, ignore_index) ->
     {ok, 0};
-upsert_and_count(Table, {{info, _}, _} = Index) ->
-    ets:insert(Table, Index),
-    {ok, 0};
-upsert_and_count(Table, {{marker, Type, _}, _} = Index) when
-    Type =:= "message"; Type =:= ~"message"
-->
-    ets:insert(Table, Index),
-    {ok, 0};
-upsert_and_count(Table, {IndexKey, NewIndexValue}) when is_tuple(IndexKey) ->
-    OldIndexValue = fetch(Table, IndexKey),
-    A = element(1, IndexKey),
-    case temporal_sdk_api_awaitable_index:transit(A, OldIndexValue, NewIndexValue) of
-        invalid ->
-            Reason =
-                case {NewIndexValue, OldIndexValue} of
-                    {#{state := cmd}, #{state := _}} -> "Duplicate awaitable id is not allowed.";
-                    _ -> "Invalid awaitable state transition."
-                end,
-            {error, #{
-                reason => Reason,
-                awaitable => IndexKey,
-                new_awaitable_data => NewIndexValue,
-                old_awaitable_data => OldIndexValue
-            }};
-        Count ->
-            IVal = temporal_sdk_api_awaitable_index:merge_data(A, OldIndexValue, NewIndexValue),
-            ets:insert(Table, {IndexKey, IVal}),
-            {ok, Count}
-    end;
-upsert_and_count(_Table, {IndexKey, IndexValue}) ->
-    {error, #{
-        reason => "Malformed index table upsert command.",
-        awaitable => IndexKey,
-        awaitable_data => IndexValue
-    }}.
-
--spec upsert_index(IndexTable :: ets:table(), Index :: temporal_sdk_workflow:awaitable_index()) ->
-    ok | {error, Reason :: map()}.
-upsert_index(IndexTable, Index) ->
-    case upsert_and_count(IndexTable, Index) of
-        {ok, 0} ->
-            ok;
-        {ok, UC} ->
-            {error, #{reason => "Invalid awaitable state.", awaitable => Index, upsert_count => UC}};
+upsert_event(IndexTable, {{signal, _}, _} = Index) ->
+    upsert_event_noncmd(IndexTable, Index);
+upsert_event(IndexTable, {{marker, MT, _}, _} = Index) when MT =:= ~"message"; MT =:= "message" ->
+    upsert_event_noncmd(IndexTable, Index);
+upsert_event(IndexTable, {IndexKey, NewIndexVal} = Index) ->
+    case fetch_by_event(IndexTable, Index) of
+        {NewIndexKey, OldIndexVal} ->
+            A = element(1, IndexKey),
+            case temporal_sdk_api_awaitable_index:tste(A, OldIndexVal, NewIndexVal) of
+                invalid ->
+                    {error, #{
+                        reason => nondeterministic,
+                        details => "Invalid awaitable event state transition.",
+                        awaitable => IndexKey,
+                        new_awaitable_data => NewIndexVal,
+                        old_awaitable_data => OldIndexVal
+                    }};
+                Count ->
+                    IVal = temporal_sdk_api_awaitable_index:merge_data_event(
+                        A, OldIndexVal, NewIndexVal
+                    ),
+                    ets:insert(IndexTable, {NewIndexKey, IVal}),
+                    {ok, Count}
+            end;
         Err ->
-            Err
+            {error, #{
+                reason => nondeterministic,
+                details => "Invalid awaitable.",
+                awaitable => IndexKey,
+                new_awaitable_data => NewIndexVal,
+                old_awaitable_data => Err
+            }}
+    end.
+
+upsert_event_noncmd(IndexTable, {IndexKey, NewIndexVal}) ->
+    OldIndexVal = match_by_idx(IndexTable, IndexKey),
+    A = element(1, IndexKey),
+    case temporal_sdk_api_awaitable_index:tstn(A, OldIndexVal, NewIndexVal) of
+        invalid ->
+            {error, #{
+                reason => nondeterministic,
+                details => "Invalid awaitable not commanded event state transition.",
+                awaitable => IndexKey,
+                new_awaitable_data => NewIndexVal,
+                old_awaitable_data => OldIndexVal
+            }};
+        0 ->
+            IVal = temporal_sdk_api_awaitable_index:merge_data_event_nocmd(
+                A, OldIndexVal, NewIndexVal
+            ),
+            ets:insert(IndexTable, {IndexKey, IVal}),
+            {ok, 0}
+    end.
+
+-spec upsert_ext(IndexTable :: ets:table(), Index :: temporal_sdk_workflow:awaitable_index()) ->
+    ok | {error, Reason :: map()}.
+upsert_ext(IndexTable, {IndexKey, NewIndexVal}) ->
+    OldIndexVal = match_by_idx(IndexTable, IndexKey),
+    A = element(1, IndexKey),
+    case temporal_sdk_api_awaitable_index:tstx(A, OldIndexVal, NewIndexVal) of
+        invalid ->
+            {error, #{
+                reason => nondeterministic,
+                details => "Invalid external awaitable state transition.",
+                awaitable => IndexKey,
+                new_awaitable_data => NewIndexVal,
+                old_awaitable_data => OldIndexVal
+            }};
+        0 ->
+            IVal = temporal_sdk_api_awaitable_index:merge_data_ext(A, OldIndexVal, NewIndexVal),
+            ets:insert(IndexTable, {IndexKey, IVal}),
+            ok
+    end.
+
+-spec update_event_id(
+    IndexTable :: ets:table(),
+    Index :: temporal_sdk_workflow:awaitable_index(),
+    EventId :: pos_integer()
+) -> {ok, temporal_sdk_workflow:awaitable_index()} | {error, Reason :: map()}.
+update_event_id(IndexTable, {IndexKey, IndexVal}, EventId) ->
+    case match_by_idx(IndexTable, IndexKey) of
+        noevent ->
+            {error, #{
+                reason => nondeterministic,
+                details => "Required awaitable not found.",
+                awaitable => IndexKey,
+                new_awaitable_event_id => EventId,
+                awaitable_data => noevent
+            }};
+        OldIdxVal ->
+            A = element(1, IndexKey),
+            IVal = temporal_sdk_api_awaitable_index:merge_data_event_id(
+                A, EventId, OldIdxVal, IndexVal
+            ),
+            ets:insert(IndexTable, {IndexKey, IVal}),
+            % eqwalizer:ignore
+            {ok, {IndexKey, IVal}}
     end.
 
 -spec upsert_polled(
@@ -81,7 +155,7 @@ upsert_polled(IndexTable, Task, ApiCtx) ->
 
 do_upsert_query(#{task_token := TaskToken, query := Query}, ApiCtx, IndexTable) ->
     {IdxKey, IdxVal} = temporal_sdk_api_awaitable_index:from_poll(Query, ApiCtx),
-    case upsert_index(IndexTable, {IdxKey, IdxVal#{'_sdk_data' => {token, TaskToken}}}) of
+    case upsert_ext(IndexTable, {IdxKey, IdxVal#{'_sdk_data' => {token, TaskToken}}}) of
         ok -> {ok, true};
         Err -> Err
     end;
@@ -95,7 +169,7 @@ do_upsert_queries(#{}, _ApiCtx, _IndexTable) ->
 
 do_upqs([{QId, Query} | TQueries], ApiCtx, IndexTable) ->
     {IdxKey, IdxVal} = temporal_sdk_api_awaitable_index:from_poll(Query, ApiCtx),
-    case upsert_index(IndexTable, {IdxKey, IdxVal#{'_sdk_data' => {id, QId}}}) of
+    case upsert_ext(IndexTable, {IdxKey, IdxVal#{'_sdk_data' => {id, QId}}}) of
         ok -> do_upqs(TQueries, ApiCtx, IndexTable);
         Err -> Err
     end;
@@ -120,7 +194,7 @@ do_upsert_messages(#{}, _ApiCtx, _IndexTable) ->
         | temporal_sdk_workflow:timer_data()}
     | {error, Reason :: map()}.
 upsert_cancelation(IndexTable, CancelationIndexKey) ->
-    case fetch(IndexTable, CancelationIndexKey) of
+    case match_by_idx(IndexTable, CancelationIndexKey) of
         noevent ->
             {error, #{
                 reason => "Awaitable that wasn't started cannot be canceled.",
@@ -134,18 +208,10 @@ upsert_cancelation(IndexTable, CancelationIndexKey) ->
         IdxVal ->
             case do_fetch_scheduled_id(CancelationIndexKey, IdxVal) of
                 {ok, ScheduledEventId} ->
-                    % eqwalizer:ignore
                     Idx = {CancelationIndexKey, IdxVal#{cancel_requested => true}},
-                    case upsert_and_count(IndexTable, Idx) of
-                        {ok, 0} ->
-                            % eqwalizer:ignore
+                    case upsert_cmd(IndexTable, Idx) of
+                        ok ->
                             {ok, ScheduledEventId, IdxVal};
-                        {ok, UC} ->
-                            {error, #{
-                                reason => "Invalid awaitable state.",
-                                awaitable => Idx,
-                                upsert_count => UC
-                            }};
                         Err ->
                             Err
                     end;
@@ -179,7 +245,7 @@ upsert_cancelation(IndexTable, CancelationIndexKey) ->
             }}
     | {error, Reason :: map()}.
 update_cancelation(IndexTable, {{IdxKey, _IdxVal}, Cmd}, EventId) ->
-    case fetch(IndexTable, IdxKey) of
+    case match_by_idx(IndexTable, IdxKey) of
         #{cancel_requested := true} = IV ->
             case do_fetch_scheduled_id(IdxKey, IV) of
                 {ok, SEId} ->
@@ -229,8 +295,113 @@ do_timer_seid(#{event_id := EId}) -> {ok, EId}.
 
 -spec fetch(Table :: ets:table(), IndexKey :: temporal_sdk_workflow:awaitable_index_key_pattern()) ->
     temporal_sdk_workflow:awaitable_index_data().
-fetch(Table, IndexKey) ->
+fetch(Table, IndexKey) -> match_by_idx(Table, IndexKey).
+
+-spec respond_queries(
+    Queries :: [term()],
+    Query :: temporal_sdk_workflow:query_index_key(),
+    QueryData :: {map(), map()},
+    ApiContext :: temporal_sdk_api:context(),
+    IndexTable :: ets:table(),
+    HistoryAcc :: list(),
+    QueriesAcc :: map()
+) -> {ok, RespondedQueries :: map()} | {error, Reason :: map()}.
+respond_queries(
+    [#{state := requested, '_sdk_data' := {token, TT}} = QVal | TQueries],
+    Query,
+    {IdxVal, Response} = IVal,
+    ApiContext,
+    IndexTable,
+    HistoryAcc,
+    QueriesAcc
+) ->
+    temporal_sdk_api_workflow:respond_query_task_completed(ApiContext, Response#{task_token => TT}),
+    Q1 = maps:without(['_sdk_data'], QVal),
+    Q2 = maps:merge(Q1, IdxVal),
+    NewHAcc = [Q2#{state := responded} | HistoryAcc],
+    respond_queries(TQueries, Query, IVal, ApiContext, IndexTable, NewHAcc, QueriesAcc);
+respond_queries(
+    [#{state := requested, '_sdk_data' := {id, Id}} = QVal | TQueries],
+    Query,
+    {IdxVal, Response} = IVal,
+    ApiContext,
+    IndexTable,
+    HistoryAcc,
+    QueriesAcc
+) ->
+    Q1 = maps:without(['_sdk_data'], QVal),
+    Q2 = maps:merge(Q1, IdxVal),
+    NewHAcc = [Q2#{state := responded} | HistoryAcc],
+    R =
+        case Response of
+            #{answer := _} -> Response#{result_type => 'QUERY_RESULT_TYPE_ANSWERED'};
+            #{} -> Response#{result_type => 'QUERY_RESULT_TYPE_FAILED'}
+        end,
+    NewQAcc = QueriesAcc#{Id => R},
+    respond_queries(TQueries, Query, IVal, ApiContext, IndexTable, NewHAcc, NewQAcc);
+respond_queries(
+    [#{state := responded} = QVal | TQueries],
+    Query,
+    IVal,
+    ApiContext,
+    IndexTable,
+    HistoryAcc,
+    QueriesAcc
+) ->
+    NewHAcc = [QVal | HistoryAcc],
+    respond_queries(TQueries, Query, IVal, ApiContext, IndexTable, NewHAcc, QueriesAcc);
+respond_queries(
+    [],
+    Query,
+    _IVal,
+    _ApiContext,
+    IndexTable,
+    HistoryAcc,
+    QueriesAcc
+) ->
+    Idx =
+        case lists:reverse(HistoryAcc) of
+            [IVal] -> {Query, IVal};
+            [IVal | HIVal] when is_map(IVal) -> {Query, IVal#{history => HIVal}}
+        end,
+    case upsert_ext(IndexTable, Idx) of
+        ok -> {ok, QueriesAcc};
+        Err -> Err
+    end.
+
+%% -------------------------------------------------------------------------------------------------
+%% private
+
+fetch_by_event(IndexTable, {IndexKey, IndexVal}) ->
+    case match_by_idx(IndexTable, IndexKey) of
+        noevent ->
+            case IndexVal of
+                #{event_id := EId} ->
+                    case select_by_event_id(IndexTable, EId) of
+                        noevent -> select_by_replay_id(IndexTable, tuple_to_list(IndexKey));
+                        {IdxKey, IdxVal} -> {IdxKey, IdxVal#{replay_id => tuple_to_list(IndexKey)}}
+                    end;
+                #{} ->
+                    noevent
+            end;
+        IdxVal ->
+            {IndexKey, IdxVal}
+    end.
+
+match_by_idx(Table, IndexKey) ->
     case ets:match(Table, {IndexKey, '$1'}, 1) of
         {[[Match]], _} -> Match;
         '$end_of_table' -> noevent
+    end.
+
+select_by_event_id(T, EventId) ->
+    case ets:select(T, [{{'$1', '$2'}, [{'=:=', EventId, {map_get, event_id, '$2'}}], ['$_']}]) of
+        [{_, _} = Idx] -> Idx;
+        [] -> noevent
+    end.
+
+select_by_replay_id(T, ReplayId) ->
+    case ets:select(T, [{{'$1', '$2'}, [{'=:=', ReplayId, {map_get, replay_id, '$2'}}], ['$_']}]) of
+        [{_, _} = Idx] -> Idx;
+        [] -> noevent
     end.

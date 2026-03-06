@@ -626,10 +626,10 @@ replay_event(IsCommanded, IndexCommand, StateData) ->
         ok ?= temporal_sdk_api_awaitable_history_table:insert_new(HistoryTable, Event),
         {ok, EventIndex} ?=
             temporal_sdk_api_awaitable_history:history_to_index(Event, HistoryTable, ApiCtx),
-        {ok, ClosedTaskCount} ?=
-            temporal_sdk_api_awaitable_index_table:upsert_and_count(IndexTable, EventIndex),
         {true, TIndexCommand, IC} ?=
             is_deterministic(IsCommanded, DeterministicCheckMod, EventIndex, Event, IndexCommand1),
+        {ok, ClosedTaskCount} ?=
+            temporal_sdk_api_awaitable_index_table:upsert_event(IndexTable, EventIndex),
         ignore ?= handle_mutation(IsReplaying, IC, EventIndex, HistoryTable),
         WInfo = temporal_sdk_api_awaitable_history:update_workflow_info(Event, WorkflowInfo),
         ok ?= upsert_suggest_continue_as_new(WorkflowInfo, WInfo, IndexTable, EventId),
@@ -646,8 +646,6 @@ replay_event(IsCommanded, IndexCommand, StateData) ->
         },
         handle_replay(update_blocking_awaitable(EType, EventIndex, IC, SD))
     else
-        {update_event_id_error, ESD} ->
-            {next_state, fail_task, ESD};
         {mutation_reset, ResetEventId, Reason} ->
             temporal_sdk_api_workflow:reset_workflow_execution(ApiCtx, Reason, ResetEventId),
             {stop, normal, StateData#state{execution_state = mutated}};
@@ -655,16 +653,18 @@ replay_event(IsCommanded, IndexCommand, StateData) ->
             {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}};
         {mutation_catch, Err} ->
             {next_state, fail_task, StateData#state{stop_reason = Err}};
-        {error, #{reason := _, awaitable := _} = Reason} ->
-            R1 = maps:without([reason], Reason),
-            R2 =
-                case IndexCommand of
-                    [{EAw, _Cmd} | _] -> R1#{expected_awaitable => EAw};
-                    _ -> R1
+        {error, #{reason := nondeterministic} = Reason} ->
+            Err =
+                case Reason of
+                    #{expected_awaitable := _} ->
+                        Reason;
+                    #{} ->
+                        case IndexCommand of
+                            [{EAw, _Cmd} | _] -> Reason#{expected_awaitable => EAw};
+                            _ -> Reason
+                        end
                 end,
-            {next_state, fail_task, StateData#state{
-                stop_reason = {error, {nondeterministic, R2}, ?EVST}
-            }};
+            {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}};
         Err ->
             {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end.
@@ -672,7 +672,7 @@ replay_event(IsCommanded, IndexCommand, StateData) ->
 upsert_suggest_continue_as_new(
     #{suggest_continue_as_new := false}, #{suggest_continue_as_new := true}, IndexTable, EventId
 ) ->
-    temporal_sdk_api_awaitable_index_table:upsert_index(
+    temporal_sdk_api_awaitable_index_table:upsert_cmd(
         IndexTable, {{suggest_continue_as_new}, #{state => suggested, event_id => EventId}}
     );
 upsert_suggest_continue_as_new(_OldWorkflowInfo, _NewWorkflowInfo, _IndexTable, _EventId) ->
@@ -711,7 +711,8 @@ is_deterministic(
 is_deterministic(false, _CMod, _, _Event, IndexCommand) ->
     {true, IndexCommand, []};
 is_deterministic(true, _CMod, EventIdx, Event, []) ->
-    {nondeterministic, #{
+    {error, #{
+        reason => nondeterministic,
         actual_awaitable => EventIdx,
         actual_event => Event,
         expected_awaitable => [],
@@ -722,7 +723,8 @@ is_deterministic(true, CMod, EventIdx, Event, [{Idx, Cmd} = IC | TIndexCommand])
         true ->
             {true, TIndexCommand, IC};
         false ->
-            {nondeterministic, #{
+            {error, #{
+                reason => nondeterministic,
                 actual_awaitable => EventIdx,
                 actual_event => Event,
                 expected_awaitable => Idx,
@@ -894,13 +896,15 @@ handle_complete_task_enter(#state{commands = [], caller_pid = CallerPid} = State
 handle_complete_task_enter(#state{commands = C, caller_pid = CallerPid} = StateData) when
     is_pid(CallerPid)
 ->
-    SR = {error, {nondeterministic, #{unexpected_command => hd(C)}}, ?EVST},
+    SR = {error, #{reason => nondeterministic, unexpected_command => hd(C)}, ?EVST},
     CallerPid ! {?TEMPORAL_SDK_REPLAY_TAG, {error, SR}},
     {stop, normal, StateData#state{stop_reason = SR}};
 handle_complete_task_enter(
     #state{api_ctx = #{task_opts := #{token := undefined}}, open_tasks_count = 0} = StateData
 ) ->
-    Err = "Internal error: undefined task token while completing workflow task.",
+    Err =
+        "Undefined task token while completing workflow task. "
+        "Typically occurs when using Temporal Queries after running RespondQueryTaskCompletedRequest.",
     {stop, normal, StateData#state{stop_reason = {error, Err, ?EVST}}};
 handle_complete_task_enter(#state{api_ctx = #{task_opts := #{token := undefined}}}) ->
     gen_statem:cast(self(), force_poll),
@@ -953,9 +957,6 @@ handle_complete_task_enter(StateData) ->
                 {keep_state, StateData#state{stop_reason = {error, RefOrErr, ?EVST}}}
         end
     else
-        {update_event_id_error, MSD} ->
-            gen_statem:cast(self(), fail_task),
-            {keep_state, MSD};
         Err ->
             gen_statem:cast(self(), fail_task),
             {current_stacktrace, CS} = process_info(self(), current_stacktrace),
@@ -1185,7 +1186,9 @@ do_handle_fail_task(StateData) ->
             #{source => C, message => R, stack_trace => S}
     end.
 
-do_fail_cause(#state{stop_reason = {error, {nondeterministic, _}, _}}) ->
+do_fail_cause(#state{stop_reason = {error, {error, #{reason := nondeterministic}}, _}}) ->
+    'WORKFLOW_TASK_FAILED_CAUSE_NON_DETERMINISTIC_ERROR';
+do_fail_cause(#state{stop_reason = {error, #{reason := nondeterministic}, _}}) ->
     'WORKFLOW_TASK_FAILED_CAUSE_NON_DETERMINISTIC_ERROR';
 do_fail_cause(_StateData) ->
     'WORKFLOW_TASK_FAILED_CAUSE_WORKFLOW_WORKER_UNHANDLED_FAILURE'.
@@ -1365,7 +1368,7 @@ handle_common(replay, cast, {?MSG_PRV, marker, record, Pid, Value}, StateData) w
             lists:keyfind(Pid, 1, Commands),
         #{value_codec := ValueCodec} = Opts,
         Idx = {IdxKey, IdxVal#{value => Value}},
-        ok ?= temporal_sdk_api_awaitable_index_table:upsert_index(IT, Idx),
+        ok ?= temporal_sdk_api_awaitable_index_table:upsert_cmd(IT, Idx),
         DetailsUsr = maps:get(details, Opts, #{}),
         {ok, EncValue, Decoder} ?= temporal_sdk_api_common:marker_encode_value(ValueCodec, Value),
         Details =
@@ -1390,6 +1393,7 @@ handle_common(replay, cast, {?MSG_PRV, marker, record, Pid, Value}, StateData) w
         Err ->
             {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end;
+%% OTP message marker:
 %% For message marker there is only command appended on record marker value event,
 %% so we handle this in the execute state dedicated for the commands accumulation.
 %% If record message marker value event is received during workflow execution replay it is postponed.
@@ -1475,7 +1479,7 @@ handle_common(
 ) ->
     #state{index_table = IndexTable} = StateData,
     Index = {IndexKey, #{result => Result}},
-    case temporal_sdk_api_awaitable_index_table:upsert_index(IndexTable, Index) of
+    case temporal_sdk_api_awaitable_index_table:upsert_cmd(IndexTable, Index) of
         ok ->
             case State of
                 replay -> handle_replay(StateData#state{has_upserted_events = true});
@@ -1491,7 +1495,7 @@ handle_common(
 ) ->
     #state{index_table = IndexTable} = StateData,
     Index = {IndexKey, #{last_failure => StopReason}},
-    case temporal_sdk_api_awaitable_index_table:upsert_index(IndexTable, Index) of
+    case temporal_sdk_api_awaitable_index_table:upsert_cmd(IndexTable, Index) of
         ok -> keep_state_and_data;
         Err -> {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end;
@@ -1622,10 +1626,15 @@ do_next_eid([{EId, _, _, _} | _THE], _) ->
 do_next_eid([], EId) ->
     {ok, EId + 1}.
 
-update_event_id(true, EventId, [{{_IK, #{event_id := EId}}, _C} | _] = Cmds, StateData) when
-    EId < EventId
-->
-    do_upeid(Cmds, EventId - 1, StateData, []);
+update_event_id(false, _EId, Cmds, _SD) ->
+    {ok, Cmds};
+update_event_id(true, _EId, [{{_IK, #{event_id := _}}, _C} | _] = Cmds, _SD) ->
+    {ok, Cmds};
+update_event_id(true, EId, [{{{complete_workflow_execution}, #{}} = Idx, C} | TIC], SD) ->
+    case temporal_sdk_api_awaitable_index_table:update_event_id(SD#state.index_table, Idx, EId) of
+        {ok, NewIdx} -> {ok, [{NewIdx, C} | TIC]};
+        Err -> Err
+    end;
 update_event_id(_IsCommanded, _EventId, Cmds, _StateData) ->
     {ok, Cmds}.
 
@@ -1652,12 +1661,14 @@ do_upeid(
 ) ->
     case temporal_sdk_api_awaitable_index_table:update_cancelation(SD#state.index_table, IC, EId) of
         {ok, NIC} -> do_upeid(TCmds, EId + 1, SD, [NIC | NC]);
-        Err -> {update_event_id_error, SD#state{stop_reason = {error, Err, ?EVST}}}
+        Err -> Err
     end;
-do_upeid([{{_IK, #{event_id := _}}, Cmd} = IC | TCmds], EId, SD, NC) ->
-    case upsert_index(IC, EId + 1, SD) of
+do_upeid([{Idx, Cmd} | TCmds], EId, SD, NC) ->
+    case
+        temporal_sdk_api_awaitable_index_table:update_event_id(SD#state.index_table, Idx, EId + 1)
+    of
         {ok, NI} -> do_upeid(TCmds, EId + 1, SD, [{NI, Cmd} | NC]);
-        {error, SD1} -> {update_event_id_error, SD1}
+        Err -> Err
     end;
 do_upeid([], _EId, _SD, NC) ->
     {ok, lists:reverse(NC)}.
@@ -1665,13 +1676,7 @@ do_upeid([], _EId, _SD, NC) ->
 %% -------------------------------------------------------------------------------------------------
 %% commands helpers
 
-%% do_cmds: info
-do_cmds([{{{info, _InfoId}, _InfoValue} = I, sdk_command} | CT], started, SD, FC, EId) ->
-    case temporal_sdk_api_awaitable_index_table:upsert_index(SD#state.index_table, I) of
-        ok -> do_cmds(CT, started, SD, FC, EId);
-        Err -> {error, SD#state{stop_reason = {error, Err, ?EVST}}}
-    end;
-%% do_cmds: execution
+%% do_cmds: spawn execution
 do_cmds(
     [{{{execution, ExeId}, #{state := cmd, mfa := {M, F, A}}} = I, sdk_command} | CT],
     started,
@@ -1680,52 +1685,44 @@ do_cmds(
     EId
 ) ->
     maybe
-        ok ?= temporal_sdk_api_awaitable_index_table:upsert_index(SD#state.index_table, I),
+        ok ?= temporal_sdk_api_awaitable_index_table:upsert_cmd(SD#state.index_table, I),
         {ok, SD1} ?= spawn_execution(M, F, A, ExeId, SD),
         do_cmds(CT, started, SD1, FC, EId)
     else
         Err -> {error, SD#state{stop_reason = {error, Err, ?EVST}}}
     end;
-do_cmds([{{{execution, _ExeId}, #{}} = I, sdk_command} | CT], started, SD, FC, EId) ->
-    case temporal_sdk_api_awaitable_index_table:upsert_index(SD#state.index_table, I) of
-        ok -> do_cmds(CT, started, SD, FC, EId);
-        Err -> {error, SD#state{stop_reason = {error, Err, ?EVST}}}
-    end;
-%% do_cmds: workflow closing commands
+%% do_cmds: workflow closing commands mutating execution_state
 do_cmds([{{{complete_workflow_execution}, #{result := R}}, C} = IC], started, SD, FC, EId) ->
-    case upsert_index(IC, EId, SD) of
+    case upsert_eidcmd(IC, EId, SD) of
         {ok, NI} ->
-            do_cmds(
-                [], completed, SD#state{execution_state = {completed, R}}, [{NI, C} | FC], EId + 1
-            );
+            St = {completed, R},
+            do_cmds([], completed, SD#state{execution_state = St}, [{NI, C} | FC], EId + 1);
         Err ->
-            Err
+            {error, SD#state{stop_reason = {error, Err, ?EVST}}}
     end;
 do_cmds([{{{cancel_workflow_execution}, #{details := D}}, C} = IC], started, SD, FC, EId) ->
-    case upsert_index(IC, EId, SD) of
+    case upsert_eidcmd(IC, EId, SD) of
         {ok, NI} ->
-            do_cmds(
-                [], canceled, SD#state{execution_state = {canceled, D}}, [{NI, C} | FC], EId + 1
-            );
+            St = {canceled, D},
+            do_cmds([], canceled, SD#state{execution_state = St}, [{NI, C} | FC], EId + 1);
         Err ->
-            Err
+            {error, SD#state{stop_reason = {error, Err, ?EVST}}}
     end;
 do_cmds([{{{fail_workflow_execution}, #{failure := F}}, C} = IC], started, SD, FC, EId) ->
-    case upsert_index(IC, EId, SD) of
+    case upsert_eidcmd(IC, EId, SD) of
         {ok, NI} ->
-            do_cmds(
-                [], failed, SD#state{execution_state = {failed, F}}, [{NI, C} | FC], EId + 1
-            );
+            St = {failed, F},
+            do_cmds([], failed, SD#state{execution_state = St}, [{NI, C} | FC], EId + 1);
         Err ->
-            Err
+            {error, SD#state{stop_reason = {error, Err, ?EVST}}}
     end;
 do_cmds([{{{continue_as_new_workflow}, #{} = IV}, C} = IC], started, SD, FC, EId) ->
-    case upsert_index(IC, EId, SD) of
+    case upsert_eidcmd(IC, EId, SD) of
         {ok, NI} ->
             St = {continued_as_new, maps:with([task_queue, workflow_type], IV)},
             do_cmds([], continued_as_new, SD#state{execution_state = St}, [{NI, C} | FC], EId + 1);
         Err ->
-            Err
+            {error, SD#state{stop_reason = {error, Err, ?EVST}}}
     end;
 do_cmds([{{{IK}, #{}}, _C} | TCmds], started, SD, _FC, _EId) when
     IK =:= complete_workflow_execution;
@@ -1745,7 +1742,7 @@ do_cmds([{{{IK}, #{}}, _C} | TCmds], started, SD, _FC, _EId) when
     }};
 %% do_cmds: running marker
 do_cmds([{Pid, {{{marker, _, _}, #{state := cmd}}, C} = IC} | CT], started, SD, FC, EId) ->
-    case upsert_index(IC, EId, SD) of
+    case upsert_eidcmd(IC, EId, SD) of
         {ok, NI} -> do_cmds(CT, started, SD, [{Pid, {NI, C}} | FC], EId + 1);
         Err -> Err
     end;
@@ -1791,14 +1788,22 @@ do_cmds([{{{query, QT} = IK, IV}, sdk_command} | CT], started, SD, FC, EId) ->
     case temporal_sdk_api_awaitable_index_table:fetch(IT, IK) of
         #{state := requested, history := H} = Qs when is_list(H) ->
             QsLi = [maps:without([history], Qs) | H],
-            case do_respond_queries(QsLi, IK, IV, ApiCtx, IT, [], #{}) of
+            case
+                temporal_sdk_api_awaitable_index_table:respond_queries(
+                    QsLi, IK, IV, ApiCtx, IT, [], #{}
+                )
+            of
                 {ok, NewQs} ->
                     do_cmds(CT, started, SD#state{queries = maps:merge(Queries, NewQs)}, FC, EId);
                 Err ->
                     {error, SD#state{stop_reason = {error, Err, ?EVST}}}
             end;
         #{state := requested} = Q ->
-            case do_respond_queries([Q], IK, IV, ApiCtx, IT, [], #{}) of
+            case
+                temporal_sdk_api_awaitable_index_table:respond_queries(
+                    [Q], IK, IV, ApiCtx, IT, [], #{}
+                )
+            of
                 {ok, NewQs} ->
                     do_cmds(CT, started, SD#state{queries = maps:merge(Queries, NewQs)}, FC, EId);
                 Err ->
@@ -1822,13 +1827,13 @@ do_cmds([{{{query, QT} = IK, IV}, sdk_command} | CT], started, SD, FC, EId) ->
     end;
 %% do_cmds: remaining SDK commands
 do_cmds([{I, sdk_command} | CT], started, SD, FC, EId) ->
-    case temporal_sdk_api_awaitable_index_table:upsert_index(SD#state.index_table, I) of
+    case temporal_sdk_api_awaitable_index_table:upsert_cmd(SD#state.index_table, I) of
         ok -> do_cmds(CT, started, SD, FC, EId);
         Err -> {error, SD#state{stop_reason = {error, Err, ?EVST}}}
     end;
 %% do_cmds: remaining Temporal commands
 do_cmds([{_I, C} = IC | CT], started, SD, FC, EId) ->
-    case upsert_index(IC, EId, SD) of
+    case upsert_eidcmd(IC, EId, SD) of
         {ok, NI} ->
             #state{open_tasks_count = OTC} = SD,
             NOTC = OTC + temporal_sdk_api_command:awaitable_command_count(IC),
@@ -1837,14 +1842,15 @@ do_cmds([{_I, C} = IC | CT], started, SD, FC, EId) ->
             Err
     end;
 %% do_cmds: maybe add complete_workflow_execution command
-do_cmds([], started, #state{open_executions_count = 0} = SD, FC, EId) ->
+do_cmds([], started, #state{open_executions_count = 0} = SD, FC, _EId) ->
     #state{api_ctx = ApiCtx, workflow_result = Result} = SD,
     IdxKey = {complete_workflow_execution},
     IdxValue = #{state => cmd, execution_id => undefined, result => Result},
+    Idx = {IdxKey, IdxValue},
     Cmd = temporal_sdk_api_command:complete_workflow_execution_command(ApiCtx, Result),
-    case upsert_index({{IdxKey, IdxValue}, Cmd}, EId, SD) of
-        {ok, NI} ->
-            {ok, SD#state{execution_state = {completed, Result}}, lists:reverse([{NI, Cmd} | FC])};
+    case temporal_sdk_api_awaitable_index_table:upsert_cmd(SD#state.index_table, Idx) of
+        ok ->
+            {ok, SD#state{execution_state = {completed, Result}}, lists:reverse([{Idx, Cmd} | FC])};
         Err ->
             {error, SD#state{stop_reason = {error, Err, ?EVST}}}
     end;
@@ -1863,73 +1869,9 @@ do_cmds(C, ClosedState, SD, _FC, _EId) ->
                 ?EVST}
     }}.
 
-do_respond_queries(
-    [#{state := requested, '_sdk_data' := {token, TT}} = QVal | TQueries],
-    Query,
-    {IdxVal, Response} = IVal,
-    ApiContext,
-    IndexTable,
-    HistoryAcc,
-    QueriesAcc
-) ->
-    temporal_sdk_api_workflow:respond_query_task_completed(ApiContext, Response#{task_token => TT}),
-    Q1 = maps:without(['_sdk_data'], QVal),
-    Q2 = maps:merge(Q1, IdxVal),
-    NewHAcc = [Q2#{state := responded} | HistoryAcc],
-    do_respond_queries(TQueries, Query, IVal, ApiContext, IndexTable, NewHAcc, QueriesAcc);
-do_respond_queries(
-    [#{state := requested, '_sdk_data' := {id, Id}} = QVal | TQueries],
-    Query,
-    {IdxVal, Response} = IVal,
-    ApiContext,
-    IndexTable,
-    HistoryAcc,
-    QueriesAcc
-) ->
-    Q1 = maps:without(['_sdk_data'], QVal),
-    Q2 = maps:merge(Q1, IdxVal),
-    NewHAcc = [Q2#{state := responded} | HistoryAcc],
-    R =
-        case Response of
-            #{answer := _} -> Response#{result_type => 'QUERY_RESULT_TYPE_ANSWERED'};
-            #{} -> Response#{result_type => 'QUERY_RESULT_TYPE_FAILED'}
-        end,
-    NewQAcc = QueriesAcc#{Id => R},
-    do_respond_queries(TQueries, Query, IVal, ApiContext, IndexTable, NewHAcc, NewQAcc);
-do_respond_queries(
-    [#{state := responded} = QVal | TQueries],
-    Query,
-    IVal,
-    ApiContext,
-    IndexTable,
-    HistoryAcc,
-    QueriesAcc
-) ->
-    NewHAcc = [QVal | HistoryAcc],
-    do_respond_queries(TQueries, Query, IVal, ApiContext, IndexTable, NewHAcc, QueriesAcc);
-do_respond_queries(
-    [],
-    Query,
-    _IVal,
-    _ApiContext,
-    IndexTable,
-    HistoryAcc,
-    QueriesAcc
-) ->
-    Idx =
-        case lists:reverse(HistoryAcc) of
-            [IVal] -> {Query, IVal};
-            [IVal | HIVal] when is_map(IVal) -> {Query, IVal#{history => HIVal}}
-        end,
-    case temporal_sdk_api_awaitable_index_table:upsert_index(IndexTable, Idx) of
-        ok -> {ok, QueriesAcc};
-        Err -> Err
-    end.
-
-upsert_index({{IdxKey, IdxVal}, _Cmd}, EventId, StateData) ->
-    #state{index_table = IndexTable} = StateData,
+upsert_eidcmd({{IdxKey, IdxVal}, _Cmd}, EventId, StateData) ->
     Idx = {IdxKey, IdxVal#{event_id => EventId}},
-    case temporal_sdk_api_awaitable_index_table:upsert_index(IndexTable, Idx) of
+    case temporal_sdk_api_awaitable_index_table:upsert_cmd(StateData#state.index_table, Idx) of
         ok -> {ok, Idx};
         Err -> {error, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end.
@@ -1977,7 +1919,7 @@ spawn_main_execution(StateData) ->
     } = StateData,
     IndexKey = {execution, ExecutionId},
     IndexValue = #{state => cmd, mfa => {ExecutionModule, execute, TaskInput}},
-    case temporal_sdk_api_awaitable_index_table:upsert_index(IndexTable, {IndexKey, IndexValue}) of
+    case temporal_sdk_api_awaitable_index_table:upsert_cmd(IndexTable, {IndexKey, IndexValue}) of
         ok -> spawn_execution(ExecutionModule, execute, TaskInput, ExecutionId, StateData);
         Err -> Err
     end.
@@ -2007,7 +1949,7 @@ spawn_execution(Module, Function, Args, ExecutionId, StateData) ->
     IndexKey = {execution, ExecutionId},
     Index = {IndexKey, #{state => started}},
     % eqwalizer:ignore
-    case temporal_sdk_api_awaitable_index_table:upsert_index(IndexTable, Index) of
+    case temporal_sdk_api_awaitable_index_table:upsert_cmd(IndexTable, Index) of
         ok ->
             SpawnPid = spawn_opt(
                 fun() ->
