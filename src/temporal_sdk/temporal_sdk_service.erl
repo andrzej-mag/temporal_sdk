@@ -1,7 +1,7 @@
 -module(temporal_sdk_service).
 
 % elp:ignore W0012 W0040 E1599
--moduledoc {file, "../../docs/temporal_sdk/operator/-module.md"}.
+-moduledoc {file, "../../docs/temporal_sdk/service/-module.md"}.
 
 -export([
     get_workflow_history/2,
