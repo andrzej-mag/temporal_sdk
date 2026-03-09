@@ -28,7 +28,10 @@
     query_workflow/3,
     query_workflow/4,
 
-    update_workflow/4
+    update_workflow/4,
+
+    cancel_workflow/2,
+    cancel_workflow/3
 ]).
 
 -include("proto.hrl").
@@ -124,6 +127,21 @@
     | {response_type, temporal_sdk:response_type()}
 ].
 -export_type([list_archived_workflows_opts/0]).
+
+-type cancel_workflow_opts() :: [
+    {namespace, unicode:chardata()}
+    %% temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
+    | {identity, unicode:chardata()}
+    | {request_id, unicode:chardata()}
+    | {first_execution_run_id, unicode:chardata()}
+    | {reason, unicode:chardata()}
+    %% repeated temporal.api.common.v1.Link links = 7;
+    %% SDK
+    | {raw_request,
+        ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionRequest'()}
+    | {response_type, temporal_sdk:response_type()}
+].
+-export_type([cancel_workflow_opts/0]).
 
 -type signal_workflow_opts() :: [
     {namespace, unicode:chardata()}
@@ -521,13 +539,6 @@ query_workflow(Cluster, WorkflowExecution, QueryType) ->
     Opts :: query_workflow_opts()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.QueryWorkflowResponse'()}
-    %% when response_type set to call_formatted:
-    | {ok, #{
-        query_result => temporal_sdk:term_from_payloads(),
-        query_rejected => ?TEMPORAL_SPEC:'temporal.api.query.v1.QueryRejected'()
-    }}
-    %% when response_type set to call_formatted:
-    | {error, Message :: unicode:chardata()}
     | temporal_sdk:response().
 query_workflow(Cluster, WorkflowExecution, QueryType, Opts) ->
     MsgName = 'temporal.api.workflowservice.v1.QueryWorkflowRequest',
@@ -570,8 +581,6 @@ query_workflow(Cluster, WorkflowExecution, QueryType, Opts) ->
     Opts :: update_workflow_opts()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.UpdateWorkflowExecutionResponse'()}
-    %% when response_type set to call_formatted:
-    | {error, Message :: unicode:chardata()}
     | temporal_sdk:response().
 update_workflow(Cluster, WorkflowExecution, Name, Opts) ->
     MsgName = 'temporal.api.workflowservice.v1.UpdateWorkflowExecutionRequest',
@@ -617,6 +626,58 @@ update_workflow(Cluster, WorkflowExecution, Name, Opts) ->
         Response = temporal_sdk_api:request('UpdateWorkflowExecution', ApiCtx, Req, ResponseType),
         temporal_sdk_api_common:format_response(
             'temporal.api.workflowservice.v1.UpdateWorkflowExecutionResponse',
+            ResponseType,
+            Response,
+            ApiCtx
+        )
+    else
+        Err -> Err
+    end.
+
+-spec cancel_workflow(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    WorkflowExecution :: temporal_sdk:workflow_execution()
+) ->
+    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionResponse'()}
+    | temporal_sdk:response().
+cancel_workflow(Cluster, WorkflowExecution) ->
+    cancel_workflow(Cluster, WorkflowExecution, []).
+
+-spec cancel_workflow(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    Opts :: cancel_workflow_opts()
+) ->
+    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionResponse'()}
+    | temporal_sdk:response().
+cancel_workflow(Cluster, WorkflowExecution, Opts) ->
+    DefaultOpts = [
+        {namespace, unicode, "default"},
+        %% temporal.api.common.v1.WorkflowExecution execution = 2;
+        {identity, unicode, '$_optional'},
+        {request_id, unicode, '$_optional'},
+        {first_execution_run_id, unicode, '$_optional'},
+        {reason, unicode, '$_optional'},
+        % repeated temporal.api.common.v1.Link links = 7;
+        %% SDK
+        {raw_request, map, #{}},
+        {response_type, atom, call_formatted}
+    ],
+    MsgName = 'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionRequest',
+    maybe
+        {ok, ApiCtx} ?= temporal_sdk_api_context:build(Cluster),
+        {ok, FullOpts} ?= temporal_sdk_utils_opts:build(DefaultOpts, Opts, ApiCtx),
+        {RawRequest, ReqFromOpts0} = maps:take(raw_request, FullOpts),
+        {ResponseType, ReqFromOpts} = maps:take(response_type, ReqFromOpts0),
+        Req1 = ReqFromOpts#{workflow_execution => WorkflowExecution},
+        Req2 = temporal_sdk_api:put_identity(ApiCtx, MsgName, Req1),
+        Req3 = temporal_sdk_api:put_id(ApiCtx, MsgName, request_id, Req2),
+        Req = maps:merge(Req3, RawRequest),
+        Response = temporal_sdk_api:request(
+            'RequestCancelWorkflowExecution', ApiCtx, Req, ResponseType
+        ),
+        temporal_sdk_api_common:format_response(
+            'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionResponse',
             ResponseType,
             Response,
             ApiCtx

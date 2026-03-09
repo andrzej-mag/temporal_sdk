@@ -45,6 +45,8 @@ upsert_event(IndexTable, {{signal, _}, _} = Index) ->
     upsert_event_noncmd(IndexTable, Index);
 upsert_event(IndexTable, {{marker, MT, _}, _} = Index) when MT =:= ~"message"; MT =:= "message" ->
     upsert_event_noncmd(IndexTable, Index);
+upsert_event(IndexTable, {{cancel_request}, _} = Index) ->
+    upsert_event_noncmd(IndexTable, Index);
 upsert_event(IndexTable, {IndexKey, NewIndexVal} = Index) ->
     case fetch_by_event(IndexTable, Index) of
         {NewIndexKey, OldIndexVal} ->

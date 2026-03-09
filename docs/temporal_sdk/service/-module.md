@@ -2,7 +2,6 @@ Temporal general services module.
 
 WIP. Module will provide following Temporal services:
 
-* request_cancel_workflow_execution
 * reset_workflow_execution
 * terminate_workflow_execution
 * delete_workflow_execution

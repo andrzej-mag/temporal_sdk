@@ -35,4 +35,7 @@ defmodule TemporalSdk.Service do
     to: :temporal_sdk_service
 
   defdelegate update_workflow(cluster, workflow_execution, name, opts), to: :temporal_sdk_service
+
+  defdelegate cancel_workflow(cluster, workflow_execution), to: :temporal_sdk_service
+  defdelegate cancel_workflow(cluster, workflow_execution, opts), to: :temporal_sdk_service
 end

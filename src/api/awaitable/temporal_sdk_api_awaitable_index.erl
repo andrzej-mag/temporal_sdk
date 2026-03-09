@@ -610,6 +610,8 @@ tstn(signal, noevent, #{state := requested}) -> 0;
 tstn(signal, #{state := requested}, #{state := requested}) -> 0;
 tstn(signal, #{state := admitted}, #{state := requested}) -> 0;
 %
+tstn(cancel_request, noevent, #{state := requested}) -> 0;
+%
 tstn(_AwaitableType, _OldData, _NewData) -> invalid.
 
 %% tstx - test state transition when Temporal external event (eg. query) is translated to SDK awaitable.
