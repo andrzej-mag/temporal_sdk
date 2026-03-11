@@ -300,9 +300,10 @@
 -doc #{group => "Functions types"}.
 -type replay_workflow_opts() :: [
     {timeout, erlang:timeout()}
-    | {grpc_opts, temporal_sdk_client:grpc_opts()}
+    | {client_opts, temporal_sdk_client:opts()}
     | {worker_id, term()}
     | {worker_opts, term()}
+    | {task_overwrites, [{input, temporal_sdk:term_to_payloads()}]}
 ].
 
 -doc #{group => "Functions types"}.
@@ -483,14 +484,19 @@ do_replay_workflow(Cluster, WorkflowMod, JsonBinary, Opts) ->
         end,
     DefaultOpts = [
         {timeout, [infinity, non_neg_integer], infinity},
-        {grpc_opts, map, #{}},
+        {client_opts, map, #{}},
         {worker_id, [atom, unicode], '$_optional'},
-        {worker_opts, [list, map], WO}
+        {worker_opts, [list, map], WO},
+        {task_overwrites, list, '$_optional'}
     ],
     maybe
-        {ok, #{grpc_opts := GrpcOpts, timeout := Timeout} = O} ?=
+        {ok, #{client_opts := COO, timeout := Timeout} = O} ?=
             temporal_sdk_utils_opts:build(DefaultOpts, Opts),
         ok ?= check_opts(replay_workflow, O),
+        {ok, #{client_opts := COA} = AC0} ?= temporal_sdk_api_context:build(Cluster),
+        {ok, #{grpc_opts := GrpcOpts} = ClientOpts} ?=
+            temporal_sdk_utils_maps:deep_merge_opts(COA, COO),
+        AC1 = AC0#{client_opts := ClientOpts},
         {ok, History} ?=
             temporal_sdk_api:from_json(
                 'temporal.api.history.v1.History', Cluster, JsonBinary, GrpcOpts
@@ -500,14 +506,46 @@ do_replay_workflow(Cluster, WorkflowMod, JsonBinary, Opts) ->
         % eqwalizer:ignore
         {ok, Task} ?= temporal_sdk_api_workflow_task:task_from_history(History),
         {ok, WorkerOpts} ?= w_opts_replay_wf(O, Cluster, Task),
-        {ok, AC0} ?= temporal_sdk_api_context:build(Cluster),
-        AC1 = AC0#{worker_opts => WorkerOpts, limiter_counters => [[], [], []]},
+        AC2 = AC1#{worker_opts => WorkerOpts, limiter_counters => [[], [], []]},
+        {ok, WorkerOpts} ?= w_opts_replay_wf(O, Cluster, Task),
         ApiContext = temporal_sdk_scope:init_ctx(
-            temporal_sdk_api_context:add_workflow_opts(AC1, Task, WorkflowMod)
+            temporal_sdk_api_context:add_workflow_opts(AC2, Task, WorkflowMod)
         ),
-        {ok, Pid} ?= temporal_sdk_executor_workflow:start(ApiContext, Task, self()),
+        {ok, T} ?= task_overwrite(O, ApiContext, Task),
+        {ok, Pid} ?= temporal_sdk_executor_workflow:start(ApiContext, T, self()),
         {ok, Pid, Timeout}
     end.
+
+task_overwrite(#{task_overwrites := TO}, ApiContext, Task) ->
+    do_task_overwrite(TO, ApiContext, Task);
+task_overwrite(_Opts, _ApiContext, Task) ->
+    {ok, Task}.
+
+do_task_overwrite(
+    [{input, Input} | TO], ApiContext, #{history := #{events := [E | TE]} = H} = Task
+) ->
+    case E of
+        #{attributes := {workflow_execution_started_event_attributes, A}} ->
+            I = temporal_sdk_api:map_to_payloads(
+                ApiContext,
+                'temporal.api.history.v1.WorkflowExecutionStartedEventAttributes',
+                input,
+                Input
+            ),
+            EO = E#{attributes := {workflow_execution_started_event_attributes, A#{input := I}}},
+            do_task_overwrite(TO, ApiContext, Task#{history := H#{events := [EO | TE]}});
+        Err ->
+            {error, #{
+                reason =>
+                    "Malformed task history event. "
+                    "Expected `workflow_execution_started_event_attributes` event, received invalid.",
+                invalid_event => Err
+            }}
+    end;
+do_task_overwrite([], _ApiContext, Task) ->
+    {ok, Task};
+do_task_overwrite(Invalid, _ApiContext, _Task) ->
+    {error, #{reason => "Invalid task_overwrites options.", invalid_opts => Invalid}}.
 
 w_opts_replay_wf(#{worker_id := WorkerId}, Cluster, _Task) ->
     temporal_sdk_worker:options(Cluster, workflow, WorkerId);
