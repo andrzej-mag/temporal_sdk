@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.17](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.16..v0.1.17) - 2026-03-12
+
+### 🐛 Bug Fixes
+
+- Remove obsolete opentelemetry_api_experimental app entry - ([95fb3f8](https://github.com/andrzej-mag/temporal_sdk/commit/95fb3f865c015109d7910a3e2de0bbbf548506e0))
+
 ## [0.1.16](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.15..v0.1.16) - 2026-03-12
 
 ### 🚀 Features
