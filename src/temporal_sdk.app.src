@@ -1,6 +1,6 @@
 {application, temporal_sdk, [
     {description, "Temporal Erlang and Elixir SDK"},
-    {vsn, "0.1.16"},
+    {vsn, "0.1.17"},
     {mod, {temporal_sdk_app, []}},
     {env, []},
     {modules, []},
@@ -11,7 +11,6 @@
         os_mon,
         gun,
         opentelemetry_api,
-        opentelemetry_api_experimental,
         telemetry,
         uuid
     ]}
