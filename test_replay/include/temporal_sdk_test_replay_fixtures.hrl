@@ -98,7 +98,9 @@
         worker_id => ?WF_TYPE,
         namespace => ?NS,
         task_queue => ?TQ,
-        task_settings => [session_worker]
+        task_settings => [
+            session_worker, {deterministic_check_mod, temporal_sdk_api_workflow_check_strict}
+        ]
     }
 ]).
 

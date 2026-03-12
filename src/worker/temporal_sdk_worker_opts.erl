@@ -172,7 +172,7 @@ defaults(task_settings, nexus) ->
 defaults(task_settings, workflow) ->
     [
         {execution_id, any, main},
-        {deterministic_check_mod, atom, temporal_sdk_api_workflow_check_strict},
+        {deterministic_check_mod, atom, temporal_sdk_api_workflow_check_temporal},
         {run_timeout_ratio, float, 0.8},
         {task_timeout_ratio, float, 0.8},
         {sticky_execution_schedule_to_start_ratio, float, 0.5},
