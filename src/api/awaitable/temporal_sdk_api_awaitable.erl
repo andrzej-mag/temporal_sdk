@@ -46,7 +46,7 @@ init_match(IndexKey, {_HistoryTable, IndexTable}) ->
     temporal_sdk_api_awaitable_index_table:fetch(IndexTable, IndexKey).
 
 match_test({Operator, Pattern}, {Operator, Match}) when Operator =:= one; Operator =:= all ->
-    {Operator, lists:zipwith(fun(P, M) -> match_test(P, M) end, Pattern, Match)};
+    {Operator, lists:zipwith(fun match_test/2, Pattern, Match)};
 match_test(awaitable_data, _AwaitableData) ->
     {true, true};
 match_test(Pattern, Match) ->

@@ -2267,7 +2267,7 @@ record_uuid4() ->
 -doc #{group => "Temporal marker commands"}.
 -spec record_uuid4(Opts :: record_marker_opts()) -> marker() | marker_data() | no_return().
 record_uuid4(Opts) ->
-    record_marker(fun() -> temporal_sdk_utils:uuid4() end, add_marker_type(uuid4, Opts)).
+    record_marker(fun temporal_sdk_utils:uuid4/0, add_marker_type(uuid4, Opts)).
 
 -doc #{group => "Temporal marker commands"}.
 -spec record_system_time() -> marker() | no_return().
@@ -2281,7 +2281,7 @@ record_system_time() ->
 record_system_time(Unit) when is_atom(Unit) ->
     record_marker(fun() -> erlang:system_time(Unit) end, add_marker_li_ser(system_time, []));
 record_system_time(Opts) when is_list(Opts) ->
-    record_marker(fun() -> erlang:system_time() end, add_marker_li_ser(system_time, Opts)).
+    record_marker(fun erlang:system_time/0, add_marker_li_ser(system_time, Opts)).
 
 -doc #{group => "Temporal marker commands"}.
 -spec record_system_time(Unit :: erlang:time_unit(), Opts :: record_marker_opts()) ->
@@ -2301,7 +2301,7 @@ record_rand_uniform() ->
 record_rand_uniform(Range) when is_integer(Range) ->
     record_marker(fun() -> rand:uniform(Range) end, add_marker_li_ser(rand_uniform, []));
 record_rand_uniform(Opts) when is_list(Opts) ->
-    record_marker(fun() -> rand:uniform() end, add_marker_li_ser(rand_uniform, Opts)).
+    record_marker(fun rand:uniform/0, add_marker_li_ser(rand_uniform, Opts)).
 
 -doc #{group => "Temporal marker commands"}.
 -spec record_rand_uniform(Range :: pos_integer(), Opts :: record_marker_opts()) ->

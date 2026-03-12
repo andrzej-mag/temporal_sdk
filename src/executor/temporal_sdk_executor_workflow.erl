@@ -871,11 +871,8 @@ handle_complete_task_enter(
 handle_complete_task_enter(#state{commands = [], pending_commands = PC} = StateData) when
     PC =/= []
 ->
-    Fn = fun
-        ({{IK, IV}, _Cmd}) ->
-            #{awaitable => IK, approximate_data_size_bytes => byte_size(erlang:term_to_binary(IV))};
-        (_) ->
-            "invalid index_command"
+    Fn = fun({{IK, IV}, _Cmd}) ->
+        #{awaitable => IK, approximate_data_size_bytes => byte_size(erlang:term_to_binary(IV))}
     end,
     ErrA = [Fn(I) || I <- PC],
     gen_statem:cast(self(), fail_task),
