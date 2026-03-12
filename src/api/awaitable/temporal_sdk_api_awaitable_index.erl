@@ -55,7 +55,7 @@ do_cast(Pattern, CastMod) ->
         ('_') -> '_';
         (N) -> CastMod:cast(N)
     end,
-    CastedNames = lists:map(CastFn, Names),
+    CastedNames = [CastFn(Na) || Na <- Names],
     list_to_tuple([I | CastedNames]).
 
 cast_value(A, Value, _ApiCtx) when A =:= execution; A =:= info ->
@@ -71,7 +71,7 @@ cast_list(Pattern, #{client_opts := #{grpc_opts := #{codec := {Codec, _, _}}}}) 
         ('_') -> '_';
         (N) -> Codec:cast(N)
     end,
-    CastedNames = lists:map(CastFn, Names),
+    CastedNames = [CastFn(Na) || Na <- Names],
     [I | CastedNames].
 
 %% Temporal events

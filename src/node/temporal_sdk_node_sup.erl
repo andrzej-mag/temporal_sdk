@@ -84,12 +84,10 @@ scopes(NodeOpts, EnvClustersConfig) ->
             EnvClustersConfig
         )
     ),
-    ScopeList = lists:map(
-        fun(Scope) ->
-            {Scope, proplists:get_value(Scope, SC, ?DEFAULT_WORKFLOW_SCOPE_SHARD_SIZE)}
-        end,
-        Scopes
-    ),
+    Fn = fun(Scope) ->
+        {Scope, proplists:get_value(Scope, SC, ?DEFAULT_WORKFLOW_SCOPE_SHARD_SIZE)}
+    end,
+    ScopeList = [Fn(S) || S <- Scopes],
     ScopeConfig =
         lists:map(
             fun({ClusterName, ClusterOpts}) when is_list(ClusterOpts) ->

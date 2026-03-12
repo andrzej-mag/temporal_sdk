@@ -167,9 +167,7 @@ is_checks_valid([{{Layer1, Limitable1}, _CounterRef1, Limits1} | TChecks]) ->
                 reason =>
                     "Violated rate limiter levels limits condition: node >= cluster >= worker.",
                 invalid_limits =>
-                    lists:map(
-                        fun({{Layer, Limitable}, _, Limits}) -> {Layer, Limitable, Limits} end, Err
-                    ),
+                    [{Layer, Limitable, Limits} || {{Layer, Limitable}, _, Limits} <- Err],
                 violated_limit => {Layer1, Limitable1, Limits1}
             }}
     end;

@@ -195,10 +195,8 @@ defaults(limits, WorkerType) ->
         {worker, nested, defaults(worker_limits, WorkerType)}
     ];
 defaults(os_limits, _WorkerType) ->
-    DiskLimits = lists:map(
-        fun(Id) -> {{disk, Id}, pos_integer, '$_optional'} end, temporal_sdk_node:os_disk_mounts()
-    ),
-    % eqwalizer:ignore
+    Fn = fun(Id) -> {{disk, Id}, pos_integer, '$_optional'} end,
+    DiskLimits = [Fn(DM) || DM <- temporal_sdk_node:os_disk_mounts()],
     [
         {cpu1, pos_integer, '$_optional'},
         {cpu5, pos_integer, '$_optional'},

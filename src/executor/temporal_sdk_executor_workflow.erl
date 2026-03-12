@@ -877,7 +877,7 @@ handle_complete_task_enter(#state{commands = [], pending_commands = PC} = StateD
         (_) ->
             "invalid index_command"
     end,
-    ErrA = lists:map(Fn, PC),
+    ErrA = [Fn(I) || I <- PC],
     gen_statem:cast(self(), fail_task),
     {keep_state, StateData#state{
         stop_reason =

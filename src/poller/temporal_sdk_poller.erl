@@ -310,7 +310,7 @@ compensate_checks(Checks, PollCount, Limitable) ->
         (Check) ->
             Check
     end,
-    lists:map(Fn, Checks).
+    [Fn(C) || C <- Checks].
 
 update_limiter_wait_time(LevelLimitable, StateData) ->
     #state{limiter_wait_time = LimiterWaitTime, capacity_check_interval = CapacityCheckInterval} =

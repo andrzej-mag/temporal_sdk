@@ -372,7 +372,7 @@ set_limiter_config(Cluster, session, WorkerId, NewLimiterConfig) ->
             temporal_sdk_poller_sup
         ]} ?= lists:keyfind({temporal_sdk_poller_sup, Cluster, session, WorkerId}, 1, Chi),
         PollerChi = supervisor:which_children(PollerPid),
-        PollerPids = lists:map(fun({_, P, worker, [temporal_sdk_poller]}) -> P end, PollerChi),
+        PollerPids = [P || {_, P, worker, [temporal_sdk_poller]} <- PollerChi],
         gen_server:cast(OptsPid, {set_session_limits, Limits}),
         lists:foreach(
             fun(P) when is_pid(P) -> gen_statem:cast(P, {set_limits, Limits}) end, PollerPids
@@ -395,7 +395,7 @@ set_limiter_config(Cluster, WorkerType, WorkerId, NewLimiterConfig) ->
             temporal_sdk_poller_sup
         ]} ?= lists:keyfind({temporal_sdk_poller_sup, Cluster, WorkerType, WorkerId}, 1, Chi),
         PollerChi = supervisor:which_children(PollerPid),
-        PollerPids = lists:map(fun({_, P, worker, [temporal_sdk_poller]}) -> P end, PollerChi),
+        PollerPids = [P || {_, P, worker, [temporal_sdk_poller]} <- PollerChi],
         gen_server:cast(OptsPid, {set_limits, Limits}),
         lists:foreach(
             fun(P) when is_pid(P) -> gen_statem:cast(P, {set_limits, Limits}) end, PollerPids
