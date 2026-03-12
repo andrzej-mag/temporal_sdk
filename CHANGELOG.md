@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.1.16](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.15..v0.1.16) - 2026-03-12
+
+### 🚀 Features
+
+- Replace deterministic_check_mod default to temporal_sdk_api_workflow_check_temporal - ([8d3030a](https://github.com/andrzej-mag/temporal_sdk/commit/8d3030a14740952bc0e7fa816770c9a70dc8e233))
+- Extend temporal_sdk:replay_task_opts() - ([79e6396](https://github.com/andrzej-mag/temporal_sdk/commit/79e63961e872674c647e68a2459ccffc47271a8d))
+- Add temporal_sdk_service:cancel_workflow/3 - ([af2db70](https://github.com/andrzej-mag/temporal_sdk/commit/af2db704607c0f9159927eb73bf66f21eacd44ed))
+- [**breaking**] Improve awaitable handling pipeline - ([12a5cb4](https://github.com/andrzej-mag/temporal_sdk/commit/12a5cb41e35267e2e39e7a88e12893d2421d3619))
+- Better worker_opts defaults for WF replay functions - ([39c79ab](https://github.com/andrzej-mag/temporal_sdk/commit/39c79abf17433ccd07c26203733e522a71f83b46))
+- Improve temporal_sdk:replay_json/3,4 return value type - ([9b1e138](https://github.com/andrzej-mag/temporal_sdk/commit/9b1e138cd64dd2262f8d091d157eb566f0255628))
+- Add disable_telemetry option - ([2079422](https://github.com/andrzej-mag/temporal_sdk/commit/2079422b1e53991809d605adff5cd7f88346d916))
+- Add temporal_sdk_api_workflow_check_temporal - ([b1f24af](https://github.com/andrzej-mag/temporal_sdk/commit/b1f24af9124f591bb0108edd7ad64dbf017c9528))
+
+### 🐛 Bug Fixes
+
+- Fix EVENT_TYPE_WORKFLOW_PROPERTIES_MODIFIED as commanded - ([f78e610](https://github.com/andrzej-mag/temporal_sdk/commit/f78e610263bf4f6170f886cba3e15d14a11bb318))
+- Fix temporal_sdk_workflow awaitable_event typespecs - ([a87f7a6](https://github.com/andrzej-mag/temporal_sdk/commit/a87f7a65ca767f85779f3cf9cf5b3d70f5d31532))
+
+### 📚 Documentation
+
+- Add temporal_sdk_api_workflow_check docs - ([cd0d2d5](https://github.com/andrzej-mag/temporal_sdk/commit/cd0d2d5e7949a0c60533b2f0dd895bc27f0e7c76))
+- Fix moduledoc md file reference - ([82f2ea4](https://github.com/andrzej-mag/temporal_sdk/commit/82f2ea457764161dafaa7056480d4c2d5fcdcb6c))
+
+### 🧪 Testing
+
+- Fix activity a_cancel_3_nde1 replay tests - ([0353e24](https://github.com/andrzej-mag/temporal_sdk/commit/0353e242279cdb7e32d3973ee77a7d8424f2fe02))
+
+### ⚙️ Miscellaneous
+
+- Fix elp W0071 - ([0b65b3d](https://github.com/andrzej-mag/temporal_sdk/commit/0b65b3d44a70131fad156176015a22d484fb047b))
+- Fix elp W0066 - ([5f4c35b](https://github.com/andrzej-mag/temporal_sdk/commit/5f4c35b9664a006118fa3d486468337d7f8c50f3))
+- Remove redundant -doc attr from temporal_sdk_api_workflow_check_* - ([1915237](https://github.com/andrzej-mag/temporal_sdk/commit/19152373522ebb36b12035037fa67ab7347e4cc4))
+- Update TODO.md - ([6b58218](https://github.com/andrzej-mag/temporal_sdk/commit/6b582181ff229590fa5032bda346bf4a993b38f9))
+- Remove unused opentelemetry_api_experimental dependency - ([27693bf](https://github.com/andrzej-mag/temporal_sdk/commit/27693bf0511821e9aeb3e1a612397b4cfe6f9303))
+- Fix elp replay_test incompatible_types in setelement - ([7028ba4](https://github.com/andrzej-mag/temporal_sdk/commit/7028ba42eaf5dddcce3b8a908e1c4b7aa823b53d))
+- Add elixirc_options: [warnings_as_errors: true] - ([768571a](https://github.com/andrzej-mag/temporal_sdk/commit/768571a6c874349d899fba8cd4b43d0204ed9a77))
+- Update TODO.md - ([18510ef](https://github.com/andrzej-mag/temporal_sdk/commit/18510ef03e9e519c95e87315413a8928d0f56432))
+
 ## [0.1.15](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.14..v0.1.15) - 2026-02-09
 
 ### 🚀 Features
