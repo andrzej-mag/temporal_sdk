@@ -160,7 +160,7 @@
     | {identity, unicode:chardata()}
     %% SDK
     | {raw_request,
-        ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionRequest'()}
+        ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.ResetWorkflowExecutionRequest'()}
     | {response_type, temporal_sdk:response_type()}
 ].
 -export_type([reset_workflow_opts/0]).
