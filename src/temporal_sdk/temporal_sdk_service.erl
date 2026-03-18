@@ -31,7 +31,10 @@
     update_workflow/4,
 
     cancel_workflow/2,
-    cancel_workflow/3
+    cancel_workflow/3,
+
+    reset_workflow/2,
+    reset_workflow/3
 ]).
 
 -include("proto.hrl").
@@ -142,6 +145,25 @@
     | {response_type, temporal_sdk:response_type()}
 ].
 -export_type([cancel_workflow_opts/0]).
+
+-type reset_workflow_opts() :: [
+    {namespace, unicode:chardata()}
+    %% temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
+    | {reason, unicode:chardata()}
+    | {workflow_task_finish_event_id, pos_integer()}
+    | {request_id, unicode:chardata()}
+    %% Deprecated. Use `options`.
+    %% temporal.api.enums.v1.ResetReapplyType reset_reapply_type = 6 [deprecated = true];
+    | {reset_reapply_exclude_types,
+        ?TEMPORAL_SPEC:'temporal.api.enums.v1.ResetReapplyExcludeType'()}
+    | {post_reset_operations, list()}
+    | {identity, unicode:chardata()}
+    %% SDK
+    | {raw_request,
+        ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionRequest'()}
+    | {response_type, temporal_sdk:response_type()}
+].
+-export_type([reset_workflow_opts/0]).
 
 -type signal_workflow_opts() :: [
     {namespace, unicode:chardata()}
@@ -682,6 +704,55 @@ cancel_workflow(Cluster, WorkflowExecution, Opts) ->
             Response,
             ApiCtx
         )
-    else
-        Err -> Err
+    end.
+
+-spec reset_workflow(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    WorkflowExecution :: temporal_sdk:workflow_execution()
+) ->
+    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.ResetWorkflowExecutionResponse'()}
+    | temporal_sdk:response().
+reset_workflow(Cluster, WorkflowExecution) ->
+    reset_workflow(Cluster, WorkflowExecution, []).
+
+-spec reset_workflow(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    Opts :: reset_workflow_opts()
+) ->
+    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.ResetWorkflowExecutionResponse'()}
+    | temporal_sdk:response().
+reset_workflow(Cluster, WorkflowExecution, Opts) ->
+    DefaultOpts = [
+        {namespace, unicode, "default"},
+        %% temporal.api.common.v1.WorkflowExecution execution = 2;
+        {reason, unicode, '$_optional'},
+        {workflow_task_finish_event_id, pos_integer, 3},
+        {request_id, unicode, '$_optional'},
+        %% Deprecated. Use `options`.
+        %% temporal.api.enums.v1.ResetReapplyType reset_reapply_type = 6 [deprecated = true];
+        {reset_reapply_exclude_types, list, '$_optional'},
+        {post_reset_operations, list, '$_optional'},
+        {identity, unicode, '$_optional'},
+        %% SDK
+        {raw_request, map, #{}},
+        {response_type, atom, call_formatted}
+    ],
+    MsgName = 'temporal.api.workflowservice.v1.ResetWorkflowExecutionRequest',
+    maybe
+        {ok, ApiCtx} ?= temporal_sdk_api_context:build(Cluster),
+        {ok, FullOpts} ?= temporal_sdk_utils_opts:build(DefaultOpts, Opts, ApiCtx),
+        {RawRequest, ReqFromOpts0} = maps:take(raw_request, FullOpts),
+        {ResponseType, ReqFromOpts} = maps:take(response_type, ReqFromOpts0),
+        Req1 = ReqFromOpts#{workflow_execution => WorkflowExecution},
+        Req2 = temporal_sdk_api:put_identity(ApiCtx, MsgName, Req1),
+        Req3 = temporal_sdk_api:put_id(ApiCtx, MsgName, request_id, Req2),
+        Req = maps:merge(Req3, RawRequest),
+        Response = temporal_sdk_api:request('ResetWorkflowExecution', ApiCtx, Req, ResponseType),
+        temporal_sdk_api_common:format_response(
+            'temporal.api.workflowservice.v1.ResetWorkflowExecutionResponse',
+            ResponseType,
+            Response,
+            ApiCtx
+        )
     end.
