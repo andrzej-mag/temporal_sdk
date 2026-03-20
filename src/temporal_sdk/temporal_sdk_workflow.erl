@@ -217,7 +217,7 @@
 
 -doc #{group => "Temporal commands opts"}.
 -type record_marker_mutable_opts() ::
-    #{mutations_limit := pos_integer(), fail_on_limit := boolean()} | boolean().
+    #{mutations_limit => pos_integer(), fail_on_limit => boolean()} | boolean().
 -export_type([record_marker_mutable_opts/0]).
 
 -doc #{group => "Temporal commands opts"}.
