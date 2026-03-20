@@ -613,7 +613,8 @@ replay_event(IsCommanded, IndexCommand, StateData) ->
         index_table = IndexTable,
         workflow_info = WorkflowInfo,
         otp_messages_count = OtpMessagesCount,
-        replayed_commands = ReplayedCommands
+        replayed_commands = ReplayedCommands,
+        caller_pid = CallerPid
     } = StateData,
     #{worker_opts := #{task_settings := #{deterministic_check_mod := DeterministicCheckMod}}} =
         ApiCtx,
@@ -630,7 +631,7 @@ replay_event(IsCommanded, IndexCommand, StateData) ->
             is_deterministic(IsCommanded, DeterministicCheckMod, EventIndex, Event, IndexCommand1),
         {ok, ClosedTaskCount} ?=
             temporal_sdk_api_awaitable_index_table:upsert_event(IndexTable, EventIndex),
-        ignore ?= handle_mutation(IsReplaying, IC, EventIndex, HistoryTable),
+        ignore ?= handle_mutation(CallerPid, IsReplaying, IC, EventIndex, HistoryTable),
         WInfo = temporal_sdk_api_awaitable_history:update_workflow_info(Event, WorkflowInfo),
         ok ?= upsert_suggest_continue_as_new(WorkflowInfo, WInfo, IndexTable, EventId),
         SD = StateData#state{
@@ -752,72 +753,64 @@ handle_blocking_task(StateData) ->
             {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end.
 
+handle_mutation(_CallerPid, _IsReplaying, [], ignore_index, _HistoryTable) ->
+    ignore;
 handle_mutation(
+    undefined,
     true,
-    {{{marker, _, _}, #{state := cmd}}, #{
-        value_fun := VFn, opts := #{mutable := #{mutations_limit := Limit}}
-    }} = IndexCommand,
-    {{marker, _, _}, #{state := recorded, value := Value}} = EventIndex,
+    {{{marker, _, Name}, #{state := cmd, mutable := #{mutations_limit := ML}}}, #{value_fun := VFn}},
+    {{marker, _, _}, #{state := recorded, mutations_count := MC, value := MV}},
     HistoryTable
-) when Limit > 0 ->
+) when MC < ML ->
     try
-        % TODO pass old value???
-        % NewValue = VFn(Value),
-        NewValue = VFn(),
-        case NewValue =:= Value of
-            true -> ignore;
-            false -> do_mutation(NewValue, IndexCommand, EventIndex, HistoryTable)
+        NewValue =
+            case VFn of
+                Fn when is_function(Fn, 1) -> Fn(MC);
+                Fn when is_function(Fn, 0) -> Fn();
+                {M, F} when is_atom(M), is_atom(F) -> M:F(MC);
+                {M, F, A} when is_atom(M), is_atom(F) -> apply(M, F, A)
+            end,
+        case NewValue of
+            MV ->
+                ignore;
+            _ ->
+                REId = temporal_sdk_api_awaitable_history_table:reset_event_id(HistoryTable),
+                {RRStr, _RRBin} = temporal_sdk_api_common:mutation_reset_reason(Name),
+                {mutation_reset, REId, RRStr}
         end
     catch
         Class:Reason:Stacktrace -> {mutation_catch, {Class, Reason, Stacktrace}}
     end;
-handle_mutation(_IsReplaying, _IndexCommand, _EventIndex, _HistoryTable) ->
-    ignore.
-
-do_mutation(
-    _NewValue,
-    {{{marker, _Type, Name}, _IdxData}, #{opts := #{mutable := #{mutations_limit := Limit}}}},
-    {{marker, _, _}, #{mutations_count := Count}},
-    HistoryTable
-) when Count < Limit ->
-    REId = temporal_sdk_api_awaitable_history_table:reset_event_id(HistoryTable),
-    {RRStr, _RRBin} = temporal_sdk_api_common:mutation_reset_reason(Name),
-    {mutation_reset, REId, RRStr};
-do_mutation(
-    NewValue,
-    {{{marker, Type, Name}, _IdxData}, #{
-        opts := #{mutable := #{mutations_limit := Limit, fail_on_limit := true}}
-    }},
-    {{marker, _, _}, #{value := Value}},
+handle_mutation(
+    undefined,
+    true,
+    {
+        {{marker, MT, MN}, #{
+            state := cmd, mutable := #{mutations_limit := ML, fail_on_limit := FOL}
+        }},
+        #{}
+    },
+    {{marker, _, _}, #{state := recorded, mutations_count := MC, value := MV}},
     _HistoryTable
 ) ->
     FailureData = #{
-        reason => "Marker mutations limit exceeded.",
-        marker_name => Name,
-        marker_type => Type,
-        recorded_value => Value,
-        current_value => NewValue,
-        mutations_limit => Limit
+        reason => "Mutable marker mutations limit exceeded.",
+        marker_name => MN,
+        marker_type => MT,
+        marker_value => MV,
+        mutations_limit => ML,
+        mutations_count => MC
     },
-    {mutation_fail, FailureData};
-do_mutation(
-    NewValue,
-    {{{marker, Type, Name}, _IdxData}, #{
-        opts := #{mutable := #{mutations_limit := Limit, fail_on_limit := false}}
-    }},
-    {{marker, _, _}, #{value := Value}},
-    _HistoryTable
-) ->
-    FailureData = #{
-        marker_name => Name,
-        marker_type => Type,
-        recorded_value => Value,
-        current_value => NewValue,
-        mutations_limit => Limit
-    },
-    temporal_sdk_utils_logger:log_error(
-        error, ?MODULE, ?FUNCTION_NAME, "Marker mutations limit exceeded.", FailureData
-    ),
+    case FOL of
+        true ->
+            {mutation_fail, FailureData};
+        false ->
+            temporal_sdk_utils_logger:log_error(
+                error, ?MODULE, ?FUNCTION_NAME, "Marker mutations limit exceeded.", FailureData
+            ),
+            ignore
+    end;
+handle_mutation(_CallerPid, _IsReplaying, _IndexCommand, _EventIndex, _HistoryTable) ->
     ignore.
 
 update_blocking_awaitable(
@@ -2042,8 +2035,8 @@ do_sloc(false, [{{{marker, _, _}, #{state := cmd}}, _} = C | CT], SD, TC, RC) ->
     do_sloc(false, CT, SD1, [{Pid, C} | TC], RC);
 do_sloc(IsReplaying, [C | CT], SD, TC, RC) ->
     do_sloc(IsReplaying, CT, SD, [C | TC], RC);
-do_sloc(_IsReplaying, [], SD, TC, RC) ->
-    {ok, SD, TC, RC}.
+do_sloc(_IsReplaying, [], SD, C, RC) ->
+    {ok, SD, C, RC}.
 
 spawn_activity({{{activity, _} = IK, #{activity_type := AType}}, _} = IdxCmd, SD) ->
     #state{
@@ -2065,17 +2058,27 @@ spawn_activity({{{activity, _} = IK, #{activity_type := AType}}, _} = IdxCmd, SD
         }}
     end.
 
-spawn_marker({{{marker, _, _}, #{}}, #{value_fun := MarkerValueFun}}, StateData) ->
+spawn_marker({{{marker, _, _}, #{} = IK}, #{value_fun := MarkerValueFun}}, StateData) ->
     #state{linked_pids = LP, open_locals_count = OLC} = StateData,
     ExecutorPid = self(),
     Pid = spawn_link(
         fun() ->
             try
                 Result =
-                    case MarkerValueFun of
-                        FnV when is_function(MarkerValueFun, 0) -> FnV();
-                        {M, F} when is_atom(M), is_atom(F) -> M:F();
-                        {M, F, A} when is_atom(M), is_atom(F) -> apply(M, F, A)
+                    case IK of
+                        #{mutable := #{}} ->
+                            case MarkerValueFun of
+                                FnV when is_function(MarkerValueFun, 1) -> FnV(-1);
+                                FnV when is_function(MarkerValueFun, 0) -> FnV();
+                                {M, F} when is_atom(M), is_atom(F) -> M:F(-1);
+                                {M, F, A} when is_atom(M), is_atom(F) -> apply(M, F, A)
+                            end;
+                        #{} ->
+                            case MarkerValueFun of
+                                FnV when is_function(MarkerValueFun, 0) -> FnV();
+                                {M, F} when is_atom(M), is_atom(F) -> M:F();
+                                {M, F, A} when is_atom(M), is_atom(F) -> apply(M, F, A)
+                            end
                     end,
                 gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, record, self(), Result})
             catch

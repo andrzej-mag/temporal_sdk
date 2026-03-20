@@ -256,7 +256,10 @@
 
 -doc #{group => "Temporal commands opts"}.
 -type record_marker_value_fun() ::
+    AllMarkers ::
     fun(() -> temporal_sdk:term_to_payloads() | term())
+    | MutableMarker ::
+    fun((-1 | non_neg_integer()) -> temporal_sdk:term_to_payloads() | term())
     | {module(), atom()}
     | {module(), atom(), term()}.
 
@@ -737,7 +740,7 @@
         state := cmd,
         execution_id := execution_id(),
         event_id := event_id(),
-        mutable => true,
+        mutable => record_marker_mutable_opts(),
         mutations_count => non_neg_integer(),
         details := temporal_sdk:term_to_mapstring_payload(),
         value => temporal_sdk:term_to_payloads() | term(),
@@ -747,7 +750,7 @@
         state := recorded,
         execution_id := execution_id(),
         event_id := event_id(),
-        mutable => true,
+        mutable => record_marker_mutable_opts(),
         mutations_count => non_neg_integer(),
         details := temporal_sdk:term_from_mapstring_payload(),
         value := temporal_sdk:term_from_payloads() | term(),
@@ -760,8 +763,7 @@
         execution_id := undefined,
         event_id := event_id(),
         value := temporal_sdk:term_from_payloads(),
-        history => [map()],
-        replay_id => marker_index_key()
+        history => [map()]
     }.
 -export_type([marker_data/0]).
 
@@ -1836,7 +1838,7 @@ record_marker(MarkerValueFun, Opts) ->
     IndexValue =
         case CmdOpts of
             #{mutable := false} -> IndexValue1;
-            #{mutable := _} -> IndexValue1#{mutable => true}
+            #{mutable := M} -> IndexValue1#{mutable => M}
         end,
     do_command(IdxKey, IdxKeyCasted, IndexValue, Cmd, OptsAttr).
 
