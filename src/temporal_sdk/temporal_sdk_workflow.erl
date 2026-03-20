@@ -2312,20 +2312,20 @@ record_rand_uniform(Range, Opts) ->
     record_marker(fun() -> rand:uniform(Range) end, add_marker_li_ser(rand_uniform, Opts)).
 
 -doc #{group => "Temporal marker commands"}.
--spec record_env(Par :: atom()) -> marker() | no_return().
-record_env(Par) when is_atom(Par) ->
+-spec record_env(VarName :: os:env_var_name()) -> marker() | no_return().
+record_env(VarName) ->
     % eqwalizer:ignore
-    record_env(Par, []).
+    record_env(VarName, []).
 
 -doc #{group => "Temporal marker commands"}.
--spec record_env(Par :: atom(), Opts :: record_marker_opts()) ->
+-spec record_env(VarName :: os:env_var_name(), Opts :: record_marker_opts()) ->
     marker() | marker_data() | no_return().
-record_env(Par, Opts) when is_atom(Par) ->
+record_env(VarName, Opts) ->
     record_marker(
         fun() ->
-            case application:get_env(Par) of
-                {ok, Val} -> Val;
-                undefined -> "undefined"
+            case os:getenv(VarName) of
+                false -> "undefined";
+                V -> V
             end
         end,
         add_marker_li_ser(env, Opts)
