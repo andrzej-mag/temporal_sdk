@@ -46,7 +46,8 @@
     | queried
     | mutated
     | duplicate
-    | stale.
+    | stale
+    | terminated.
 -export_type([execution_state/0]).
 
 %% -------------------------------------------------------------------------------------------------
@@ -479,10 +480,12 @@ handle_execute_api_call(From, _ExecutionId, get_workflow_result, StateData) ->
 
 handle_execute_api_cast(_ExecutionId, {set_workflow_result, WR}, StateData) ->
     {keep_state, StateData#state{workflow_result = WR}};
-handle_execute_api_cast(_ExecutionId, {stop, Reason}, StateData) ->
-    {stop, normal, StateData#state{stop_reason = {error, Reason, []}}};
 handle_execute_api_cast(_ExecutionId, {await_open_before_close, IsEnabled}, StateData) ->
-    {keep_state, StateData#state{await_open_before_close = IsEnabled}}.
+    {keep_state, StateData#state{await_open_before_close = IsEnabled}};
+handle_execute_api_cast(_ExecutionId, terminate, StateData) ->
+    {stop, normal, StateData#state{execution_state = terminated}};
+handle_execute_api_cast(_ExecutionId, {terminate, Reason}, StateData) ->
+    {stop, normal, StateData#state{execution_state = terminated, stop_reason = {error, Reason, []}}}.
 
 handle_execute_result(completed, ExecutionIdx, Commands, StateData) ->
     #state{open_executions_count = OEC} = StateData,

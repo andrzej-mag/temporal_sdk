@@ -80,9 +80,10 @@ defmodule TemporalSdk.Workflow do
   defdelegate workflow_info(), to: :temporal_sdk_workflow
   defdelegate get_workflow_result(), to: :temporal_sdk_workflow
   defdelegate set_workflow_result(workflow_result), to: :temporal_sdk_workflow
-  defdelegate stop(), to: :temporal_sdk_workflow
-  defdelegate stop(reason), to: :temporal_sdk_workflow
   defdelegate await_open_before_close(is_enabled), to: :temporal_sdk_workflow
+  defdelegate terminate_executor(), to: :temporal_sdk_workflow
+  defdelegate terminate_executor(reason), to: :temporal_sdk_workflow
+
   defdelegate select_index(pattern_or_spec_or_continuation), to: :temporal_sdk_workflow
   defdelegate select_index(index_pattern_spec, limit), to: :temporal_sdk_workflow
 

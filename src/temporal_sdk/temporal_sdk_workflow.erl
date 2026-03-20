@@ -101,9 +101,9 @@
     workflow_info/0,
     get_workflow_result/0,
     set_workflow_result/1,
-    stop/0,
-    stop/1,
     await_open_before_close/1,
+    terminate_executor/0,
+    terminate_executor/1,
 
     select_index/1,
     select_index/2,
@@ -2729,16 +2729,16 @@ get_workflow_result() -> call_id(get_workflow_result).
 set_workflow_result(WorkflowResult) -> cast_id({set_workflow_result, WorkflowResult}).
 
 -doc #{group => "SDK functions"}.
--spec stop() -> ok.
-stop() -> stop(normal).
-
--doc #{group => "SDK functions"}.
--spec stop(Reason :: term()) -> ok.
-stop(Reason) -> cast_id({stop, Reason}).
-
--doc #{group => "SDK functions"}.
 -spec await_open_before_close(IsEnabled :: boolean()) -> ok.
 await_open_before_close(IsEnabled) -> cast_id({await_open_before_close, IsEnabled}).
+
+-doc #{group => "SDK functions"}.
+-spec terminate_executor() -> ok.
+terminate_executor() -> cast_id(terminate).
+
+-doc #{group => "SDK functions"}.
+-spec terminate_executor(Reason :: term()) -> ok.
+terminate_executor(Reason) -> cast_id({terminate, Reason}).
 
 %% history and index tables commands
 
