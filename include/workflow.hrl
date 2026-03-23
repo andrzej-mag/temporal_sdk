@@ -56,8 +56,10 @@
     record_rand_uniform/0,
     record_rand_uniform/1,
     record_rand_uniform/2,
-    record_env/1,
-    record_env/2
+    record_app_env/1,
+    record_app_env/2,
+    record_os_env/1,
+    record_os_env/2
 ]).
 
 %% SDK await commands
