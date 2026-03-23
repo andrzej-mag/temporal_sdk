@@ -57,8 +57,10 @@
     record_rand_uniform/0,
     record_rand_uniform/1,
     record_rand_uniform/2,
-    record_env/1,
-    record_env/2
+    record_app_env/1,
+    record_app_env/2,
+    record_os_env/1,
+    record_os_env/2
 ]).
 
 %% SDK await commands
@@ -2312,15 +2314,42 @@ record_rand_uniform(Range, Opts) ->
     record_marker(fun() -> rand:uniform(Range) end, add_marker_li_ser(rand_uniform, Opts)).
 
 -doc #{group => "Temporal marker commands"}.
--spec record_env(VarName :: os:env_var_name()) -> marker() | no_return().
-record_env(VarName) ->
+-spec record_app_env(Par :: atom()) -> marker() | no_return().
+record_app_env(Par) when is_atom(Par) ->
     % eqwalizer:ignore
-    record_env(VarName, []).
+    record_app_env(Par, []).
+
+-doc """
+Retrieves the application configuration parameter via `application:get_env/1` and records its value
+as a marker.
+""".
+-doc #{group => "Temporal marker commands"}.
+-spec record_app_env(Par :: atom(), Opts :: record_marker_opts()) ->
+    marker() | marker_data() | no_return().
+record_app_env(Par, Opts) when is_atom(Par) ->
+    record_marker(
+        fun() ->
+            case application:get_env(Par) of
+                {ok, Val} -> Val;
+                undefined -> "undefined"
+            end
+        end,
+        add_marker_li_ser(env, Opts)
+    ).
 
 -doc #{group => "Temporal marker commands"}.
--spec record_env(VarName :: os:env_var_name(), Opts :: record_marker_opts()) ->
+-spec record_os_env(VarName :: os:env_var_name()) -> marker() | no_return().
+record_os_env(VarName) ->
+    % eqwalizer:ignore
+    record_os_env(VarName, []).
+
+-doc """
+Retrieves the OS environment variable via `os:getenv/1` and records its value as a marker.
+""".
+-doc #{group => "Temporal marker commands"}.
+-spec record_os_env(VarName :: os:env_var_name(), Opts :: record_marker_opts()) ->
     marker() | marker_data() | no_return().
-record_env(VarName, Opts) ->
+record_os_env(VarName, Opts) ->
     record_marker(
         fun() ->
             case os:getenv(VarName) of

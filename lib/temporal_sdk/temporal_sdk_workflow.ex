@@ -37,6 +37,7 @@ defmodule TemporalSdk.Workflow do
   defdelegate admit_signal(signal_or_signal_name), to: :temporal_sdk_workflow
   defdelegate admit_signal(signal_or_signal_name, opts), to: :temporal_sdk_workflow
   defdelegate respond_query(query_type, opts), to: :temporal_sdk_workflow
+
   defdelegate record_uuid4(), to: :temporal_sdk_workflow
   defdelegate record_uuid4(opts), to: :temporal_sdk_workflow
   defdelegate record_system_time(), to: :temporal_sdk_workflow
@@ -45,7 +46,11 @@ defmodule TemporalSdk.Workflow do
   defdelegate record_rand_uniform(), to: :temporal_sdk_workflow
   defdelegate record_rand_uniform(range_or_opts), to: :temporal_sdk_workflow
   defdelegate record_rand_uniform(range, opts), to: :temporal_sdk_workflow
-  defdelegate record_env(par, opts), to: :temporal_sdk_workflow
+  defdelegate record_app_env(par), to: :temporal_sdk_workflow
+  defdelegate record_app_env(par, opts), to: :temporal_sdk_workflow
+  defdelegate record_os_env(var_name), to: :temporal_sdk_workflow
+  defdelegate record_os_env(var_name, opts), to: :temporal_sdk_workflow
+
   defdelegate await(await_pattern), to: :temporal_sdk_workflow
   defdelegate await(await_pattern, timeout), to: :temporal_sdk_workflow
   defdelegate await_one(await_pattern), to: :temporal_sdk_workflow
