@@ -5,7 +5,8 @@
 
 -export([
     workflow_execution_status/1,
-    workflow_execution_result/2
+    workflow_execution_result/2,
+    get_last_attempt/1
 ]).
 
 -include("proto.hrl").
@@ -76,3 +77,16 @@ workflow_execution_result(UnrecognizedEvent, _ApiCtx) ->
     {error, #{
         reason => "Unrecognized workflow closing event.", unrecognized_event => UnrecognizedEvent
     }}.
+
+get_last_attempt(HE) -> do_get_last_attempt(lists:reverse(HE)).
+
+do_get_last_attempt(
+    [
+        {_, 'EVENT_TYPE_WORKFLOW_TASK_STARTED', _, _},
+        {_, 'EVENT_TYPE_WORKFLOW_TASK_SCHEDULED', #{attempt := At}, _}
+        | _
+    ]
+) ->
+    At;
+do_get_last_attempt(_) ->
+    1.

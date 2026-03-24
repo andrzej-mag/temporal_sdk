@@ -16,8 +16,6 @@ Workflow query: add conventional handle and special `{query, QueryType}` info ha
 
 Workflow and activity executor: refactor `handle_failure` to async and safe.
 
-Add old marker value to mutable marker function.
-
 Implement Worker Versioning.
 
 Implement Nexus.

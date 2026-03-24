@@ -248,6 +248,7 @@ init([ApiContext, Task, CallerPid]) ->
                     workflow_type => WorkflowType,
                     workflow_id => WorkflowId,
                     workflow_run_id => RunId,
+                    attempt => Attempt,
 
                     worker_identity => WorkerIdentity,
                     execution_module => ExecutionModule,
@@ -434,7 +435,15 @@ poll(EventType, EventContent, StateData) ->
     handle_poll(EventType, EventContent, StateData).
 
 fail_task(enter, _State, StateData) ->
-    handle_fail_task(StateData).
+    handle_fail_task_enter(StateData);
+fail_task(cast, {?MSG_PRV, handle_failure, Failure}, StateData) ->
+    handle_fail_task(Failure, StateData);
+fail_task({timeout, Timeout}, timeout, StateData) ->
+    #state{stop_reason = {C, R, S}} = StateData,
+    Failure = #{source => [{timeout, Timeout}, C], message => R, stack_trace => S},
+    handle_fail_task(Failure, StateData);
+fail_task(_EventType, _EventContent, _StateData) ->
+    keep_state_and_data.
 
 query_closed(enter, query_closed, StateData) ->
     handle_query_closed(StateData).
@@ -1146,37 +1155,30 @@ handle_poll(
 handle_poll(EventType, EventContent, StateData) ->
     handle_common(poll, EventType, EventContent, StateData).
 
-handle_fail_task(#state{caller_pid = CallerPid} = StateData) when is_pid(CallerPid) ->
+handle_fail_task_enter(#state{caller_pid = CallerPid} = StateData) when is_pid(CallerPid) ->
     CallerPid ! {?TEMPORAL_SDK_REPLAY_TAG, {error, StateData#state.stop_reason}},
     stop;
-handle_fail_task(#state{api_ctx = #{task_opts := #{token := undefined}}} = StateData) ->
+handle_fail_task_enter(#state{api_ctx = #{task_opts := #{token := undefined}}} = StateData) ->
     {stop, normal, StateData#state{execution_state = error}};
-handle_fail_task(#state{workflow_info = #{attempt := 1}} = StateData) ->
+handle_fail_task_enter(#state{history_events = [], workflow_info = #{attempt := 1}} = StateData) ->
+    spawn_handle_failure(StateData);
+handle_fail_task_enter(#state{history_events = HE} = StateData) when HE =/= [] ->
+    case temporal_sdk_api_history:get_last_attempt(HE) of
+        1 -> spawn_handle_failure(StateData);
+        _ -> {stop, normal, StateData#state{execution_state = error}}
+    end;
+handle_fail_task_enter(StateData) ->
+    {stop, normal, StateData#state{execution_state = error}}.
+
+handle_fail_task(Failure, StateData) ->
     #state{api_ctx = ApiCtx, stop_reason = StopReason} = StateData,
-    AF = do_handle_fail_task(StateData),
     C = do_fail_cause(StateData),
-    case temporal_sdk_api_workflow:respond_workflow_task_failed(ApiCtx, AF, C) of
+    case temporal_sdk_api_workflow:respond_workflow_task_failed(ApiCtx, Failure, C) of
         ok ->
             {stop, normal, StateData#state{execution_state = error}};
         Err ->
             SR = [{error, Err, ?EVST}, StopReason],
             {stop, normal, StateData#state{stop_reason = SR, execution_state = error}}
-    end;
-handle_fail_task(StateData) ->
-    {stop, normal, StateData#state{execution_state = error}}.
-
-% TODO: refactor blocking handle_failure/3 call to safe and async spawn handler
-% including {{timeout, task_timeout}, cancel} action on enter
-do_handle_fail_task(StateData) ->
-    #state{stop_reason = {C, R, S}, execution_module = Mod} = StateData,
-    case erlang:function_exported(Mod, handle_failure, 3) of
-        true ->
-            case Mod:handle_failure(C, R, S) of
-                ignore -> #{source => C, message => R, stack_trace => S};
-                F -> F
-            end;
-        false ->
-            #{source => C, message => R, stack_trace => S}
     end.
 
 do_fail_cause(#state{stop_reason = {error, {error, #{reason := nondeterministic}}, _}}) ->
@@ -1998,6 +2000,44 @@ spawn_execution(Module, Function, Args, ExecutionId, StateData) ->
             Err
     end.
 
+spawn_handle_failure(StateData) ->
+    #state{stop_reason = {C, R, S}, execution_module = Mod} = StateData,
+    ExecutorPid = self(),
+    case erlang:function_exported(Mod, handle_failure, 3) of
+        false ->
+            gen_statem:cast(
+                ExecutorPid,
+                {?MSG_PRV, handle_failure, #{source => C, message => R, stack_trace => S}}
+            );
+        true ->
+            spawn_link(
+                fun() ->
+                    try
+                        case Mod:handle_failure(C, R, S) of
+                            ignore ->
+                                gen_statem:cast(
+                                    ExecutorPid,
+                                    {?MSG_PRV, handle_failure, #{
+                                        source => C, message => R, stack_trace => S
+                                    }}
+                                );
+                            F ->
+                                gen_statem:cast(ExecutorPid, {?MSG_PRV, handle_failure, F})
+                        end
+                    catch
+                        C1:R1:S1 ->
+                            gen_statem:cast(
+                                ExecutorPid,
+                                {?MSG_PRV, handle_failure, #{
+                                    source => [C1, C], message => [R1, R], stack_trace => [S1, S]
+                                }}
+                            )
+                    end
+                end
+            )
+    end,
+    keep_state_and_data.
+
 spawn_local([], _ExecutionIdx, StateData) ->
     {ok, StateData};
 spawn_local(NewCommands, ExecutionIdx, StateData) ->
@@ -2212,7 +2252,6 @@ get_workflow_info(#state{workflow_info = WI} = StateData) ->
     WI#{
         event_id => StateData#state.event_id - 1,
         is_replaying => StateData#state.is_replaying,
-        attempt => StateData#state.task_attempt,
         open_executions_count => StateData#state.open_executions_count,
         total_executions_count => StateData#state.total_executions_count,
         open_tasks_count => StateData#state.open_tasks_count,
