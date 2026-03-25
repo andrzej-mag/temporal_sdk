@@ -148,15 +148,18 @@
         event_id := pos_integer(),
         is_replaying := boolean(),
         open_executions_count := pos_integer(),
+        total_executions_count := pos_integer(),
         open_tasks_count := non_neg_integer(),
-        attempt := pos_integer(),
-        suggest_continue_as_new := boolean(),
-        history_size_bytes := non_neg_integer(),
         otp_messages_count := #{
             received => non_neg_integer(),
             recorded => non_neg_integer(),
             ignored => non_neg_integer()
-        }
+        },
+        %% from WorkflowExecutionStartedEventAttributes or WorkflowTaskScheduledEventAttributes
+        attempt := pos_integer(),
+        %% from WorkflowTaskStartedEventAttributes
+        suggest_continue_as_new := boolean(),
+        history_size_bytes := non_neg_integer()
     }.
 -export_type([workflow_info/0]).
 

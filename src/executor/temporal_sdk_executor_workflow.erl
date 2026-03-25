@@ -56,10 +56,11 @@
 -define(INITIAL_WORKFLOW_INFO, #{
     event_id => 1,
     open_executions_count => 1,
+    total_executions_count => 1,
     open_tasks_count => 0,
+    otp_messages_count => #{received => 0, recorded => 0, ignored => 0},
     suggest_continue_as_new => false,
-    history_size_bytes => 0,
-    otp_messages_count => #{received => 0, recorded => 0, ignored => 0}
+    history_size_bytes => 0
 }).
 
 -record(state, {
@@ -68,7 +69,6 @@
     api_ctx_activity :: temporal_sdk_api:context(),
     caller_pid :: pid() | undefined,
     %% --------------- task
-    task_attempt = 1 :: pos_integer(),
     task_input :: temporal_sdk:term_from_payloads(),
     task_previous_started_event_id :: pos_integer(),
     task_started_event_id :: pos_integer(),
@@ -77,13 +77,13 @@
     task_timeout :: erlang:timeout(),
     event_id = 1 :: pos_integer(),
     is_replaying :: boolean(),
+    workflow_context :: temporal_sdk_workflow:context(),
     workflow_info :: temporal_sdk_workflow:workflow_info(),
     workflow_result = [] :: temporal_sdk:term_to_payloads(),
     %% --------------- executions
     execution_module :: module(),
     execution_state = started :: execution_state(),
     executions_awaits = [] :: [gen_statem:from() | {awaited, gen_statem:from()}],
-    workflow_context :: temporal_sdk_workflow:context(),
     executions_commands = [] :: [
         {
             pos_integer(),
@@ -213,10 +213,11 @@ init([ApiContext, Task, CallerPid]) ->
 
     IsReplaying = PreviousStartedEventId > 0 orelse StartedEventId > 3,
 
-    WI = maps:merge(
-        temporal_sdk_api_workflow_task:build_context_workflow_info(ApiContext, Task),
-        UserHeaderData
-    ),
+    #{attempt := ExecutionStartedEventAttempt} =
+        WorkflowContextWorkflowInfo = maps:merge(
+            temporal_sdk_api_workflow_task:build_context_workflow_info(ApiContext, Task),
+            UserHeaderData
+        ),
 
     WorkflowContext = #{
         execution_id => undefined,
@@ -226,11 +227,15 @@ init([ApiContext, Task, CallerPid]) ->
         worker_opts => WorkerOpts,
         history_table => undefined,
         index_table => undefined,
-        workflow_info => WI,
+        workflow_info => WorkflowContextWorkflowInfo,
         task => maps:without([history], Task),
         attempt => Attempt,
         is_replaying => IsReplaying
     },
+
+    WorkflowInfo = maps:merge(?INITIAL_WORKFLOW_INFO, #{
+        attempt => ExecutionStartedEventAttempt, is_replaying => IsReplaying
+    }),
 
     RunTimeout = fetch_run_timeout(WorkerOpts, Task),
     TaskTimeout = fetch_task_timeout(WorkerOpts, Task),
@@ -266,7 +271,6 @@ init([ApiContext, Task, CallerPid]) ->
         api_ctx_activity = temporal_sdk_api_context:activity_from_workflow(ApiContext),
         caller_pid = CallerPid,
         %% --------------- task
-        task_attempt = Attempt,
         task_input = temporal_sdk_api_workflow_task:input(ApiContext, Task),
         task_previous_started_event_id = PreviousStartedEventId,
         task_started_event_id = StartedEventId,
@@ -275,15 +279,13 @@ init([ApiContext, Task, CallerPid]) ->
         task_timeout = TaskTimeout,
         %% event_id = 1
         is_replaying = IsReplaying,
-        workflow_info = maps:merge(?INITIAL_WORKFLOW_INFO, #{
-            attempt => Attempt, is_replaying => IsReplaying
-        }),
+        workflow_context = WorkflowContext,
+        workflow_info = WorkflowInfo,
         %% workflow_result = []
         %% --------------- executions
         execution_module = ExecutionModule,
         %% execution_state = started
         %% executions_awaits = []
-        workflow_context = WorkflowContext,
         %% executions_commands = []
         %% replayed_commands = []
         %% commands = []
