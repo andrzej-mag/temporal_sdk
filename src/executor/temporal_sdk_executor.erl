@@ -6,6 +6,7 @@
 -export([
     set_executor_dict/1,
     set_executor_dict/8,
+    set_handler_dict/4,
     get_executor/0,
     get_execution_id/0,
     get_execution_idx/0,
@@ -62,6 +63,18 @@ set_executor_dict(
     put(?INDEX_TABLE_KEY, IndexTable),
     put(?COMMANDS_KEY, []),
     put(?AWAIT_COUNTER_KEY, 0).
+
+-spec set_handler_dict(
+    ApiContext :: temporal_sdk_api:context(),
+    OtelContext :: otel_ctx:t(),
+    HistoryTable :: ets:table(),
+    IndexTable :: ets:table()
+) -> term().
+set_handler_dict(ApiContext, OtelContext, HistoryTable, IndexTable) ->
+    put(?API_CTX_KEY, ApiContext),
+    put(?OTEL_CTX_ID_KEY, OtelContext),
+    put(?HISTORY_TABLE_KEY, HistoryTable),
+    put(?INDEX_TABLE_KEY, IndexTable).
 
 -spec get_executor() -> ExecutorPid :: pid() | no_return().
 get_executor() -> get_dictkey(?PID_KEY).

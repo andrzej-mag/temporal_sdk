@@ -2003,25 +2003,35 @@ spawn_execution(Module, Function, Args, ExecutionId, StateData) ->
     end.
 
 spawn_handle_failure(StateData) ->
-    #state{stop_reason = {C, R, S}, execution_module = Mod} = StateData,
+    #state{
+        stop_reason = {C, R, S},
+        execution_module = Mod,
+        api_ctx = ApiCtx,
+        history_table = HistoryTable,
+        index_table = IndexTable,
+        proc_label = ProcLabel,
+        otel_ctx = OtelCtx
+    } = StateData,
+    HC = build_handler_context(StateData),
     ExecutorPid = self(),
-    case erlang:function_exported(Mod, handle_failure, 3) of
+    HandlerProcLabel = temporal_sdk_utils_path:string_path([ProcLabel, handle_failure]),
+    DefaultFailure = #{source => C, message => R, stack_trace => S},
+    case erlang:function_exported(Mod, handle_failure, 4) of
         false ->
-            gen_statem:cast(
-                ExecutorPid,
-                {?MSG_PRV, handle_failure, #{source => C, message => R, stack_trace => S}}
-            );
+            gen_statem:cast(ExecutorPid, {?MSG_PRV, handle_failure, DefaultFailure});
         true ->
             spawn_link(
                 fun() ->
+                    proc_lib:set_label(HandlerProcLabel),
+                    temporal_sdk_executor:set_handler_dict(
+                        ApiCtx, OtelCtx, HistoryTable, IndexTable
+                    ),
+                    otel_ctx:attach(OtelCtx),
                     try
-                        case Mod:handle_failure(C, R, S) of
-                            ignore ->
+                        case Mod:handle_failure(HC, C, R, S) of
+                            default ->
                                 gen_statem:cast(
-                                    ExecutorPid,
-                                    {?MSG_PRV, handle_failure, #{
-                                        source => C, message => R, stack_trace => S
-                                    }}
+                                    ExecutorPid, {?MSG_PRV, handle_failure, DefaultFailure}
                                 );
                             F ->
                                 gen_statem:cast(ExecutorPid, {?MSG_PRV, handle_failure, F})
@@ -2039,6 +2049,11 @@ spawn_handle_failure(StateData) ->
             )
     end,
     keep_state_and_data.
+
+build_handler_context(StateData) ->
+    #state{workflow_context = WC, workflow_info = WI} = StateData,
+    HC = maps:with([cluster, otel_ctx, history_table, index_table, attempt], WC),
+    HC#{workflow_info => WI}.
 
 spawn_local([], _ExecutionIdx, StateData) ->
     {ok, StateData};

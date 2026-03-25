@@ -114,7 +114,6 @@
 ]).
 
 -import(temporal_sdk_executor, [
-    cast/1,
     call_id/1,
     cast_id/1
 ]).
@@ -1505,6 +1504,17 @@
 }.
 -export_type([context_workflow_info/0]).
 
+-type handler_context() :: #{
+    cluster := temporal_sdk_cluster:cluster_name(),
+    otel_ctx := otel_ctx:t(),
+    history_table := ets:table(),
+    index_table := ets:table(),
+    workflow_info := workflow_info(),
+    %% from PollWorkflowTaskQueueResponse:
+    attempt := pos_integer()
+}.
+-export_type([handler_context/0]).
+
 -doc #{group => "Workflow behaviour"}.
 -callback execute(Context :: context(), Input :: temporal_sdk:term_from_payloads()) ->
     ExecutionResult :: execution_result().
@@ -1521,9 +1531,12 @@
 
 -doc #{group => "Workflow behaviour"}.
 -callback handle_failure(
-    Class :: error | exit | throw, Reason :: term(), Stacktrace :: erlang:raise_stacktrace()
+    HandlerContext :: handler_context(),
+    Class :: error | exit | throw,
+    Reason :: term(),
+    Stacktrace :: erlang:raise_stacktrace()
 ) ->
-    ignore
+    default
     | ApplicationFailure ::
         temporal_sdk:application_failure()
         | temporal_sdk:user_application_failure().
@@ -1548,7 +1561,7 @@
 
 -optional_callbacks([
     handle_message/2,
-    handle_failure/3,
+    handle_failure/4,
     handle_query/2
 ]).
 
