@@ -125,6 +125,7 @@
     messages = [] :: [?TEMPORAL_SPEC:'temporal.api.protocol.v1.Message'()],
     history_table = undefined :: ets:table() | undefined,
     index_table = undefined :: ets:table() | undefined,
+    local_handlers :: [atom()],
     blocking_awaitable = false ::
         {temporal_sdk_workflow:activity_index_key(), temporal_sdk_workflow:activity_data()}
         | false,
@@ -313,6 +314,7 @@ init([ApiContext, Task, CallerPid]) ->
         %% messages = []
         %% history_table = undefined
         %% index_table = undefined
+        local_handlers = init_local_handlers(ExecutionModule),
         %% blocking_awaitable = false
         %% grpc_req_ref = undefined
         %% --------------- telemetry
@@ -341,6 +343,20 @@ init([ApiContext, Task, CallerPid]) ->
         Err ->
             {ok, fail_task, SD1#state{stop_reason = {error, Err, ?EVST}}}
     end.
+
+init_local_handlers(EMod) ->
+    Handlers = [
+        {handle_failure, 4},
+        {handle_message, 3},
+        {handle_query, 2}
+    ],
+    Fn = fun({HF, Ar}, Acc) ->
+        case erlang:function_exported(EMod, HF, Ar) of
+            true -> Acc;
+            false -> [HF | Acc]
+        end
+    end,
+    lists:foldl(Fn, [], Handlers).
 
 terminate(Reason, _State, StateData) ->
     cleanup(StateData),
@@ -2009,17 +2025,18 @@ spawn_handle_failure(StateData) ->
         api_ctx = ApiCtx,
         history_table = HT,
         index_table = IT,
+        local_handlers = LocalHandlers,
         proc_label = ProcLabel,
         otel_ctx = OtelCtx
     } = StateData,
     HC = build_handler_context(StateData),
     ExecutorPid = self(),
     HandlerProcLabel = temporal_sdk_utils_path:string_path([ProcLabel, handle_failure]),
-    DefaultFailure = #{source => C, message => R, stack_trace => S},
-    case erlang:function_exported(EMod, handle_failure, 4) of
-        false ->
-            gen_statem:cast(ExecutorPid, {?MSG_PRV, handle_failure, DefaultFailure});
+    DFailure = handle_failure(HC, C, R, S),
+    case lists:member(handle_failure, LocalHandlers) of
         true ->
+            gen_statem:cast(ExecutorPid, {?MSG_PRV, handle_failure, DFailure});
+        false ->
             spawn_link(
                 fun() ->
                     proc_lib:set_label(HandlerProcLabel),
@@ -2028,20 +2045,14 @@ spawn_handle_failure(StateData) ->
                     try
                         case EMod:handle_failure(HC, C, R, S) of
                             default ->
-                                gen_statem:cast(
-                                    ExecutorPid, {?MSG_PRV, handle_failure, DefaultFailure}
-                                );
+                                gen_statem:cast(ExecutorPid, {?MSG_PRV, handle_failure, DFailure});
                             F ->
                                 gen_statem:cast(ExecutorPid, {?MSG_PRV, handle_failure, F})
                         end
                     catch
                         C1:R1:S1 ->
-                            gen_statem:cast(
-                                ExecutorPid,
-                                {?MSG_PRV, handle_failure, #{
-                                    source => [C1, C], message => [R1, R], stack_trace => [S1, S]
-                                }}
-                            )
+                            DFailure1 = handle_failure(HC, [C, C1], [R, R1], [S, S1]),
+                            gen_statem:cast(ExecutorPid, {?MSG_PRV, handle_failure, DFailure1})
                     end
                 end
             )
@@ -2156,6 +2167,7 @@ spawn_message_marker(Name, Value, StateData) ->
         api_ctx = ApiCtx,
         history_table = HT,
         index_table = IT,
+        local_handlers = LocalHandlers,
         proc_label = ProcLabel,
         otel_ctx = OtelCtx
     } = StateData,
@@ -2164,28 +2176,49 @@ spawn_message_marker(Name, Value, StateData) ->
     HandlerProcLabel = temporal_sdk_utils_path:string_path([ProcLabel, handle_message]),
     Pid = spawn_link(
         fun() ->
-            proc_lib:set_label(HandlerProcLabel),
-            temporal_sdk_executor:set_handler_dict(ApiCtx, OtelCtx, HT, IT),
-            otel_ctx:attach(OtelCtx),
-            try
-                case EMod:handle_message(HC, Name, Value) of
-                    {record, V} ->
-                        gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, record, Name, V});
-                    {fail, {_, _, _} = R} ->
-                        gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, fail_task, Name, R});
-                    ignore ->
-                        gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, ignore, Name})
-                end
-            catch
-                Class:Reason:StackT ->
-                    gen_statem:cast(
-                        ExecutorPid,
-                        {?MSG_PRV, marker, failed, self(), {Class, Reason, StackT}}
-                    )
+            case lists:member(handle_message, LocalHandlers) of
+                true ->
+                    {record, V} = handle_message(HC, Name, Value),
+                    gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, record, Name, V});
+                false ->
+                    proc_lib:set_label(HandlerProcLabel),
+                    temporal_sdk_executor:set_handler_dict(ApiCtx, OtelCtx, HT, IT),
+                    otel_ctx:attach(OtelCtx),
+                    try
+                        case EMod:handle_message(HC, Name, Value) of
+                            {record, V} ->
+                                gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, record, Name, V});
+                            {fail, {_, _, _} = R} ->
+                                gen_statem:cast(
+                                    ExecutorPid, {?MSG_PRV, marker, fail_task, Name, R}
+                                );
+                            ignore ->
+                                gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, ignore, Name})
+                        end
+                    catch
+                        Class:Reason:StackT ->
+                            gen_statem:cast(
+                                ExecutorPid,
+                                {?MSG_PRV, marker, failed, self(), {Class, Reason, StackT}}
+                            )
+                    end
             end
         end
     ),
     StateData#state{linked_pids = [Pid | LP]}.
+
+%% -------------------------------------------------------------------------------------------------
+%% default callback handlers implementations
+
+handle_message(_HandlerContext, _MessageName, _MessageValue) ->
+    {record, [
+        [~"Received OTP message. Implement handle_message/3 callback to customize this payload."]
+    ]}.
+
+handle_failure(_HandlerContext, Class, Reason, Stacktrace) ->
+    #{source => Class, message => Reason, stack_trace => Stacktrace}.
+
+% TODO handle_query/2
 
 %% -------------------------------------------------------------------------------------------------
 %% executor helpers
