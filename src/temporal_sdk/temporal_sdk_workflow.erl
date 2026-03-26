@@ -1520,7 +1520,11 @@
     ExecutionResult :: execution_result().
 
 -doc #{group => "Workflow behaviour"}.
--callback handle_message(MessageName :: unicode:chardata(), MessageValue :: term()) ->
+-callback handle_message(
+    HandlerContext :: handler_context(),
+    MessageName :: unicode:chardata(),
+    MessageValue :: term()
+) ->
     {record, MarkerValue :: temporal_sdk:term_to_payloads()}
     | {fail, {
         Message :: temporal_sdk:serializable(),
@@ -1560,7 +1564,7 @@
     }.
 
 -optional_callbacks([
-    handle_message/2,
+    handle_message/3,
     handle_failure/4,
     handle_query/2
 ]).

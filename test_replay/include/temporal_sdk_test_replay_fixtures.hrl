@@ -69,7 +69,9 @@
                 fun({Fun, Arity}) ->
                     WId = temporal_sdk_utils_path:atom_path([?MODULE, Fun, Arity, workflow]),
                     meck:new(WId, [non_strict]),
-                    meck:expect(WId, handle_message, fun(_Name, Value) -> {record, Value} end)
+                    meck:expect(WId, handle_message, fun(_Context, _Name, Value) ->
+                        {record, Value}
+                    end)
                 end,
                 ?MECKED_FUNCTIONS_LIST
             ),

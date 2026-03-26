@@ -2005,10 +2005,10 @@ spawn_execution(Module, Function, Args, ExecutionId, StateData) ->
 spawn_handle_failure(StateData) ->
     #state{
         stop_reason = {C, R, S},
-        execution_module = Mod,
+        execution_module = EMod,
         api_ctx = ApiCtx,
-        history_table = HistoryTable,
-        index_table = IndexTable,
+        history_table = HT,
+        index_table = IT,
         proc_label = ProcLabel,
         otel_ctx = OtelCtx
     } = StateData,
@@ -2016,19 +2016,17 @@ spawn_handle_failure(StateData) ->
     ExecutorPid = self(),
     HandlerProcLabel = temporal_sdk_utils_path:string_path([ProcLabel, handle_failure]),
     DefaultFailure = #{source => C, message => R, stack_trace => S},
-    case erlang:function_exported(Mod, handle_failure, 4) of
+    case erlang:function_exported(EMod, handle_failure, 4) of
         false ->
             gen_statem:cast(ExecutorPid, {?MSG_PRV, handle_failure, DefaultFailure});
         true ->
             spawn_link(
                 fun() ->
                     proc_lib:set_label(HandlerProcLabel),
-                    temporal_sdk_executor:set_handler_dict(
-                        ApiCtx, OtelCtx, HistoryTable, IndexTable
-                    ),
+                    temporal_sdk_executor:set_handler_dict(ApiCtx, OtelCtx, HT, IT),
                     otel_ctx:attach(OtelCtx),
                     try
-                        case Mod:handle_failure(HC, C, R, S) of
+                        case EMod:handle_failure(HC, C, R, S) of
                             default ->
                                 gen_statem:cast(
                                     ExecutorPid, {?MSG_PRV, handle_failure, DefaultFailure}
@@ -2152,12 +2150,25 @@ spawn_marker({{{marker, _, _}, #{} = IK}, #{value_fun := MarkerValueFun}}, State
     {Pid, StateData#state{linked_pids = [Pid | LP], open_locals_count = OLC + 1}}.
 
 spawn_message_marker(Name, Value, StateData) ->
-    #state{linked_pids = LP, execution_module = ExecutionModule} = StateData,
+    #state{
+        linked_pids = LP,
+        execution_module = EMod,
+        api_ctx = ApiCtx,
+        history_table = HT,
+        index_table = IT,
+        proc_label = ProcLabel,
+        otel_ctx = OtelCtx
+    } = StateData,
+    HC = build_handler_context(StateData),
     ExecutorPid = self(),
+    HandlerProcLabel = temporal_sdk_utils_path:string_path([ProcLabel, handle_message]),
     Pid = spawn_link(
         fun() ->
+            proc_lib:set_label(HandlerProcLabel),
+            temporal_sdk_executor:set_handler_dict(ApiCtx, OtelCtx, HT, IT),
+            otel_ctx:attach(OtelCtx),
             try
-                case ExecutionModule:handle_message(Name, Value) of
+                case EMod:handle_message(HC, Name, Value) of
                     {record, V} ->
                         gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, record, Name, V});
                     {fail, {_, _, _} = R} ->
