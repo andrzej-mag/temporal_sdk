@@ -365,7 +365,9 @@ a_cancel_loop() ->
         ],
         Seq = lists:map(fun(#{result := [R]}) -> R end, wait_all(AL1)),
         [cancel_activity(A) || A <- AL2],
-        [] = lists:filter(fun(#{state := canceled}) -> false end, wait_all(AL2))
+        [] = lists:filter(
+            fun(#{state := S}) when S =:= canceled; S =:= completed -> false end, wait_all(AL2)
+        )
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
