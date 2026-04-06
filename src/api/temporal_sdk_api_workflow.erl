@@ -6,7 +6,7 @@
 -export([
     get_workflow_execution_history/2,
     get_workflow_execution_history_reverse/2,
-    respond_workflow_task_completed/3,
+    respond_workflow_task_completed/4,
     respond_workflow_task_failed/3,
     respond_query_task_completed/2,
     reset_workflow_execution/3
@@ -51,9 +51,12 @@ get_workflow_execution_history_reverse(ApiContext, MaximumPageSize) ->
 -spec respond_workflow_task_completed(
     ApiContext :: temporal_sdk_api:context(),
     Commands :: [?TEMPORAL_SPEC:'temporal.api.command.v1.Command'()],
+    IsEvicted :: boolean(),
     Request :: ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RespondWorkflowTaskCompletedRequest'()
 ) -> temporal_sdk_client:msg_result() | {error, undefined_task_token}.
-respond_workflow_task_completed(#{task_opts := #{token := undefined}}, _Commands, _Request) ->
+respond_workflow_task_completed(
+    #{task_opts := #{token := undefined}}, _Commands, _IsEvicted, _Request
+) ->
     {error, undefined_task_token};
 respond_workflow_task_completed(
     #{
@@ -61,17 +64,22 @@ respond_workflow_task_completed(
         task_opts := #{token := Token, sticky_attributes := StickyAttributes}
     } = ApiContext,
     Commands,
+    IsEvicted,
     Request
 ) ->
     MsgName = 'temporal.api.workflowservice.v1.RespondWorkflowTaskCompletedRequest',
-    Msg = temporal_sdk_api:put_identity(ApiContext, MsgName, Request#{
+    Msg1 = temporal_sdk_api:put_identity(ApiContext, MsgName, Request#{
         task_token => Token,
         commands => Commands,
         namespace => Namespace,
         worker_version_stamp => WorkerVersion,
-        return_new_workflow_task => true,
-        sticky_attributes => StickyAttributes
+        return_new_workflow_task => true
     }),
+    Msg =
+        case IsEvicted of
+            true -> Msg1;
+            false -> Msg1#{sticky_attributes => StickyAttributes}
+        end,
     temporal_sdk_api:request('RespondWorkflowTaskCompleted', ApiContext, Msg, msg).
 
 -spec respond_workflow_task_failed(

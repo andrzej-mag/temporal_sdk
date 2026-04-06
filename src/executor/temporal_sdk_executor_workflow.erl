@@ -17,6 +17,7 @@
     execute/3,
     replay/3,
     complete_task/3,
+    evict/3,
     poll/3,
     fail_task/3,
     query_closed/3
@@ -29,7 +30,27 @@
 
 -define(EVENT_ORIGIN, workflow).
 
+-define(DEFAULT_EVICT_TIMEOUT, 5_000).
+-define(EVICT_TIMEOUT_RATIO, 0.5).
+
+-define(CALLBACK_HANDLERS, [
+    {handle_eviction, 2},
+    {handle_failure, 4},
+    {handle_message, 3},
+    {handle_query, 2}
+]).
+
 -define(LINKED_PID_EXIT_REASON, workflow_execution_terminated).
+
+-define(INITIAL_WORKFLOW_INFO, #{
+    event_id => 1,
+    open_executions_count => 1,
+    total_executions_count => 1,
+    open_tasks_count => 0,
+    otp_messages_count => #{received => 0, recorded => 0, ignored => 0},
+    suggest_continue_as_new => false,
+    history_size_bytes => 0
+}).
 
 -type execution_state() ::
     started
@@ -47,21 +68,12 @@
     | mutated
     | duplicate
     | stale
+    | evicted
     | terminated.
 -export_type([execution_state/0]).
 
 %% -------------------------------------------------------------------------------------------------
 %% state record
-
--define(INITIAL_WORKFLOW_INFO, #{
-    event_id => 1,
-    open_executions_count => 1,
-    total_executions_count => 1,
-    open_tasks_count => 0,
-    otp_messages_count => #{received => 0, recorded => 0, ignored => 0},
-    suggest_continue_as_new => false,
-    history_size_bytes => 0
-}).
 
 -record(state, {
     %% --------------- input
@@ -75,6 +87,7 @@
     task_workflow_execution :: ?TEMPORAL_SPEC:'temporal.api.common.v1.WorkflowExecution'(),
     run_timeout :: erlang:timeout(),
     task_timeout :: erlang:timeout(),
+    evict_timeout :: pos_integer(),
     event_id = 1 :: pos_integer(),
     is_replaying :: boolean(),
     workflow_context :: temporal_sdk_workflow:context(),
@@ -102,6 +115,7 @@
     completed_commands = [] :: [temporal_sdk_workflow:index_command()],
     %% --------------- executor
     proc_label :: string(),
+    is_evicted = false :: boolean(),
     stop_reason = normal ::
         normal | temporal_sdk_telemetry:exception() | [temporal_sdk_telemetry:exception()],
     linked_pids = [] :: [pid()],
@@ -126,6 +140,7 @@
     history_table = undefined :: ets:table() | undefined,
     index_table = undefined :: ets:table() | undefined,
     local_handlers :: [atom()],
+    poll_start_time = undefined :: undefined | pos_integer(),
     blocking_awaitable = false ::
         {temporal_sdk_workflow:activity_index_key(), temporal_sdk_workflow:activity_data()}
         | false,
@@ -240,6 +255,11 @@ init([ApiContext, Task, CallerPid]) ->
 
     RunTimeout = fetch_run_timeout(WorkerOpts, Task),
     TaskTimeout = fetch_task_timeout(WorkerOpts, Task),
+    EvictTimeout =
+        case TaskTimeout of
+            infinity -> ?DEFAULT_EVICT_TIMEOUT;
+            I when is_integer(I) -> round(?EVICT_TIMEOUT_RATIO * TaskTimeout)
+        end,
 
     EvMetadata =
         case WorkerOpts of
@@ -278,6 +298,7 @@ init([ApiContext, Task, CallerPid]) ->
         task_workflow_execution = WorkflowExecution,
         run_timeout = RunTimeout,
         task_timeout = TaskTimeout,
+        evict_timeout = EvictTimeout,
         %% event_id = 1
         is_replaying = IsReplaying,
         workflow_context = WorkflowContext,
@@ -294,6 +315,7 @@ init([ApiContext, Task, CallerPid]) ->
         %% completed_commands = []
         %% --------------- executor
         proc_label = ProcLabel,
+        %% is_evicted = false
         %% stop_reason = normal
         %% linked_pids = []
         %% direct_execution_pids = []
@@ -315,6 +337,7 @@ init([ApiContext, Task, CallerPid]) ->
         %% history_table = undefined
         %% index_table = undefined
         local_handlers = init_local_handlers(ExecutionModule),
+        %% poll_start_time = undefined
         %% blocking_awaitable = false
         %% grpc_req_ref = undefined
         %% --------------- telemetry
@@ -345,18 +368,13 @@ init([ApiContext, Task, CallerPid]) ->
     end.
 
 init_local_handlers(EMod) ->
-    Handlers = [
-        {handle_failure, 4},
-        {handle_message, 3},
-        {handle_query, 2}
-    ],
     Fn = fun({HF, Ar}, Acc) ->
         case erlang:function_exported(EMod, HF, Ar) of
             true -> Acc;
             false -> [HF | Acc]
         end
     end,
-    lists:foldl(Fn, [], Handlers).
+    lists:foldl(Fn, [], ?CALLBACK_HANDLERS).
 
 terminate(Reason, _State, StateData) ->
     cleanup(StateData),
@@ -431,7 +449,9 @@ execute(cast, {?MSG_PRV, {execution, State, ExecutionId, Result}}, StateData) ->
 execute(EventType, EventContent, StateData) ->
     handle_common(?FUNCTION_NAME, EventType, EventContent, StateData).
 
-replay(enter, State, _StateData) when State =:= execute; State =:= complete_task; State =:= poll ->
+replay(enter, poll, StateData) ->
+    {keep_state, StateData#state{poll_start_time = undefined}};
+replay(enter, State, _StateData) when State =:= execute; State =:= complete_task ->
     keep_state_and_data;
 replay(internal, handle_replay, StateData) ->
     handle_replay(StateData);
@@ -447,7 +467,12 @@ complete_task(
 complete_task(EventType, EventContent, StateData) ->
     handle_common(?FUNCTION_NAME, EventType, EventContent, StateData).
 
-poll(enter, State, StateData) when State =:= replay; State =:= complete_task; State =:= poll ->
+evict(enter, State, StateData) when State =:= replay; State =:= complete_task; State =:= poll ->
+    handle_evict_enter(State, StateData);
+evict(EventType, EventContent, StateData) ->
+    handle_evict(EventType, EventContent, StateData).
+
+poll(enter, evict, StateData) ->
     handle_poll_enter(StateData);
 poll(EventType, EventContent, StateData) ->
     handle_poll(EventType, EventContent, StateData).
@@ -509,6 +534,12 @@ handle_execute_api_cast(_ExecutionId, {set_workflow_result, WR}, StateData) ->
     {keep_state, StateData#state{workflow_result = WR}};
 handle_execute_api_cast(_ExecutionId, {await_open_before_close, IsEnabled}, StateData) ->
     {keep_state, StateData#state{await_open_before_close = IsEnabled}};
+handle_execute_api_cast(_ExecutionId, evict_workflow, #state{is_replaying = true}) ->
+    keep_state_and_data;
+handle_execute_api_cast(_ExecutionId, evict_workflow, #state{is_evicted = true}) ->
+    keep_state_and_data;
+handle_execute_api_cast(_ExecutionId, evict_workflow, StateData) ->
+    {keep_state, StateData#state{is_evicted = true}};
 handle_execute_api_cast(_ExecutionId, terminate, StateData) ->
     {stop, normal, StateData#state{execution_state = terminated}};
 handle_execute_api_cast(_ExecutionId, {terminate, Reason}, StateData) ->
@@ -609,7 +640,7 @@ replay_noevent(
 replay_noevent(
     #state{api_ctx = #{task_opts := #{token := undefined}}, open_tasks_count = OTC} = StateData
 ) when OTC > 0 ->
-    {next_state, poll, StateData};
+    {next_state, evict, StateData};
 replay_noevent(StateData) ->
     {next_state, complete_task, StateData}.
 
@@ -936,7 +967,8 @@ handle_complete_task_enter(StateData) ->
         execution_state = ExecutionState,
         pending_commands = PendingCommands,
         queries = Queries,
-        messages = Messages
+        messages = Messages,
+        is_evicted = IsEvicted
     } = StateData,
     maybe
         {ok, Commands0} ?= update_event_id(StateData),
@@ -962,6 +994,7 @@ handle_complete_task_enter(StateData) ->
         RefOrErr = temporal_sdk_api_workflow:respond_workflow_task_completed(
             ApiContext,
             TemporalCommands,
+            IsEvicted,
             Req
         ),
         case is_reference(RefOrErr) of
@@ -1006,7 +1039,8 @@ handle_complete_task({ok, #{reset_history_event_id := 0} = Response}, StateData)
         task_timeout = TaskTimeout,
         commands = Commands,
         pending_commands = PendingCommands,
-        completed_commands = CompletedCommands
+        completed_commands = CompletedCommands,
+        is_evicted = IsEvicted
     } = StateData,
     WorkflowTask = maps:get(workflow_task, Response, #{workflow_execution => WorkflowExecution}),
     ActivityTasks = maps:get(activity_tasks, Response, []),
@@ -1024,7 +1058,10 @@ handle_complete_task({ok, #{reset_history_event_id := 0} = Response}, StateData)
                 },
                 case HNE orelse HUE of
                     false ->
-                        {next_state, poll, SD3, TTAction};
+                        case IsEvicted of
+                            true -> {stop, normal, SD3#state{execution_state = evicted}};
+                            false -> {next_state, evict, SD3}
+                        end;
                     true ->
                         {next_state, replay, SD3, [TTAction, {next_event, internal, handle_replay}]}
                 end;
@@ -1070,7 +1107,7 @@ handle_complete_task({error, #{grpc_response_headers := GH}} = Error, StateData)
             %% Ignore Temporal server PollWorkflowTaskQueueResponse race condition
             case StateData#state.open_tasks_count > 0 of
                 true ->
-                    {next_state, poll, StateData#state{grpc_req_ref = undefined}};
+                    {next_state, evict, StateData#state{grpc_req_ref = undefined}};
                 false ->
                     {stop, normal, StateData#state{stop_reason = {error, Error, ?EVST}}}
             end;
@@ -1121,6 +1158,27 @@ start_eager_activities([], _StateData) ->
     {error,
         "Error when processing direct_execution activities. Is <system.enableActivityEagerExecution> enabled?"}.
 
+handle_evict_enter(_State, #state{is_evicted = true} = StateData) ->
+    {stop, normal, StateData#state{execution_state = evicted}};
+handle_evict_enter(poll, StateData) ->
+    SD = spawn_handle_eviction(StateData),
+    {keep_state, SD, {{timeout, evict_timeout}, SD#state.evict_timeout, timeout}};
+handle_evict_enter(_State, #state{poll_start_time = undefined} = StateData) ->
+    SD = spawn_handle_eviction(StateData#state{poll_start_time = erlang:system_time(second)}),
+    {keep_state, SD, [
+        {{timeout, task_timeout}, cancel},
+        {{timeout, evict_timeout}, SD#state.evict_timeout, timeout}
+    ]}.
+
+handle_evict(cast, {?MSG_PRV, handle_eviction, ignore}, StateData) ->
+    {next_state, poll, StateData, {{timeout, evict_timeout}, cancel}};
+handle_evict(cast, {?MSG_PRV, handle_eviction, evict}, StateData) ->
+    {stop, normal, StateData#state{execution_state = evicted}};
+handle_evict(cast, {?MSG_PRV, handle_eviction, {Class, Reason, Stacktrace}}, StateData) ->
+    {next_state, fail_task, StateData#state{stop_reason = {Class, Reason, Stacktrace}}};
+handle_evict(EventType, EventContent, StateData) ->
+    handle_common(evict, EventType, EventContent, StateData).
+
 handle_poll_enter(#state{grpc_req_ref = Ref} = StateData) when Ref =/= undefined ->
     gen_statem:cast(self(), fail_task),
     {keep_state, StateData#state{
@@ -1129,9 +1187,7 @@ handle_poll_enter(#state{grpc_req_ref = Ref} = StateData) when Ref =/= undefined
 handle_poll_enter(StateData) ->
     case temporal_sdk_api_poll:poll_workflow_task_queue(StateData#state.api_ctx) of
         Ref when is_reference(Ref) ->
-            {keep_state, StateData#state{grpc_req_ref = {poll, Ref}}, {
-                {timeout, task_timeout}, cancel
-            }};
+            {keep_state, StateData#state{grpc_req_ref = {poll, Ref}}};
         Err ->
             {stop, normal, StateData#state{
                 stop_reason = {error, Err, ?EVST}, execution_state = error
@@ -1163,7 +1219,7 @@ handle_poll(
         {ok, #{history := #{events := [#{event_id := HistoryEventId} | _]}}}},
     #state{grpc_req_ref = {get_history_reverse, Ref}, event_id = EventId} = StateData
 ) when HistoryEventId =:= EventId; HistoryEventId =:= EventId + 1 ->
-    {repeat_state, StateData#state{grpc_req_ref = undefined}};
+    {next_state, evict, StateData#state{grpc_req_ref = undefined}};
 handle_poll(
     info,
     {?TEMPORAL_SDK_GRPC_TAG, Ref, {ok, #{}}},
@@ -1530,7 +1586,7 @@ handle_common(_State, info, {'EXIT', Pid, Reason}, StateData) ->
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: force_poll cast
 handle_common(complete_task, cast, force_poll, StateData) ->
-    {next_state, poll, StateData};
+    {next_state, evict, StateData};
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: fail_task cast
 handle_common(_State, cast, fail_task, StateData) ->
@@ -2059,6 +2115,58 @@ spawn_handle_failure(StateData) ->
     end,
     keep_state_and_data.
 
+spawn_handle_eviction(StateData) ->
+    #state{
+        execution_module = EMod,
+        linked_pids = LinkedPids,
+        api_ctx = ApiCtx,
+        history_table = HT,
+        index_table = IT,
+        local_handlers = LocalHandlers,
+        proc_label = ProcLabel,
+        otel_ctx = OtelCtx,
+        poll_start_time = PollStartTime
+    } = StateData,
+    HC = build_handler_context(StateData),
+    ExecutorPid = self(),
+    HandlerProcLabel = temporal_sdk_utils_path:string_path([ProcLabel, handle_eviction]),
+    PollIdleTime = erlang:system_time(second) - PollStartTime,
+    case lists:member(handle_eviction, LocalHandlers) of
+        true ->
+            gen_statem:cast(
+                ExecutorPid, {?MSG_PRV, handle_eviction, handle_eviction(HC, PollIdleTime)}
+            ),
+            StateData;
+        false ->
+            Pid =
+                spawn_link(
+                    fun() ->
+                        proc_lib:set_label(HandlerProcLabel),
+                        temporal_sdk_executor:set_handler_dict(ApiCtx, OtelCtx, HT, IT),
+                        otel_ctx:attach(OtelCtx),
+                        try
+                            case EMod:handle_eviction(HC, PollIdleTime) of
+                                default ->
+                                    gen_statem:cast(
+                                        ExecutorPid,
+                                        {?MSG_PRV, handle_eviction,
+                                            handle_eviction(HC, PollIdleTime)}
+                                    );
+                                HER ->
+                                    gen_statem:cast(ExecutorPid, {?MSG_PRV, handle_eviction, HER})
+                            end
+                        catch
+                            Class:Reason:Stacktrace ->
+                                gen_statem:cast(
+                                    ExecutorPid,
+                                    {?MSG_PRV, handle_eviction, {Class, Reason, Stacktrace}}
+                                )
+                        end
+                    end
+                ),
+            StateData#state{linked_pids = [Pid | LinkedPids]}
+    end.
+
 build_handler_context(StateData) ->
     #state{workflow_context = WC, workflow_info = WI} = StateData,
     HC = maps:with([cluster, otel_ctx, history_table, index_table, attempt], WC),
@@ -2210,13 +2318,35 @@ spawn_message_marker(Name, Value, StateData) ->
 %% -------------------------------------------------------------------------------------------------
 %% default callback handlers implementations
 
+handle_eviction(#{workflow_info := #{history_size_bytes := HSB}}, PollIdleTime) when
+    HSB < 1_000_000; PollIdleTime < 600
+->
+    ignore;
+handle_eviction(#{workflow_info := #{event_id := EId, history_size_bytes := HSB}}, PollIdleTime) ->
+    case eviction_time(HSB, EId) > PollIdleTime of
+        true -> ignore;
+        false -> evict
+    end.
+
+eviction_time(HistorySizeB, EventId) ->
+    EBT = eviction_base_time(HistorySizeB / 1_000_000),
+    TM = eviction_time_multiplier(EventId),
+    round(EBT * TM).
+
+eviction_base_time(HistorySizeMB) when HistorySizeMB > 40 -> 600;
+eviction_base_time(HistorySizeMB) -> -77 * HistorySizeMB + 3700.
+
+eviction_time_multiplier(EventsCount) when EventsCount < 256 -> 1;
+eviction_time_multiplier(EventsCount) when EventsCount > 50_000 -> 3;
+eviction_time_multiplier(EventsCount) -> EventsCount / 25000 + 1.
+
+handle_failure(_HandlerContext, Class, Reason, Stacktrace) ->
+    #{source => Class, message => Reason, stack_trace => Stacktrace}.
+
 handle_message(_HandlerContext, _MessageName, _MessageValue) ->
     {record, [
         [~"Received OTP message. Implement handle_message/3 callback to customize this payload."]
     ]}.
-
-handle_failure(_HandlerContext, Class, Reason, Stacktrace) ->
-    #{source => Class, message => Reason, stack_trace => Stacktrace}.
 
 % TODO handle_query/2
 

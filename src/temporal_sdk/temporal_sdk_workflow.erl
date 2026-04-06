@@ -104,6 +104,8 @@
     get_workflow_result/0,
     set_workflow_result/1,
     await_open_before_close/1,
+
+    evict_workflow/0,
     terminate_executor/0,
     terminate_executor/1,
 
@@ -1519,6 +1521,25 @@
 -callback execute(Context :: context(), Input :: temporal_sdk:term_from_payloads()) ->
     ExecutionResult :: execution_result().
 
+-doc {file, "../../docs/temporal_sdk/workflow/c-handle_eviction-2.md"}.
+-doc #{group => "Workflow behaviour"}.
+-callback handle_eviction(
+    HandlerContext :: handler_context(),
+    PollIdleTime :: undefined | pos_integer()
+) -> evict | ignore | default.
+
+-doc #{group => "Workflow behaviour"}.
+-callback handle_failure(
+    HandlerContext :: handler_context(),
+    Class :: error | exit | throw,
+    Reason :: term(),
+    Stacktrace :: erlang:raise_stacktrace()
+) ->
+    default
+    | ApplicationFailure ::
+        temporal_sdk:application_failure()
+        | temporal_sdk:user_application_failure().
+
 -doc #{group => "Workflow behaviour"}.
 -callback handle_message(
     HandlerContext :: handler_context(),
@@ -1532,18 +1553,6 @@
         Stacktrace :: temporal_sdk:serializable()
     }}
     | ignore.
-
--doc #{group => "Workflow behaviour"}.
--callback handle_failure(
-    HandlerContext :: handler_context(),
-    Class :: error | exit | throw,
-    Reason :: term(),
-    Stacktrace :: erlang:raise_stacktrace()
-) ->
-    default
-    | ApplicationFailure ::
-        temporal_sdk:application_failure()
-        | temporal_sdk:user_application_failure().
 
 -doc #{group => "Workflow behaviour"}.
 -callback handle_query(
@@ -1564,8 +1573,9 @@
     }.
 
 -optional_callbacks([
-    handle_message/3,
+    handle_eviction/2,
     handle_failure/4,
+    handle_message/3,
     handle_query/2
 ]).
 
@@ -2780,6 +2790,10 @@ set_workflow_result(WorkflowResult) -> cast_id({set_workflow_result, WorkflowRes
 -doc #{group => "SDK functions"}.
 -spec await_open_before_close(IsEnabled :: boolean()) -> ok.
 await_open_before_close(IsEnabled) -> cast_id({await_open_before_close, IsEnabled}).
+
+-doc #{group => "SDK functions"}.
+-spec evict_workflow() -> ok | no_return().
+evict_workflow() -> cast_id(evict_workflow).
 
 -doc #{group => "SDK functions"}.
 -spec terminate_executor() -> ok.

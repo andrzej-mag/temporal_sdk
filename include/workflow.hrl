@@ -103,6 +103,8 @@
     get_workflow_result/0,
     set_workflow_result/1,
     await_open_before_close/1,
+
+    evict_workflow/0,
     terminate_executor/0,
     terminate_executor/1,
 
