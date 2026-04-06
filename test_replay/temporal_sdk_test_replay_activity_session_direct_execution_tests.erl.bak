@@ -39,7 +39,7 @@
     % fun a_cancel_4/0,
     % fun a_cancel_5/0,
     fun a_cancel_6/0,
-    fun a_cancel_loop/0,
+    {timeout, 7, fun a_cancel_loop/0},
     fun invalid_mod/0,
     {timeout, 7, fun long_fail_await/0},
     {timeout, 7, fun a_a/0},
