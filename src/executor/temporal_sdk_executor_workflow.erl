@@ -2440,15 +2440,26 @@ fetch_task_timeout(#{task_settings := #{task_timeout_ratio := Ratio}}, Task) ->
     end.
 
 get_workflow_info(#state{workflow_info = WI} = StateData) ->
+    #state{
+        event_id = EventId,
+        task_started_event_id = TaskStartedEventId,
+        task_previous_started_event_id = TaskPreviousStartedEventId,
+        open_executions_count = OpenExecutionsCount,
+        total_executions_count = TotalExecutionsCount,
+        open_tasks_count = OpenTasksCount,
+        otp_messages_count = OtpMessagesCount
+    } = StateData,
     WI#{
-        event_id => StateData#state.event_id - 1,
-        is_replaying => StateData#state.is_replaying,
-        open_executions_count => StateData#state.open_executions_count,
-        total_executions_count => StateData#state.total_executions_count,
-        open_tasks_count => StateData#state.open_tasks_count,
-        otp_messages_count => maps:map(
-            fun(_Key, {Current, _Max}) -> Current end, StateData#state.otp_messages_count
-        )
+        event_id => EventId - 1,
+        is_replaying =>
+            EventId =<
+            max(TaskPreviousStartedEventId, TaskStartedEventId) andalso
+            (TaskPreviousStartedEventId > 0 orelse TaskStartedEventId > 3),
+
+        open_executions_count => OpenExecutionsCount,
+        total_executions_count => TotalExecutionsCount,
+        open_tasks_count => OpenTasksCount,
+        otp_messages_count => maps:map(fun(_Key, {Current, _Max}) -> Current end, OtpMessagesCount)
     }.
 
 restart_workflow(StateData, Task) ->
