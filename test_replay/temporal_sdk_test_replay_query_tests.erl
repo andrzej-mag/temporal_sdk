@@ -42,6 +42,7 @@ base() ->
     ?assertMatch(
         {ok, {completed, #{result := []}}}, temporal_sdk:await_workflow(?CL, WE, [{namespace, ?NS}])
     ),
+    timer:sleep(500),
     ?assertMatch(
         {ok, #{query_result := ["closed result"]}},
         temporal_sdk_service:query_workflow(?CL, WE, ?QUERY_TYPE, [
