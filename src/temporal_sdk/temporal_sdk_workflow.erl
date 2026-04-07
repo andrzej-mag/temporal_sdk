@@ -2459,8 +2459,8 @@ await(AwaitPattern, Timeout) when is_integer(Timeout) ->
         {false, _NoMatch} ->
             Timer = start_timer(Timeout, [{awaitable_id, ?AWAIT_TIMEOUT_ID}]),
             case await_one([Timer, AwaitPattern]) of
-                {ok, [#{state := S}, _Match]} when S =:= fired; S =:= canceled ->
-                    case is_awaited(AwaitPattern) of
+                {ok, [#{state := S, event_id := TEId}, _Match]} when S =:= fired; S =:= canceled ->
+                    case is_awaited_timeout(AwaitPattern, TEId) of
                         {true, CurrentMatch} ->
                             {ok, CurrentMatch};
                         {false, CurrentMatch} ->
@@ -2470,6 +2470,17 @@ await(AwaitPattern, Timeout) when is_integer(Timeout) ->
                     cancel_timer(Timer),
                     {ok, Match}
             end
+    end.
+
+is_awaited_timeout(AwaitPattern, TimerEId) ->
+    {Pattern, PatternKey} = temporal_sdk_api_awaitable:cast_key(AwaitPattern, ?API_CTX),
+    Match = temporal_sdk_api_awaitable:init_match(PatternKey, {?HISTORY_TABLE, ?INDEX_TABLE}),
+    TSEId =
+        temporal_sdk_api_awaitable_history_table:find_task_scheduled_eid(?HISTORY_TABLE, TimerEId),
+    MatchTest = temporal_sdk_api_awaitable:match_test(Pattern, Match, TSEId),
+    case temporal_sdk_api_awaitable:is_ready(MatchTest) of
+        true -> {true, Match};
+        false -> {false, Match}
     end.
 
 -doc #{group => "Awaitables functions"}.

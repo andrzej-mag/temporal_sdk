@@ -8,7 +8,8 @@
     fetch/2,
     mutations_count/2,
     reset_event_id/1,
-    append/5
+    append/5,
+    find_task_scheduled_eid/2
 ]).
 
 -include("proto.hrl").
@@ -121,6 +122,26 @@ append(
     else
         {error, Reason} ->
             {error, Reason#{corrupted_event_source => corrupted_event_source(AppendType)}}
+    end.
+
+-spec find_task_scheduled_eid(HistoryTable :: ets:table(), EventId :: pos_integer()) ->
+    pos_integer().
+find_task_scheduled_eid(HistoryTable, EventId) ->
+    case
+        ets:select(
+            HistoryTable,
+            [
+                {
+                    {'$1', 'EVENT_TYPE_WORKFLOW_TASK_SCHEDULED', '_', '_'},
+                    [{'>', '$1', EventId}],
+                    ['$1']
+                }
+            ],
+            1
+        )
+    of
+        {[EId], _Continuation} when is_integer(EId) -> EId;
+        '$end_of_table' -> EventId
     end.
 
 corrupted_event_source(sticky) ->

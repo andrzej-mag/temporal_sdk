@@ -7,6 +7,7 @@
     cast_key/2,
     init_match/2,
     match_test/2,
+    match_test/3,
     is_ready/1,
     update_match/6,
     gen_idx/7,
@@ -53,6 +54,17 @@ match_test(Pattern, Match) ->
     A = element(1, Pattern),
     {
         temporal_sdk_api_awaitable_index:is_ready(A, Match),
+        temporal_sdk_api_awaitable_index:is_closed(A, Match)
+    }.
+
+match_test({Operator, Pattern}, {Operator, Match}, EId) when Operator =:= one; Operator =:= all ->
+    {Operator, lists:zipwith(fun(P, M) -> match_test(P, M, EId) end, Pattern, Match)};
+match_test(awaitable_data, _AwaitableData, _EId) ->
+    {true, true};
+match_test(Pattern, Match, EId) ->
+    A = element(1, Pattern),
+    {
+        temporal_sdk_api_awaitable_index:is_ready(A, Match, EId),
         temporal_sdk_api_awaitable_index:is_closed(A, Match)
     }.
 

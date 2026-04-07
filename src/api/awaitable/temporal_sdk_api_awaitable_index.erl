@@ -16,6 +16,7 @@
     to_key/1,
     is_closed/2,
     is_ready/2,
+    is_ready/3,
 
     tstc/3,
     tste/3,
@@ -405,6 +406,205 @@ is_ready(suggest_continue_as_new, #{state := suggested}) ->
     true;
 %% not awaited
 is_ready(_AwaitableType, _Match) ->
+    false.
+
+-spec is_ready(
+    AwaitableType :: atom(),
+    Match :: temporal_sdk_workflow:awaitable_match(),
+    EventId :: pos_integer()
+) -> boolean() | invalid_pattern.
+is_ready(_AwaitableType, noevent, _EId) ->
+    false;
+%% info
+is_ready(info, Match, _EId) when Match =/= noevent -> true;
+%% execution
+is_ready(execution_start, #{state := S}, _EId) when S == started; S == completed -> true;
+is_ready(execution, #{state := S}, _EId) when S == completed -> true;
+%% activity
+is_ready(activity_cmd, #{state := S, event_id := E}, EId) when
+    E < EId andalso
+        (S == cmd orelse S == scheduled orelse S == started orelse S == canceled orelse
+            S == completed orelse
+            S == failed orelse S == timedout)
+->
+    true;
+is_ready(activity_cancel_request, #{cancel_requested := true}, _EId) ->
+    true;
+is_ready(activity_result, #{result := _}, _EId) ->
+    true;
+is_ready(activity_schedule, #{state := S, scheduled_event_id := E}, EId) when
+    E < EId andalso
+        (S == scheduled orelse S == started orelse S == canceled orelse S == completed orelse
+            S == failed orelse S == timedout)
+->
+    true;
+is_ready(activity_schedule, #{state := S, event_id := E}, EId) when
+    E < EId andalso
+        (S == scheduled orelse S == started orelse S == canceled orelse S == completed orelse
+            S == failed orelse S == timedout)
+->
+    true;
+is_ready(activity_start, #{state := S, started_event_id := E}, EId) when
+    E < EId andalso
+        (S == started orelse S == canceled orelse S == completed orelse S == failed orelse
+            S == timedout)
+->
+    true;
+is_ready(activity_start, #{state := S, event_id := E}, EId) when
+    E < EId andalso
+        (S == started orelse S == canceled orelse S == completed orelse S == failed orelse
+            S == timedout)
+->
+    true;
+is_ready(activity_cancel_request, #{state := S, event_id := E}, EId) when
+    E < EId andalso (S == canceled orelse S == completed orelse S == failed orelse S == timedout)
+->
+    true;
+is_ready(activity, #{state := S, event_id := E}, EId) when
+    E < EId andalso (S == canceled orelse S == completed orelse S == failed orelse S == timedout)
+->
+    true;
+is_ready(activity_result, #{state := S, event_id := E}, EId) when
+    E < EId andalso (S == canceled orelse S == completed orelse S == failed orelse S == timedout)
+->
+    true;
+%% marker
+is_ready(marker_cmd, #{state := S}, _EId) when S == cmd; S == recorded -> true;
+is_ready(marker_value, #{value := _}, _EId) ->
+    true;
+is_ready(marker, #{state := S, event_id := E}, EId) when E < EId, S == recorded -> true;
+%% timer
+is_ready(timer_cmd, #{state := S}, _EId) when S == cmd; S == started; S == fired; S == canceled ->
+    true;
+is_ready(timer_cancel_request, #{cancel_requested := true}, _EId) ->
+    true;
+is_ready(timer_start, #{state := S, event_id := E}, EId) when
+    E < EId andalso
+        (S == started orelse S == fired orelse S == canceled)
+->
+    true;
+is_ready(timer_cancel_request, #{state := S, event_id := E}, EId) when
+    E < EId andalso (S == fired orelse S == canceled)
+->
+    true;
+is_ready(timer, #{state := S, event_id := E}, EId) when
+    E < EId andalso (S == fired orelse S == canceled)
+->
+    true;
+%%
+%% child_workflow
+is_ready(child_workflow_cmd, #{state := S}, _EId) when
+    S == cmd;
+    S == initiated;
+    S == initiate_failed;
+    S == started;
+    S == canceled;
+    S == completed;
+    S == failed;
+    S == timedout;
+    S == terminated
+->
+    true;
+is_ready(child_workflow_initiate, #{state := S, initiated_event_id := E}, EId) when
+    E < EId andalso
+        (S == initiated orelse
+            S == initiate_failed orelse
+            S == started orelse
+            S == canceled orelse
+            S == completed orelse
+            S == failed orelse
+            S == timedout orelse
+            S == terminated)
+->
+    true;
+is_ready(child_workflow_initiate, #{state := S, event_id := E}, EId) when
+    E < EId andalso
+        (S == initiated orelse
+            S == initiate_failed orelse
+            S == started orelse
+            S == canceled orelse
+            S == completed orelse
+            S == failed orelse
+            S == timedout orelse
+            S == terminated)
+->
+    true;
+is_ready(child_workflow_start, #{state := S, started_event_id := E}, EId) when
+    E < EId andalso
+        (S == initiate_failed orelse
+            S == started orelse
+            S == canceled orelse
+            S == completed orelse
+            S == failed orelse
+            S == timedout orelse
+            S == terminated)
+->
+    true;
+is_ready(child_workflow_start, #{state := S, event_id := E}, EId) when
+    E < EId andalso
+        (S == initiate_failed orelse
+            S == started orelse
+            S == canceled orelse
+            S == completed orelse
+            S == failed orelse
+            S == timedout orelse
+            S == terminated)
+->
+    true;
+is_ready(child_workflow, #{state := S, event_id := E}, EId) when
+    E < EId andalso
+        (S == initiate_failed orelse
+            S == canceled orelse
+            S == completed orelse
+            S == failed orelse
+            S == timedout orelse
+            S == terminated)
+->
+    true;
+%% nexus
+% TODO add EventId constraints
+is_ready(nexus_cmd, #{state := S}, _EId) when
+    S == cmd; S == scheduled; S == started; S == canceled; S == completed
+->
+    true;
+is_ready(nexus_cancel_request, #{cancel_requested := true}, _EId) ->
+    true;
+is_ready(nexus_schedule, #{state := S}, _EId) when
+    S == scheduled; S == started; S == canceled; S == completed
+->
+    true;
+is_ready(nexus_start, #{state := S}, _EId) when S == started; S == canceled; S == completed ->
+    true;
+is_ready(nexus_cancel_request, #{state := S}, _EId) when S == canceled; S == completed ->
+    true;
+is_ready(nexus, #{state := S}, _EId) when S == canceled; S == completed -> true;
+%% workflow_properties
+is_ready(workflow_properties_cmd, #{state := S}, _EId) when S == cmd; S == modified -> true;
+is_ready(workflow_properties, #{state := S, event_id := E}, EId) when E < EId, S == modified ->
+    true;
+%% signal
+is_ready(signal_request, #{state := S}, _EId) when S == requested -> true;
+is_ready(signal_admit, #{state := S, event_id := E}, EId) when E < EId, S == admitted -> true;
+is_ready(signal, #{state := S, event_id := E}, EId) when
+    E < EId andalso (S == requested orelse S == admitted)
+->
+    true;
+%% query
+is_ready(query_request, #{state := S}, _EId) when S == requested -> true;
+is_ready(query_response, #{state := S}, _EId) when S == responded -> true;
+is_ready(query, #{state := _S}, _EId) ->
+    true;
+%% workflow termination events cannot be awaited
+is_ready(cancel_request, #{state := requested}, _EId) ->
+    true;
+%% event
+is_ready(event, #{event_id := E}, EId) when E < EId ->
+    true;
+%% SDK
+is_ready(suggest_continue_as_new, #{state := suggested, event_id := E}, EId) when E < EId ->
+    true;
+%% not awaited
+is_ready(_AwaitableType, _Match, _EId) ->
     false.
 
 %% Test state transition functions count only commands closings and non-deadlocking cancelations.
