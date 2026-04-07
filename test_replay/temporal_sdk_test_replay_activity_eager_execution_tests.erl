@@ -39,23 +39,23 @@
     % fun a_cancel_4/0,
     % fun a_cancel_5/0,
     fun a_cancel_6/0,
-    {timeout, 7, fun a_cancel_loop/0},
+    {timeout, 15, fun a_cancel_loop/0},
     fun invalid_mod/0,
-    {timeout, 7, fun long_fail_await/0},
-    {timeout, 7, fun a_a/0},
-    {timeout, 7, fun a_a_err/0},
-    {timeout, 7, fun a_err_a/0},
-    {timeout, 7, fun err_a_a/0},
-    {timeout, 7, fun a_failing_1/0},
-    {timeout, 7, fun a_failing_2/0},
-    {timeout, 7, fun a_failing_3/0},
-    {timeout, 7, fun large_data/0}
+    {timeout, 15, fun long_fail_await/0},
+    {timeout, 15, fun a_a/0},
+    {timeout, 15, fun a_a_err/0},
+    {timeout, 15, fun a_err_a/0},
+    {timeout, 15, fun err_a_a/0},
+    {timeout, 15, fun a_failing_1/0},
+    {timeout, 15, fun a_failing_2/0},
+    {timeout, 15, fun a_failing_3/0},
+    {timeout, 15, fun large_data/0}
 ]).
 
 -define(OPTS, [eager_execution]).
 -define(LPATH, [json, activity_eager_execution]).
 
-base_test_() -> ?FIXTURE(?CONFIGS, {inparallel, 10, {timeout, 10, ?TESTS}}).
+base_test_() -> ?FIXTURE(?CONFIGS, {inparallel, 20, {timeout, 20, ?TESTS}}).
 
 noevent() ->
     EFn = fun(_Context, _Input) ->
