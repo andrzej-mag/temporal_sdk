@@ -56,20 +56,42 @@ init([
     {ok, {#{strategy => one_for_one}, ChildSpecs}}.
 
 child_specs(
-    #{worker_opts := #{task_settings := #{session_worker := SW = #{}}}} = ApiContext,
+    #{worker_opts := #{task_settings := #{session_worker := SW = #{}}}} = ApiContext0,
     LimiterCounters,
     #{worker := WLC, session := SLC} = LC
 ) ->
-    #{
-        cluster := Cluster,
-        worker_type := WorkerType = workflow,
-        worker_opts := #{worker_id := WorkerId, telemetry_poll_interval := TelemetryPollInterval}
-    } =
-        ApiContext,
+    #{cluster := Cluster, worker_type := WorkerType = workflow, worker_opts := WorkerOpts} =
+        ApiContext0,
+    #{worker_id := WorkerId, telemetry_poll_interval := TelemetryPollInterval} = WorkerOpts,
     #{worker_id := SWorkerId} = SW,
+    ApiContext = add_sticky_execution_name(ApiContext0),
     WLCounters = LimiterCounters#{worker => WLC},
     SLCounters = LimiterCounters#{worker => SLC},
     SessionApiContext = ApiContext#{worker_opts := SW, worker_type := session},
+
+    StickyChi =
+        case WorkerOpts of
+            #{task_settings := #{sticky_execution := #{type := pool}}} ->
+                StickyApiContext = ApiContext#{worker_type := sticky_queue},
+                [
+                    #{
+                        id => {temporal_sdk_poller_sup, Cluster, sticky_queue, WorkerId},
+                        start =>
+                            {temporal_sdk_poller_sup, start_link, [
+                                temporal_sdk_api_context:add_limiter_counters(
+                                    StickyApiContext, WorkerType, WLCounters
+                                ),
+                                WLCounters,
+                                self()
+                            ]},
+                        type => supervisor,
+                        restart => transient
+                    }
+                ];
+            #{task_settings := #{sticky_execution := #{type := _}}} ->
+                []
+        end,
+
     [
         #{
             id => {temporal_sdk_telemetry_poller, Cluster, WorkerType, WorkerId},
@@ -124,7 +146,7 @@ child_specs(
             start => {temporal_sdk_worker_opts, start_link, [ApiContext, LC]},
             restart => transient
         }
-    ];
+    ] ++ StickyChi;
 child_specs(ApiContext, LimiterCounters, #{worker := WLC} = LC) ->
     #{
         cluster := Cluster,
@@ -164,3 +186,19 @@ child_specs(ApiContext, LimiterCounters, #{worker := WLC} = LC) ->
             restart => transient
         }
     ].
+
+add_sticky_execution_name(
+    #{worker_opts := #{task_settings := #{sticky_execution := #{queue_name := _}}}} = AC
+) ->
+    AC;
+add_sticky_execution_name(
+    #{worker_opts := WO = #{task_settings := TS = #{sticky_execution := #{type := pool} = SE}}} = AC
+) ->
+    StickyName = temporal_sdk_utils_path:string_path([
+        node(), pid_to_list(self()), temporal_sdk_utils:uuid4()
+    ]),
+    AC#{
+        worker_opts := WO#{task_settings := TS#{sticky_execution := SE#{queue_name => StickyName}}}
+    };
+add_sticky_execution_name(#{} = ApiContext) ->
+    ApiContext.

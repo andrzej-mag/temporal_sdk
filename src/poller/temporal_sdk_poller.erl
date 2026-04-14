@@ -9,6 +9,7 @@
 ]).
 -export([
     init/1,
+    terminate/3,
     callback_mode/0
 ]).
 -export([
@@ -41,7 +42,7 @@
     task_exec_interval :: number(),
     task_polled_at :: integer(),
     task_poll_status = undefined :: undefined | null | task | error,
-    task_execute_status = undefined :: undefined | executed | redirected | failed,
+    task_execute_status = undefined :: undefined | executed | redirected | evicted | failed,
     %% --------------- telemetry
     ev_metadata :: map(),
     ev_poll_at = 0 :: integer(),
@@ -62,18 +63,31 @@ start_link(ApiContext, LimiterCounters, PollCounter, WorkerSupPid, W) ->
     gen_statem:start_link(?MODULE, [ApiContext, LimiterCounters, PollCounter, WorkerSupPid, W], []).
 
 init([ApiContext, LimiterCounters, PollCounter, WorkerSupPid, W]) ->
+    process_flag(trap_exit, true),
     #{
         cluster := Cluster,
         worker_opts := #{
             worker_id := WorkerId,
             namespace := Namespace,
             task_queue := TQ,
-            task_poller_limiter := TaskPollerLimiter,
-            limits := Limits,
             limiter_check_frequency := LimiterCheckFrequency
         } = WorkerOpts,
         worker_type := WorkerType
     } = ApiContext,
+    {TaskPollerLimiter, Limits} =
+        case WorkerType of
+            sticky_queue ->
+                #{
+                    task_settings := #{
+                        sticky_execution := #{task_poller_limiter := TPL, limits := Li}
+                    }
+                } =
+                    WorkerOpts,
+                {TPL, Li};
+            _ ->
+                #{task_poller_limiter := TPL, limits := Li} = WorkerOpts,
+                {TPL, Li}
+        end,
     ProcLabel = temporal_sdk_utils_path:string_path([?MODULE, Cluster, WorkerType, WorkerId, W]),
     proc_lib:set_label(ProcLabel),
 
@@ -120,6 +134,9 @@ init([ApiContext, LimiterCounters, PollCounter, WorkerSupPid, W]) ->
         {ok, Checks} -> {ok, poll, StateData#state{limiter_checks = Checks}};
         Err -> {error, Err}
     end.
+
+terminate(_Reason, _State, StateData) ->
+    temporal_sdk_poller_adapter:handle_shutdown(StateData#state.api_ctx).
 
 callback_mode() ->
     [state_functions, state_enter].

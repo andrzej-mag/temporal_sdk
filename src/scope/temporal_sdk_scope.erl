@@ -6,6 +6,7 @@
 -export([
     init_ctx/1,
     get_members/1,
+    get_local_members/1,
     start/1,
     build_ets_ids/2,
     ets_scope_id/2,
@@ -43,6 +44,14 @@ get_members(#{
         false -> pg:get_local_members(PgScopeId, {Namespace, WorkflowId})
     end.
 
+-spec get_local_members(ApiContext :: temporal_sdk_api:context()) -> ScopeMembers :: [pid()].
+get_local_members(#{
+    worker_opts := #{namespace := Namespace},
+    task_opts := #{workflow_id := WorkflowId},
+    workflow_scope := #{pg_scope_id := PgScopeId}
+}) ->
+    pg:get_local_members(PgScopeId, {Namespace, WorkflowId}).
+
 -spec start(ApiContext :: temporal_sdk_api:context()) -> ok.
 start(#{
     worker_opts := #{namespace := Namespace},
@@ -64,7 +73,4 @@ pg_scope_id(Scope, ShardId) ->
     temporal_sdk_utils_path:atom_path([?MODULE, pg, Scope, ShardId]).
 
 shard_id(ShardSize, Namespace, WorkflowId, RunId) ->
-    case erlang:adler32([Namespace, WorkflowId, RunId]) rem ShardSize of
-        0 -> rand:uniform(ShardSize);
-        V -> V
-    end.
+    erlang:adler32([Namespace, WorkflowId, RunId]) rem ShardSize + 1.

@@ -4,8 +4,7 @@ SDK provides the following rate limiters:
 
 - [OS rate limiter](#module-os-rate-limiter),
 - [concurrency and fixed window rate limiters](#module-concurrency-and-fixed-window-rate-limiters),
-- [task worker task poller leaky bucket rate
-limiter](#module-task-poller-leaky-bucket-rate-limiter).
+- [task worker task poller leaky bucket rate limiter](#module-task-poller-leaky-bucket-rate-limiter).
 
 OS rate limiting is controlled by OS resource usage, including memory, CPU load, and disk capacity.
 Concurrency and fixed window rate limiting are controlled by the Temporal task execution counters.

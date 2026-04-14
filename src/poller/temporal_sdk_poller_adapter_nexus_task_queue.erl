@@ -6,7 +6,8 @@
 
 -export([
     handle_poll/1,
-    handle_execute/2
+    handle_execute/2,
+    handle_shutdown/1
 ]).
 
 -define(REQUIRED_TASK_KEYS, [
@@ -39,3 +40,5 @@ handle_execute(ApiContext, Task) ->
         ignore -> {error, activity_executor_start_ignored};
         Err -> Err
     end.
+
+handle_shutdown(_ApiContext) -> ok.

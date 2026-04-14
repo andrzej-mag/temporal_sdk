@@ -52,7 +52,7 @@
     client_opts => temporal_sdk_client:opts(),
     worker_opts => temporal_sdk_worker:opts(),
     task_opts => activity_task_opts() | workflow_task_opts(),
-    worker_type => temporal_sdk_worker:worker_type(),
+    worker_type => temporal_sdk_worker:worker_type() | sticky_queue,
     worker_identity => temporal_sdk:serializable(),
     limiter_counters => [[counters:counters_ref()]],
     execution_module => module()
@@ -79,7 +79,10 @@
     workflow_type := unicode:chardata(),
     workflow_id := unicode:chardata(),
     run_id := unicode:chardata(),
-    sticky_attributes := ?TEMPORAL_SPEC:'temporal.api.taskqueue.v1.StickyExecutionAttributes'()
+    sticky_attributes =>
+        disabled
+        | {local, ?TEMPORAL_SPEC:'temporal.api.taskqueue.v1.StickyExecutionAttributes'()}
+        | {pool, ?TEMPORAL_SPEC:'temporal.api.taskqueue.v1.StickyExecutionAttributes'()}
 }.
 
 -define(LONGPOLL_SERVICES, [

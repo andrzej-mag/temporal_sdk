@@ -98,12 +98,7 @@
 -export_type([task_settings/0]).
 
 -type user_task_settings() ::
-    activity_settings()
-    | nexus_settings()
-    | workflow_settings()
-    | user_activity_settings()
-    | user_nexus_settings()
-    | user_workflow_settings().
+    user_activity_settings() | user_nexus_settings() | user_workflow_settings().
 -export_type([user_task_settings/0]).
 
 -type activity_settings() :: #{
@@ -141,7 +136,7 @@
     deterministic_check_mod => module(),
     run_timeout_ratio => float(),
     task_timeout_ratio => float(),
-    sticky_execution_schedule_to_start_ratio => float(),
+    sticky_execution => sticky_execution() | sticky_execution_as_list(),
     maximum_page_size => pos_integer(),
     await_open_before_close => boolean(),
     otp_messages_limits => [
@@ -159,7 +154,7 @@
     | {deterministic_check_mod, module()}
     | {run_timeout_ratio, float()}
     | {task_timeout_ratio, float()}
-    | {sticky_execution_schedule_to_start_ratio, float()}
+    | {sticky_execution, sticky_execution() | sticky_execution_as_list()}
     | {maximum_page_size, pos_integer()}
     | {await_open_before_close, boolean()}
     | {otp_messages_limits, [
@@ -171,6 +166,28 @@
     | {session_worker, opts() | user_opts() | boolean()}
 ].
 -export_type([user_workflow_settings/0]).
+
+-type sticky_execution() ::
+    #{
+        type := local | pool | disabled,
+        schedule_to_start_timeout => temporal_sdk:time(),
+        pool_size => pos_integer(),
+        queue_name => unicode:chardata(),
+        task_poller_limiter => task_poller_limiter(),
+        limits => temporal_sdk_limiter:levels_limits()
+    }.
+-export_type([sticky_execution/0]).
+
+-type sticky_execution_as_list() ::
+    [
+        {type, local | pool | disabled}
+        | {schedule_to_start_timeout, temporal_sdk:time()}
+        | {pool_size, pos_integer()}
+        | {queue_name, unicode:chardata()}
+        | {task_poller_limiter, task_poller_limiter()}
+        | {limits, temporal_sdk_limiter:levels_limits()}
+    ].
+-export_type([sticky_execution_as_list/0]).
 
 -type worker_version() :: ?TEMPORAL_SPEC:'temporal.api.common.v1.WorkerVersionStamp'().
 -export_type([worker_version/0]).

@@ -41,8 +41,9 @@ setup(Cluster, WorkerType, WorkerOpts) when
 ->
     maybe
         {ok, O0} ?= temporal_sdk_utils_opts:build(defaults(worker_opts, WorkerType), WorkerOpts),
-        #{worker_id := WorkerId, limiter_time_windows := TimeWindows} = O1 = add_worker_id(O0),
-        {ok, Opts, SCounters, SChiSpec} ?= setup_session(WorkerType, Cluster, O1),
+        {ok, O1} ?= build_sticky_opts(O0),
+        #{worker_id := WorkerId, limiter_time_windows := TimeWindows} = O2 = add_worker_id(O1),
+        {ok, Opts, SCounters, SChiSpec} ?= setup_session(WorkerType, Cluster, O2),
         {WCounters, WChiSpec} = temporal_sdk_limiter:setup(
             {Cluster, WorkerType, WorkerId}, TimeWindows
         ),
@@ -56,6 +57,14 @@ setup(_Cluster, _WorkerType, _WorkerOpts) ->
 
 merge_session_counters([], WCounters) -> #{worker => WCounters};
 merge_session_counters(#{} = SCounters, WCounters) -> #{worker => WCounters, session => SCounters}.
+
+build_sticky_opts(#{task_settings := TS = #{sticky_execution := SE}} = Opts) ->
+    case temporal_sdk_utils_opts:build(defaults_sticky_execution(SE), SE) of
+        {ok, SEO} -> {ok, Opts#{task_settings := TS#{sticky_execution => SEO}}};
+        Err -> Err
+    end;
+build_sticky_opts(#{} = Opts) ->
+    {ok, Opts}.
 
 -spec setup_replay(
     Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -117,7 +126,9 @@ add_worker_id(#{worker_id := _} = Opts) ->
 add_worker_id(#{namespace := NS, task_queue := TQ} = Opts) ->
     Opts#{worker_id => temporal_sdk_utils_path:string_path([NS, TQ])}.
 
--spec defaults(OptsType :: atom(), WorkerType :: temporal_sdk_worker:worker_type()) ->
+-spec defaults(
+    OptsType :: atom(), WorkerType :: temporal_sdk_worker:worker_type() | sticky_execution
+) ->
     temporal_sdk_utils_opts:defaults().
 defaults(worker_opts, session) ->
     [
@@ -175,7 +186,7 @@ defaults(task_settings, workflow) ->
         {deterministic_check_mod, atom, temporal_sdk_api_workflow_check_temporal},
         {run_timeout_ratio, float, 0.8},
         {task_timeout_ratio, float, 0.8},
-        {sticky_execution_schedule_to_start_ratio, float, 0.5},
+        {sticky_execution, nested, defaults_sticky_execution()},
         {maximum_page_size, pos_integer, 256},
         {await_open_before_close, boolean, true},
         {otp_messages_limits, list, [{received, infinity}, {recorded, 1_000}, {ignored, infinity}]},
@@ -216,19 +227,25 @@ defaults(worker_limits, activity) ->
     [
         {activity_regular, limiter_limits, '$_optional'}
     ];
+defaults(worker_limits, nexus) ->
+    [
+        {nexus, limiter_limits, '$_optional'}
+    ];
 defaults(worker_limits, session) ->
     [
         {activity_session, limiter_limits, '$_optional'}
+    ];
+defaults(worker_limits, sticky_execution) ->
+    [
+        {activity_direct, limiter_limits, '$_optional'},
+        {activity_eager, limiter_limits, '$_optional'},
+        {workflow, limiter_limits, '$_optional'}
     ];
 defaults(worker_limits, workflow) ->
     [
         {activity_direct, limiter_limits, '$_optional'},
         {activity_eager, limiter_limits, '$_optional'},
         {workflow, limiter_limits, '$_optional'}
-    ];
-defaults(worker_limits, nexus) ->
-    [
-        {nexus, limiter_limits, '$_optional'}
     ];
 defaults(limiter_time_windows, activity) ->
     [
@@ -249,9 +266,41 @@ defaults(limiter_time_windows, nexus) ->
         {nexus, time, ?DEFAULT_LIMITER_TIME_WINDOW}
     ].
 
+defaults_sticky_execution() ->
+    [
+        {type, atom, pool},
+        {schedule_to_start_timeout, duration, '$_optional'},
+        {pool_size, pos_integer, '$_optional'},
+        {queue_name, unicode, '$_optional'},
+        {task_poller_limiter, [map, list], '$_optional'},
+        {limits, [map, list], '$_optional'}
+    ].
+
+defaults_sticky_execution(#{type := disabled}) ->
+    [
+        {type, atom, '$_required'}
+    ];
+defaults_sticky_execution(#{type := local}) ->
+    [
+        {type, atom, '$_required'},
+        {queue_name, unicode, '$_optional'}
+    ];
+defaults_sticky_execution(#{type := pool}) ->
+    WorkerType = sticky_execution,
+    [
+        {type, atom, '$_required'},
+        {queue_name, unicode, '$_optional'},
+        {pool_size, pos_integer, task_poller_pool_size(WorkerType)},
+        {schedule_to_start_timeout, duration, '$_optional'},
+        {task_poller_limiter, nested, defaults(task_poller_limiter, WorkerType)},
+        {limits, nested, defaults(limits, WorkerType)}
+    ].
+
 task_poller_pool_size(activity) -> 10;
+task_poller_pool_size(nexus) -> 10;
 task_poller_pool_size(session) -> 2;
-task_poller_pool_size(_WorkerType) -> 5.
+task_poller_pool_size(sticky_execution) -> 5;
+task_poller_pool_size(workflow) -> 5.
 
 -spec get_opts(
     Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -294,9 +343,8 @@ do_stats(Cluster, WorkerType, WorkerId, Key) ->
 -spec worker_type_to_limitable(WorkerType :: temporal_sdk_worker:worker_type()) ->
     temporal_sdk_limiter:limitable().
 worker_type_to_limitable(activity) -> activity_regular;
-worker_type_to_limitable(nexus) -> nexus;
 worker_type_to_limitable(session) -> activity_session;
-worker_type_to_limitable(workflow) -> workflow.
+worker_type_to_limitable(Other) -> Other.
 
 -spec build_limiter_config(
     WorkerType :: temporal_sdk_worker:worker_type(),

@@ -1,4 +1,4 @@
--module(temporal_sdk_poller_adapter_workflow_task_queue).
+-module(temporal_sdk_poller_adapter_workflow_sticky_queue).
 -behaviour(temporal_sdk_poller_adapter).
 
 % elp:ignore W0012 W0040
@@ -26,7 +26,7 @@
 ]).
 
 handle_poll(ApiContext) ->
-    temporal_sdk_api_poll:poll_workflow_task_queue(ApiContext).
+    temporal_sdk_api_poll:poll_workflow_sticky_queue(ApiContext).
 
 handle_execute(ApiContext, Task) ->
     #{cluster := Cluster, worker_opts := WorkerOpts} = ApiContext,
@@ -41,33 +41,23 @@ handle_execute(ApiContext, Task) ->
         AC = temporal_sdk_scope:init_ctx(
             temporal_sdk_api_context:add_workflow_opts(ApiContext, Task, Mod)
         ),
-        do_handle_execute(temporal_sdk_scope:get_members(AC), AC, Task)
+        do_handle_execute(temporal_sdk_scope:get_local_members(AC), Task)
     end.
 
-handle_shutdown(_ApiContext) -> ok.
+handle_shutdown(ApiContext) -> temporal_sdk_api_poll:shutdown_worker(ApiContext).
 
-has_valid_history(#{
-    history := #{
-        events := [
-            #{event_id := 1, attributes := {workflow_execution_started_event_attributes, #{}}} | _
-        ]
-    }
-}) ->
+has_valid_history(#{history := #{events := [#{event_id := _, attributes := {_, #{}}} | _]}}) ->
     true;
 has_valid_history(#{history := #{events := []}, started_event_id := 0}) ->
     true;
 has_valid_history(Invalid) ->
     {error, #{
-        reason => "Unhandled workflow regular task: missing or invalid events history.",
+        reason => "Unhandled workflow sticky task: missing or invalid events history.",
         invalid_task => Invalid
     }}.
 
-do_handle_execute([], ApiCtx, Task) ->
-    case temporal_sdk_executor_workflow:start(ApiCtx, Task, undefined) of
-        {ok, _Pid} -> {ok, executed};
-        Err -> Err
-    end;
-do_handle_execute([Pid | TPids], _ApiCtx, Task) ->
-    Pid ! {?TEMPORAL_SDK_GRPC_TAG, regular_queue, {ok, Task}},
-    [P ! {?TEMPORAL_SDK_GRPC_TAG, duplicate_workflow_execution} || P <- TPids],
+do_handle_execute([], _Task) ->
+    {ok, evicted};
+do_handle_execute(Pids, Task) ->
+    [P ! {?TEMPORAL_SDK_GRPC_TAG, sticky_queue, {ok, Task}} || P <- Pids],
     {ok, redirected}.

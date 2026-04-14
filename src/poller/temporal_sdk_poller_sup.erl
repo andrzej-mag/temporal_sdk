@@ -40,7 +40,11 @@ child_specs(
             id => {temporal_sdk_poller, Cluster, WorkerType, WorkerId, I},
             start =>
                 {temporal_sdk_poller, start_link, [
-                    ApiContext, LimiterCounters, PollCounter, WorkerSupPid, I
+                    add_sticky_attributes(ApiContext, I),
+                    LimiterCounters,
+                    PollCounter,
+                    WorkerSupPid,
+                    I
                 ]},
             restart => transient
         }
@@ -48,3 +52,26 @@ child_specs(
     ];
 child_specs(_ApiContext, _Limiters, _WorkerSupPid) ->
     [].
+
+add_sticky_attributes(
+    #{
+        worker_type := sticky_queue,
+        worker_opts := #{
+            task_queue := TQ,
+            task_settings := #{sticky_execution := #{type := pool, queue_name := N} = SE}
+        }
+    } = ApiCtx,
+    I
+) ->
+    StickyName = temporal_sdk_utils_path:string_path([N, I]),
+    WTQ = #{name => StickyName, kind => 'TASK_QUEUE_KIND_STICKY', normal_name => TQ},
+    SA =
+        case SE of
+            #{schedule_to_start_timeout := STST} ->
+                {pool, #{worker_task_queue => WTQ, schedule_to_start_timeout => STST}};
+            #{} ->
+                {pool, #{worker_task_queue => WTQ}}
+        end,
+    ApiCtx#{task_opts => #{sticky_attributes => SA}};
+add_sticky_attributes(ApiCtx, _I) ->
+    ApiCtx.

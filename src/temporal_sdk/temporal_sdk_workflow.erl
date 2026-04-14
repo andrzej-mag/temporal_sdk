@@ -1526,7 +1526,7 @@
 -callback handle_eviction(
     HandlerContext :: handler_context(),
     PollIdleTime :: undefined | pos_integer()
-) -> evict | ignore | default.
+) -> evict | force_evict | ignore | default.
 
 -doc #{group => "Workflow behaviour"}.
 -callback handle_failure(

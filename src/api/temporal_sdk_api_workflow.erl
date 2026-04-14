@@ -77,8 +77,13 @@ respond_workflow_task_completed(
     }),
     Msg =
         case IsEvicted of
-            true -> Msg1;
-            false -> Msg1#{sticky_attributes => StickyAttributes}
+            true ->
+                Msg1;
+            false ->
+                case StickyAttributes of
+                    disabled -> Msg1;
+                    {_, SA} -> Msg1#{sticky_attributes => SA}
+                end
         end,
     temporal_sdk_api:request('RespondWorkflowTaskCompleted', ApiContext, Msg, msg).
 

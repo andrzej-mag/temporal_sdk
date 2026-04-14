@@ -5,7 +5,8 @@
 
 -export([
     handle_poll/1,
-    handle_execute/2
+    handle_execute/2,
+    handle_shutdown/1
 ]).
 
 -callback handle_poll(ApiContext :: temporal_sdk_api:context()) ->
@@ -14,7 +15,9 @@
 -callback handle_execute(
     ApiContext :: temporal_sdk_api:context(),
     Task :: temporal_sdk_activity:task() | temporal_sdk_workflow:task()
-) -> {ok, Status :: executed | redirected} | {error, Reason :: term()}.
+) -> {ok, Status :: executed | redirected | evicted} | {error, Reason :: term()}.
+
+-callback handle_shutdown(ApiContext :: temporal_sdk_api:context()) -> ok.
 
 -spec handle_poll(ApiContext :: temporal_sdk_api:context()) -> temporal_sdk_client:msg_result().
 handle_poll(#{worker_type := WorkerType} = ApiContext) ->
@@ -24,12 +27,18 @@ handle_poll(#{worker_type := WorkerType} = ApiContext) ->
 -spec handle_execute(
     ApiContext :: temporal_sdk_api:context(),
     Task :: temporal_sdk_activity:task() | temporal_sdk_workflow:task()
-) -> {ok, Status :: executed | redirected} | {error, Reason :: term()}.
+) -> {ok, Status :: executed | redirected | evicted} | {error, Reason :: term()}.
 handle_execute(#{worker_type := WorkerType} = ApiContext, Task) ->
     M = get_module(WorkerType),
     M:handle_execute(ApiContext, Task).
 
+-spec handle_shutdown(ApiContext :: temporal_sdk_api:context()) -> ok.
+handle_shutdown(#{worker_type := WorkerType} = ApiContext) ->
+    M = get_module(WorkerType),
+    M:handle_shutdown(ApiContext).
+
 get_module(activity) -> temporal_sdk_poller_adapter_activity_task_queue;
 get_module(nexus) -> temporal_sdk_poller_adapter_nexus_task_queue;
 get_module(session) -> temporal_sdk_poller_adapter_activity_task_queue;
-get_module(workflow) -> temporal_sdk_poller_adapter_workflow_task_queue.
+get_module(workflow) -> temporal_sdk_poller_adapter_workflow_task_queue;
+get_module(sticky_queue) -> temporal_sdk_poller_adapter_workflow_sticky_queue.

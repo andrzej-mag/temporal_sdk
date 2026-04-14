@@ -34,6 +34,10 @@
 -include("proto.hrl").
 -include("sdk.hrl").
 
+-define(DEFAULT_REPLAY_WORKER_OPTS, [
+    disable_telemetry, {task_settings, [{sticky_execution, [{type, disabled}]}]}
+]).
+
 %% -------------------------------------------------------------------------------------------------
 %% Common SDK typespecs
 
@@ -442,7 +446,7 @@ get_workflow_state(Cluster, WorkflowExecution, Opts) ->
     Json :: unicode:chardata()
 ) -> replay_json_ret().
 replay_json(Cluster, WorkflowMod, Json) ->
-    replay_json(Cluster, WorkflowMod, Json, [{worker_opts, [{disable_telemetry, true}]}]).
+    replay_json(Cluster, WorkflowMod, Json, [{worker_opts, ?DEFAULT_REPLAY_WORKER_OPTS}]).
 
 -spec replay_json(
     Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -480,7 +484,7 @@ do_replay_workflow(Cluster, WorkflowMod, JsonBinary, Opts) ->
     WO =
         case proplists:is_defined(worker_id, Opts) of
             true -> '$_optional';
-            false -> [{disable_telemetry, true}]
+            false -> ?DEFAULT_REPLAY_WORKER_OPTS
         end,
     DefaultOpts = [
         {timeout, [infinity, non_neg_integer], infinity},
@@ -577,7 +581,7 @@ w_opts_replay_wf(_Opts, _Cluster, Task) ->
     replay_json_ret()
     | {error, Reason :: file:posix() | badarg | terminated | system_limit}.
 replay_file(Cluster, WorkflowMod, Filename) ->
-    replay_file(Cluster, WorkflowMod, Filename, [{worker_opts, [disable_telemetry]}]).
+    replay_file(Cluster, WorkflowMod, Filename, [{worker_opts, ?DEFAULT_REPLAY_WORKER_OPTS}]).
 
 -spec replay_file(
     Cluster :: temporal_sdk_cluster:cluster_name(),
@@ -617,7 +621,7 @@ replay_task(Cluster, TaskQueue, WorkflowType, WorkflowMod) ->
 replay_task(Cluster, TaskQueue, WorkflowType, WorkflowMod, Opts) ->
     DefaultOpts = [
         {start_workflow_opts, list, [await]},
-        {replay_workflow_opts, list, [{worker_opts, [disable_telemetry]}]},
+        {replay_workflow_opts, list, [{worker_opts, ?DEFAULT_REPLAY_WORKER_OPTS}]},
         {history_file, [boolean, atom, unicode], false},
         {history_file_write_modes, list, []}
     ],

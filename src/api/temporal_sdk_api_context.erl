@@ -62,8 +62,7 @@ take_next_page_token(#{task_opts := #{next_page_token := NextPageToken} = TaskOp
     ApiContext :: temporal_sdk_api:context(),
     Task :: temporal_sdk_activity:task() | #{task_token := undefined},
     ExecutionModule :: module()
-) ->
-    ApiContextWithOpts :: temporal_sdk_api:context().
+) -> ApiContextWithOpts :: temporal_sdk_api:context().
 add_activity_opts(ApiContext, #{task_token := TaskToken}, ExecutionModule) ->
     ApiContext#{task_opts => #{token => TaskToken}, execution_module => ExecutionModule}.
 
@@ -72,8 +71,7 @@ add_activity_opts(ApiContext, #{task_token := TaskToken}, ExecutionModule) ->
     Task :: temporal_sdk_activity:task() | #{task_token := undefined},
     IndexKey :: temporal_sdk_workflow:activity(),
     ExecutionModule :: module()
-) ->
-    ApiContextWithOpts :: temporal_sdk_api:context().
+) -> ApiContextWithOpts :: temporal_sdk_api:context().
 add_activity_opts(ApiContext, #{task_token := TaskToken}, IndexKey, ExecutionModule) ->
     ApiContext#{
         task_opts => #{token => TaskToken, index_key => IndexKey},
@@ -83,8 +81,7 @@ add_activity_opts(ApiContext, #{task_token := TaskToken}, IndexKey, ExecutionMod
 -spec add_nexus_task_opts(
     ApiContext :: temporal_sdk_api:context(),
     Task :: temporal_sdk_nexus:task()
-) ->
-    ApiContextWithTaskOpts :: temporal_sdk_api:context().
+) -> ApiContextWithTaskOpts :: temporal_sdk_api:context().
 add_nexus_task_opts(ApiContext, #{task_token := TaskToken}) ->
     ApiContext#{task_opts => #{token => TaskToken}}.
 
@@ -92,8 +89,27 @@ add_nexus_task_opts(ApiContext, #{task_token := TaskToken}) ->
     ApiContext :: temporal_sdk_api:context(),
     Task :: temporal_sdk_workflow:task(),
     ExecutionModule :: module()
-) ->
-    ApiContextWithTaskOpts :: temporal_sdk_api:context().
+) -> ApiContextWithTaskOpts :: temporal_sdk_api:context().
+add_workflow_opts(
+    #{worker_type := sticky_queue, worker_opts := #{task_queue := TaskQueue}} = ApiContext,
+    #{
+        task_token := TaskToken,
+        next_page_token := NextPageToken,
+        workflow_type := #{name := WorkflowTypeName},
+        workflow_execution := #{workflow_id := WorkflowId, run_id := RunId}
+    },
+    ExecutionModule
+) when not is_function(TaskQueue) ->
+    ApiContext#{
+        execution_module => ExecutionModule,
+        task_opts => #{
+            token => TaskToken,
+            next_page_token => NextPageToken,
+            workflow_type => WorkflowTypeName,
+            workflow_id => WorkflowId,
+            run_id => RunId
+        }
+    };
 add_workflow_opts(
     #{worker_opts := #{task_queue := TaskQueue}} = ApiContext,
     #{
@@ -101,13 +117,9 @@ add_workflow_opts(
         next_page_token := NextPageToken,
         workflow_type := #{name := WorkflowTypeName},
         workflow_execution := #{workflow_id := WorkflowId, run_id := RunId}
-    } =
-        Task,
+    },
     ExecutionModule
 ) when not is_function(TaskQueue) ->
-    StickyName = temporal_sdk_utils_path:string_path([
-        node(), pid_to_list(self()), temporal_sdk_utils:uuid4()
-    ]),
     ApiContext#{
         execution_module => ExecutionModule,
         task_opts => #{
@@ -116,25 +128,57 @@ add_workflow_opts(
             workflow_type => WorkflowTypeName,
             workflow_id => WorkflowId,
             run_id => RunId,
-            sticky_attributes => #{
-                worker_task_queue => #{
-                    name => StickyName,
-                    kind => 'TASK_QUEUE_KIND_STICKY',
-                    normal_name => TaskQueue
-                },
-                schedule_to_start_timeout => fetch_sticky_execution_schedule_to_start_timeout(
-                    ApiContext, Task
-                )
-            }
+            sticky_attributes => sticky_attributes(ApiContext)
         }
     }.
 
-fetch_sticky_execution_schedule_to_start_timeout(
-    #{worker_opts := #{task_settings := #{sticky_execution_schedule_to_start_ratio := Ratio}}}, Task
-) ->
-    case temporal_sdk_api_workflow_task:workflow_task_timeout_msec(Task) of
-        T when is_integer(T) -> temporal_sdk_utils_time:msec_to_protobuf(round(T * Ratio));
-        _ -> temporal_sdk_utils_time:msec_to_protobuf(5_000)
+sticky_attributes(#{worker_opts := #{task_settings := #{sticky_execution := #{type := disabled}}}}) ->
+    disabled;
+sticky_attributes(#{
+    worker_opts := #{
+        task_queue := TQ, task_settings := #{sticky_execution := SE = #{type := local}}
+    }
+}) ->
+    StickyName =
+        case SE of
+            #{queue_name := N} ->
+                temporal_sdk_utils_path:string_path([N, temporal_sdk_utils:uuid4()]);
+            #{} ->
+                temporal_sdk_utils_path:string_path([
+                    node(), pid_to_list(self()), temporal_sdk_utils:uuid4()
+                ])
+        end,
+    WTQ = #{name => StickyName, kind => 'TASK_QUEUE_KIND_STICKY', normal_name => TQ},
+    case SE of
+        #{schedule_to_start_timeout := STST} ->
+            {local, #{worker_task_queue => WTQ, schedule_to_start_timeout => STST}};
+        #{} ->
+            {local, #{worker_task_queue => WTQ}}
+    end;
+sticky_attributes(#{
+    worker_opts := #{
+        task_queue := TQ, task_settings := #{sticky_execution := #{type := pool} = SE}
+    }
+}) ->
+    StickyName =
+        case SE of
+            #{queue_name := N, pool_size := PS} ->
+                temporal_sdk_utils_path:string_path([N, rand:uniform(PS)]);
+            #{pool_size := PS} ->
+                temporal_sdk_utils_path:string_path([
+                    node(), pid_to_list(self()), temporal_sdk_utils:uuid4(), rand:uniform(PS)
+                ]);
+            #{} ->
+                temporal_sdk_utils_path:string_path([
+                    node(), pid_to_list(self()), temporal_sdk_utils:uuid4()
+                ])
+        end,
+    WTQ = #{name => StickyName, kind => 'TASK_QUEUE_KIND_STICKY', normal_name => TQ},
+    case SE of
+        #{schedule_to_start_timeout := STST} ->
+            {pool, #{worker_task_queue => WTQ, schedule_to_start_timeout => STST}};
+        #{} ->
+            {pool, #{worker_task_queue => WTQ}}
     end.
 
 -spec restart_workflow_task_opts(

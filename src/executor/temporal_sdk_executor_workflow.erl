@@ -146,8 +146,8 @@
         | false,
     grpc_req_ref = undefined ::
         undefined
-        | regular_queue
         | {poll, reference()}
+        | {poll, sticky_queue}
         | {get_history, reference()}
         | {get_history_reverse, reference()}
         | {complete_task, reference()},
@@ -379,7 +379,11 @@ init_local_handlers(EMod) ->
 terminate(Reason, _State, StateData) ->
     cleanup(StateData),
     #state{
-        api_ctx = #{limiter_counters := [WorkflowLC, _EagerLC, _DirectLC]} = ApiCtx,
+        api_ctx =
+            #{
+                limiter_counters := [WorkflowLC, _EagerLC, _DirectLC],
+                task_opts := #{sticky_attributes := StickyAttributes}
+            } = ApiCtx,
         caller_pid = CallerPid,
         ev_metadata = EvMetadata,
         started_at = StartedAt,
@@ -388,9 +392,15 @@ terminate(Reason, _State, StateData) ->
     } =
         StateData,
     temporal_sdk_limiter:dec(WorkflowLC),
+
     case CallerPid of
-        undefined -> temporal_sdk_api_poll:shutdown_worker(ApiCtx);
-        _ -> ok
+        undefined ->
+            case StickyAttributes of
+                {local, _} -> temporal_sdk_api_poll:shutdown_worker(ApiCtx);
+                _ -> ok
+            end;
+        _ ->
+            ok
     end,
 
     CState =
@@ -1173,6 +1183,8 @@ handle_evict_enter(_State, #state{poll_start_time = undefined} = StateData) ->
 handle_evict(cast, {?MSG_PRV, handle_eviction, ignore}, StateData) ->
     {next_state, poll, StateData, {{timeout, evict_timeout}, cancel}};
 handle_evict(cast, {?MSG_PRV, handle_eviction, evict}, StateData) ->
+    {next_state, poll, StateData#state{is_evicted = true}, {{timeout, evict_timeout}, cancel}};
+handle_evict(cast, {?MSG_PRV, handle_eviction, force_evict}, StateData) ->
     {stop, normal, StateData#state{execution_state = evicted}};
 handle_evict(cast, {?MSG_PRV, handle_eviction, {Class, Reason, Stacktrace}}, StateData) ->
     {next_state, fail_task, StateData#state{stop_reason = {Class, Reason, Stacktrace}}};
@@ -1185,13 +1197,19 @@ handle_poll_enter(#state{grpc_req_ref = Ref} = StateData) when Ref =/= undefined
         stop_reason = {error, "Invalid executor state: unexpected pending gRPC request.", ?EVST}
     }};
 handle_poll_enter(StateData) ->
-    case temporal_sdk_api_poll:poll_workflow_task_queue(StateData#state.api_ctx) of
-        Ref when is_reference(Ref) ->
-            {keep_state, StateData#state{grpc_req_ref = {poll, Ref}}};
-        Err ->
-            {stop, normal, StateData#state{
-                stop_reason = {error, Err, ?EVST}, execution_state = error
-            }}
+    #{task_opts := #{sticky_attributes := SA}} = ApiContext = StateData#state.api_ctx,
+    case SA of
+        {local, _} ->
+            case temporal_sdk_api_poll:poll_workflow_sticky_queue(ApiContext) of
+                Ref when is_reference(Ref) ->
+                    {keep_state, StateData#state{grpc_req_ref = {poll, Ref}}};
+                Err ->
+                    {stop, normal, StateData#state{
+                        stop_reason = {error, Err, ?EVST}, execution_state = error
+                    }}
+            end;
+        _ ->
+            {keep_state, StateData#state{grpc_req_ref = {poll, sticky_queue}}}
     end.
 
 handle_poll(

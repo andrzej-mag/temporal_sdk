@@ -172,12 +172,12 @@ Metadata common to all task poller telemetry events:
   `[WorkerSupervisorPid, WorkerPollerId]`. `WorkerPollerId` is an integer in the range from 1 to
   task worker pollers pool size, for example: `[<0.813.0>, 1]`
 - `task_execute_status` - status of the task execution operation,
-  one of: `undefined`, `executed`, `redirected`, `failed`
+  one of: `undefined`, `executed`, `redirected`, `evicted`, `failed`
 - `task_poll_status` - status of the task poll operation,
   one of: `undefined`, `null`, `task`, `error`
 - `task_queue` - Temporal task queue name
 - `worker_id` - task worker id `t:temporal_sdk_worker:id/0`
-- `worker_type` - task worker type `t:temporal_sdk_worker:worker_type/0`
+- `worker_type` - task worker type `t:temporal_sdk_worker:worker_type/0 | sticky_queue`
 
 <hr>
 
