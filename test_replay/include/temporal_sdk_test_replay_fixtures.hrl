@@ -95,6 +95,7 @@
 -define(CONFIG_NAME, persistent_term:get({temporal_sdk_test_replay, config_name})).
 
 -define(WORKER_CONFIG, [#{namespace => ?NS, task_queue => ?TQ}]).
+
 -define(WORKFLOW_WORKER_CONFIG, [
     #{
         worker_id => ?WF_TYPE,
@@ -102,6 +103,40 @@
         task_queue => ?TQ,
         task_settings => [
             session_worker, {deterministic_check_mod, temporal_sdk_api_workflow_check_strict}
+        ]
+    }
+]).
+-define(WORKFLOW_WORKER_CONFIG_TEMPORAL_CHECK, [
+    #{
+        worker_id => ?WF_TYPE,
+        namespace => ?NS,
+        task_queue => ?TQ,
+        task_settings => [
+            session_worker, {deterministic_check_mod, temporal_sdk_api_workflow_check_temporal}
+        ]
+    }
+]).
+-define(WORKFLOW_WORKER_CONFIG_STICKY_DISABLED, [
+    #{
+        worker_id => ?WF_TYPE,
+        namespace => ?NS,
+        task_queue => ?TQ,
+        task_settings => [
+            session_worker,
+            {deterministic_check_mod, temporal_sdk_api_workflow_check_strict},
+            {sticky_execution, [{type, disabled}]}
+        ]
+    }
+]).
+-define(WORKFLOW_WORKER_CONFIG_STICKY_LOCAL, [
+    #{
+        worker_id => ?WF_TYPE,
+        namespace => ?NS,
+        task_queue => ?TQ,
+        task_settings => [
+            session_worker,
+            {deterministic_check_mod, temporal_sdk_api_workflow_check_strict},
+            {sticky_execution, [{type, local}]}
         ]
     }
 ]).
@@ -130,6 +165,45 @@
                 {activities, ?WORKER_CONFIG},
                 {nexuses, ?WORKER_CONFIG},
                 {workflows, ?WORKFLOW_WORKER_CONFIG}
+            ]}
+        ]}
+    ]},
+    {binaries_temporal_check, [
+        {clusters, [
+            {?CL, [
+                {client, #{
+                    grpc_opts => #{codec => {temporal_sdk_codec_binaries, [], []}},
+                    grpc_opts_longpoll => #{codec => {temporal_sdk_codec_binaries, [], []}}
+                }},
+                {activities, ?WORKER_CONFIG},
+                {nexuses, ?WORKER_CONFIG},
+                {workflows, ?WORKFLOW_WORKER_CONFIG_TEMPORAL_CHECK}
+            ]}
+        ]}
+    ]},
+    {binaries_sticky_disabled, [
+        {clusters, [
+            {?CL, [
+                {client, #{
+                    grpc_opts => #{codec => {temporal_sdk_codec_binaries, [], []}},
+                    grpc_opts_longpoll => #{codec => {temporal_sdk_codec_binaries, [], []}}
+                }},
+                {activities, ?WORKER_CONFIG},
+                {nexuses, ?WORKER_CONFIG},
+                {workflows, ?WORKFLOW_WORKER_CONFIG_STICKY_DISABLED}
+            ]}
+        ]}
+    ]},
+    {binaries_sticky_local, [
+        {clusters, [
+            {?CL, [
+                {client, #{
+                    grpc_opts => #{codec => {temporal_sdk_codec_binaries, [], []}},
+                    grpc_opts_longpoll => #{codec => {temporal_sdk_codec_binaries, [], []}}
+                }},
+                {activities, ?WORKER_CONFIG},
+                {nexuses, ?WORKER_CONFIG},
+                {workflows, ?WORKFLOW_WORKER_CONFIG_STICKY_LOCAL}
             ]}
         ]}
     ]}
