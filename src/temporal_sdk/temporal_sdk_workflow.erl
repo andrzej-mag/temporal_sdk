@@ -141,40 +141,6 @@
 -define(COMMANDS, temporal_sdk_executor:get_commands()).
 
 %% -------------------------------------------------------------------------------------------------
-%% SDK functions types
-
--doc #{group => "SDK functions types"}.
--type workflow_info() ::
-    #{
-        event_id := pos_integer(),
-        is_replaying := boolean(),
-        open_executions_count := pos_integer(),
-        total_executions_count := pos_integer(),
-        open_tasks_count := non_neg_integer(),
-        otp_messages_count := #{
-            received => non_neg_integer(),
-            recorded => non_neg_integer(),
-            ignored => non_neg_integer()
-        },
-        %% from WorkflowExecutionStartedEventAttributes or WorkflowTaskScheduledEventAttributes
-        attempt := pos_integer(),
-        %% from WorkflowTaskStartedEventAttributes
-        suggest_continue_as_new := boolean(),
-        history_size_bytes := non_neg_integer()
-    }.
--export_type([workflow_info/0]).
-
--doc #{group => "SDK functions types"}.
--type start_execution_opts() :: [
-    {execution_id, execution_id()}
-    | {awaitable_id, awaitable_id()}
-    | {awaitable_event, cmd | close}
-    | {wait, boolean()}
-    | wait
-].
--export_type([start_execution_opts/0]).
-
-%% -------------------------------------------------------------------------------------------------
 %% Temporal commands opts
 
 -doc #{group => "Temporal commands opts"}.
@@ -1276,6 +1242,17 @@
 %% -------------------------------------------------------------------------------------------------
 %% Awaitables functions types
 
+-doc #{group => "Awaitables functions types"}.
+-type await_opts() ::
+    Timeout ::
+    temporal_sdk:time()
+    | [
+        {timeout, temporal_sdk:time()}
+        | {evict, true}
+        | evict
+    ].
+-export_type([await_opts/0]).
+
 %% pattern
 
 -doc #{group => "Awaitables functions types"}.
@@ -1343,6 +1320,40 @@
 -doc false.
 -type index_command() :: {awaitable_index(), command()}.
 -export_type([index_command/0]).
+
+%% -------------------------------------------------------------------------------------------------
+%% SDK functions types
+
+-doc #{group => "SDK functions types"}.
+-type start_execution_opts() :: [
+    {execution_id, execution_id()}
+    | {awaitable_id, awaitable_id()}
+    | {awaitable_event, cmd | close}
+    | {wait, boolean()}
+    | wait
+].
+-export_type([start_execution_opts/0]).
+
+-doc #{group => "SDK functions types"}.
+-type workflow_info() ::
+    #{
+        event_id := pos_integer(),
+        is_replaying := boolean(),
+        open_executions_count := pos_integer(),
+        total_executions_count := pos_integer(),
+        open_tasks_count := non_neg_integer(),
+        otp_messages_count := #{
+            received => non_neg_integer(),
+            recorded => non_neg_integer(),
+            ignored => non_neg_integer()
+        },
+        %% from WorkflowExecutionStartedEventAttributes or WorkflowTaskScheduledEventAttributes
+        attempt := pos_integer(),
+        %% from WorkflowTaskStartedEventAttributes
+        suggest_continue_as_new := boolean(),
+        history_size_bytes := non_neg_integer()
+    }.
+-export_type([workflow_info/0]).
 
 -doc #{group => "SDK functions types"}.
 -type awaitable_temporal_index() ::
@@ -1506,6 +1517,7 @@
 }.
 -export_type([context_workflow_info/0]).
 
+-doc #{group => "Workflow behaviour"}.
 -type handler_context() :: #{
     cluster := temporal_sdk_cluster:cluster_name(),
     otel_ctx := otel_ctx:t(),
@@ -2407,7 +2419,38 @@ add_marker_li_ser(Type, Opts) ->
 
 -doc #{group => "Awaitables functions"}.
 -spec await(AwaitPattern :: await_pattern()) -> await_ret().
-await(AwaitPattern) ->
+await(AwaitPattern) when is_tuple(AwaitPattern) ->
+    await(AwaitPattern, []).
+
+-doc #{group => "Awaitables functions"}.
+-spec await(AwaitPattern :: await_pattern(), Opts :: await_opts()) -> await_ret().
+await(AwaitPattern, Timeout) when is_tuple(AwaitPattern), is_integer(Timeout) ->
+    await(AwaitPattern, [{timeout, Timeout}]);
+await(AwaitPattern, {Timeout, TimeUnit} = T) when
+    is_tuple(AwaitPattern), is_integer(Timeout), is_atom(TimeUnit)
+->
+    await(AwaitPattern, [{timeout, T}]);
+await(AwaitPattern, Opts) when is_tuple(AwaitPattern), is_list(Opts) ->
+    DefaultOpts = [
+        {timeout, time, '$_optional'},
+        {evict, boolean, false}
+    ],
+    case temporal_sdk_utils_opts:build(DefaultOpts, Opts) of
+        {ok, O} ->
+            EvictEvent =
+                case O of
+                    #{evict := true} -> evict;
+                    #{} -> ignore
+                end,
+            case O of
+                #{timeout := Timeout} -> do_await(AwaitPattern, EvictEvent, Timeout);
+                #{} -> do_await(AwaitPattern, EvictEvent)
+            end;
+        Err ->
+            erlang:error(Err, [AwaitPattern, Opts])
+    end.
+
+do_await(AwaitPattern, EvictEvent) ->
     temporal_sdk_executor:inc_await_counter(),
     {Pattern, PatternKey} = temporal_sdk_api_awaitable:cast_key(AwaitPattern, ?API_CTX),
     Match = temporal_sdk_api_awaitable:init_match(PatternKey, {?HISTORY_TABLE, ?INDEX_TABLE}),
@@ -2417,11 +2460,11 @@ await(AwaitPattern) ->
             {ok, Match};
         false ->
             Commands = temporal_sdk_executor:set_commands([]),
-            do_await(Pattern, PatternKey, Match, MatchTest, {?EXECUTION_IDX, Commands})
+            do_await(Pattern, PatternKey, Match, MatchTest, {?EXECUTION_IDX, Commands}, EvictEvent)
     end.
 
-do_await(Pattern, PatternKey, Match, Test, CommandsOrState) ->
-    case call_id({await, CommandsOrState}) of
+do_await(Pattern, PatternKey, Match, Test, CommandsOrState, EvictEvent) ->
+    case call_id({await, CommandsOrState, EvictEvent}) of
         noevent ->
             R = temporal_sdk_api_awaitable:update_match(
                 Pattern, PatternKey, Match, Test, ?INDEX_TABLE, ?HISTORY_TABLE
@@ -2440,25 +2483,26 @@ do_await(Pattern, PatternKey, Match, Test, CommandsOrState) ->
             ),
             case R of
                 noop ->
-                    do_await(Pattern, PatternKey, Match, Test, awaited);
+                    do_await(Pattern, PatternKey, Match, Test, awaited, EvictEvent);
                 {update, NewMatch, NewTest} ->
-                    do_await(Pattern, PatternKey, NewMatch, NewTest, awaited);
+                    do_await(Pattern, PatternKey, NewMatch, NewTest, awaited, EvictEvent);
                 {ready, AwaitedMatch} ->
                     {ok, AwaitedMatch}
             end
     end.
 
--doc #{group => "Awaitables functions"}.
--spec await(AwaitPattern :: await_pattern(), Timeout :: temporal_sdk:time()) -> await_ret().
-await(AwaitPattern, {Timeout, TimeUnit}) when is_integer(Timeout) ->
-    await(AwaitPattern, temporal_sdk_utils_time:convert_to_msec(Timeout, TimeUnit));
-await(AwaitPattern, Timeout) when is_integer(Timeout) ->
+do_await(AwaitPattern, EvictEvent, Timeout) ->
     case is_awaited(AwaitPattern) of
         {true, QMatch} ->
             {ok, QMatch};
         {false, _NoMatch} ->
             Timer = start_timer(Timeout, [{awaitable_id, ?AWAIT_TIMEOUT_ID}]),
-            case await_one([Timer, AwaitPattern]) of
+            AwaitResult =
+                case EvictEvent of
+                    evict -> await_one([Timer, AwaitPattern], [evict]);
+                    ignore -> await_one([Timer, AwaitPattern])
+                end,
+            case AwaitResult of
                 {ok, [#{state := S, event_id := TEId}, _Match]} when S =:= fired; S =:= canceled ->
                     case is_awaited_timeout(AwaitPattern, TEId) of
                         {true, CurrentMatch} ->
@@ -2486,18 +2530,13 @@ is_awaited_timeout(AwaitPattern, TimerEId) ->
 -doc #{group => "Awaitables functions"}.
 -spec await_one(AwaitPattern :: [await_pattern()]) -> await_ret_list().
 await_one(AwaitPattern) when is_list(AwaitPattern) ->
-    case await({one, AwaitPattern}) of
-        {noevent, {one, AwaitMatchList}} when is_list(AwaitMatchList) -> {noevent, AwaitMatchList};
-        {ok, {one, AwaitMatchList}} when is_list(AwaitMatchList) -> {ok, AwaitMatchList}
-    end.
+    await_one(AwaitPattern, []).
 
 -doc #{group => "Awaitables functions"}.
--spec await_one(AwaitPattern :: [await_pattern()], Timeout :: temporal_sdk:time()) ->
+-spec await_one(AwaitPattern :: [await_pattern()], Opts :: await_opts()) ->
     await_ret_list().
-await_one(AwaitPattern, {Timeout, TimeUnit}) when is_integer(Timeout) ->
-    await_one(AwaitPattern, temporal_sdk_utils_time:convert_to_msec(Timeout, TimeUnit));
-await_one(AwaitPattern, Timeout) when is_list(AwaitPattern), is_integer(Timeout) ->
-    case await({one, AwaitPattern}, Timeout) of
+await_one(AwaitPattern, Opts) when is_list(AwaitPattern) ->
+    case await({one, AwaitPattern}, Opts) of
         {noevent, {one, AwaitMatchList}} when is_list(AwaitMatchList) -> {noevent, AwaitMatchList};
         {ok, {one, AwaitMatchList}} when is_list(AwaitMatchList) -> {ok, AwaitMatchList}
     end.
@@ -2505,18 +2544,13 @@ await_one(AwaitPattern, Timeout) when is_list(AwaitPattern), is_integer(Timeout)
 -doc #{group => "Awaitables functions"}.
 -spec await_all(AwaitPattern :: [await_pattern()]) -> await_ret_list().
 await_all(AwaitPattern) when is_list(AwaitPattern) ->
-    case await({all, AwaitPattern}) of
-        {noevent, {all, AwaitMatchList}} when is_list(AwaitMatchList) -> {noevent, AwaitMatchList};
-        {ok, {all, AwaitMatchList}} when is_list(AwaitMatchList) -> {ok, AwaitMatchList}
-    end.
+    await_all(AwaitPattern, []).
 
 -doc #{group => "Awaitables functions"}.
--spec await_all(AwaitPattern :: [await_pattern()], Timeout :: temporal_sdk:time()) ->
+-spec await_all(AwaitPattern :: [await_pattern()], Opts :: await_opts()) ->
     await_ret_list().
-await_all(AwaitPattern, {Timeout, TimeUnit}) when is_integer(Timeout) ->
-    await_all(AwaitPattern, temporal_sdk_utils_time:convert_to_msec(Timeout, TimeUnit));
-await_all(AwaitPattern, Timeout) when is_list(AwaitPattern), is_integer(Timeout) ->
-    case await({all, AwaitPattern}, Timeout) of
+await_all(AwaitPattern, Opts) when is_list(AwaitPattern) ->
+    case await({all, AwaitPattern}, Opts) of
         {noevent, {all, AwaitMatchList}} when is_list(AwaitMatchList) -> {noevent, AwaitMatchList};
         {ok, {all, AwaitMatchList}} when is_list(AwaitMatchList) -> {ok, AwaitMatchList}
     end.
@@ -2558,7 +2592,7 @@ await_info(InfoId, InfoTimeout, AwaitableTimeout) ->
 -doc #{group => "Awaitables functions"}.
 -spec is_awaited(AwaitPattern :: await_pattern()) ->
     {true, await_match()} | {false, await_match()} | no_return.
-is_awaited(AwaitPattern) ->
+is_awaited(AwaitPattern) when is_tuple(AwaitPattern) ->
     {Pattern, PatternKey} = temporal_sdk_api_awaitable:cast_key(AwaitPattern, ?API_CTX),
     Match = temporal_sdk_api_awaitable:init_match(PatternKey, {?HISTORY_TABLE, ?INDEX_TABLE}),
     MatchTest = temporal_sdk_api_awaitable:match_test(Pattern, Match),
@@ -2570,7 +2604,7 @@ is_awaited(AwaitPattern) ->
 -doc #{group => "Awaitables functions"}.
 -spec is_awaited_one(AwaitPattern :: [await_pattern()]) ->
     {true, [await_match()]} | {false, [await_match()]} | no_return.
-is_awaited_one(AwaitPattern) ->
+is_awaited_one(AwaitPattern) when is_list(AwaitPattern) ->
     case is_awaited({one, AwaitPattern}) of
         {R, {one, AwaitMatchList}} when is_list(AwaitMatchList) -> {R, AwaitMatchList}
     end.
@@ -2578,7 +2612,7 @@ is_awaited_one(AwaitPattern) ->
 -doc #{group => "Awaitables functions"}.
 -spec is_awaited_all(AwaitPattern :: [await_pattern()]) ->
     {true, [await_match()]} | {false, [await_match()]} | no_return.
-is_awaited_all(AwaitPattern) ->
+is_awaited_all(AwaitPattern) when is_list(AwaitPattern) ->
     case is_awaited({all, AwaitPattern}) of
         {R, {all, AwaitMatchList}} when is_list(AwaitMatchList) -> {R, AwaitMatchList}
     end.
@@ -2586,20 +2620,13 @@ is_awaited_all(AwaitPattern) ->
 -doc #{group => "Awaitables functions"}.
 -spec wait(AwaitPattern :: await_pattern()) -> await_match() | no_return().
 wait(AwaitPattern) ->
-    case await(AwaitPattern) of
-        {ok, Match} ->
-            Match;
-        {noevent, PartialMatch} ->
-            erlang:error(noevent, [{await_pattern, AwaitPattern}, {partial_match, PartialMatch}])
-    end.
+    wait(AwaitPattern, []).
 
 -doc #{group => "Awaitables functions"}.
--spec wait(AwaitPattern :: await_pattern(), Timeout :: temporal_sdk:time()) ->
+-spec wait(AwaitPattern :: await_pattern(), Opts :: await_opts()) ->
     await_match() | no_return().
-wait(AwaitPattern, {Timeout, TimeUnit}) when is_integer(Timeout) ->
-    wait(AwaitPattern, temporal_sdk_utils_time:convert_to_msec(Timeout, TimeUnit));
-wait(AwaitPattern, Timeout) when is_integer(Timeout) ->
-    case await(AwaitPattern, Timeout) of
+wait(AwaitPattern, Opts) ->
+    case await(AwaitPattern, Opts) of
         {ok, Match} ->
             Match;
         {noevent, PartialMatch} ->
@@ -2608,21 +2635,14 @@ wait(AwaitPattern, Timeout) when is_integer(Timeout) ->
 
 -doc #{group => "Awaitables functions"}.
 -spec wait_one(AwaitPattern :: [await_pattern()]) -> [await_match()] | no_return().
-wait_one(AwaitPattern) when is_list(AwaitPattern) ->
-    case await_one(AwaitPattern) of
-        {ok, Match} ->
-            Match;
-        {noevent, PartialMatch} ->
-            erlang:error(noevent, [{await_pattern, AwaitPattern}, {partial_match, PartialMatch}])
-    end.
+wait_one(AwaitPattern) ->
+    wait_one(AwaitPattern, []).
 
 -doc #{group => "Awaitables functions"}.
--spec wait_one(AwaitPattern :: [await_pattern()], Timeout :: temporal_sdk:time()) ->
+-spec wait_one(AwaitPattern :: [await_pattern()], Opts :: await_opts()) ->
     [await_match()] | no_return().
-wait_one(AwaitPattern, {Timeout, TimeUnit}) when is_integer(Timeout) ->
-    wait_one(AwaitPattern, temporal_sdk_utils_time:convert_to_msec(Timeout, TimeUnit));
-wait_one(AwaitPattern, Timeout) when is_list(AwaitPattern), is_integer(Timeout) ->
-    case await_one(AwaitPattern, Timeout) of
+wait_one(AwaitPattern, Opts) ->
+    case await_one(AwaitPattern, Opts) of
         {ok, Match} ->
             Match;
         {noevent, PartialMatch} ->
@@ -2631,21 +2651,14 @@ wait_one(AwaitPattern, Timeout) when is_list(AwaitPattern), is_integer(Timeout) 
 
 -doc #{group => "Awaitables functions"}.
 -spec wait_all(AwaitPattern :: [await_pattern()]) -> [await_match()] | no_return().
-wait_all(AwaitPattern) when is_list(AwaitPattern) ->
-    case await_all(AwaitPattern) of
-        {ok, Match} ->
-            Match;
-        {noevent, PartialMatch} ->
-            erlang:error(noevent, [{await_pattern, AwaitPattern}, {partial_match, PartialMatch}])
-    end.
+wait_all(AwaitPattern) ->
+    wait_all(AwaitPattern, []).
 
 -doc #{group => "Awaitables functions"}.
--spec wait_all(AwaitPattern :: [await_pattern()], Timeout :: temporal_sdk:time()) ->
+-spec wait_all(AwaitPattern :: [await_pattern()], Opts :: await_opts()) ->
     [await_match()] | no_return().
-wait_all(AwaitPattern, {Timeout, TimeUnit}) when is_integer(Timeout) ->
-    wait_all(AwaitPattern, temporal_sdk_utils_time:convert_to_msec(Timeout, TimeUnit));
-wait_all(AwaitPattern, Timeout) when is_list(AwaitPattern), is_integer(Timeout) ->
-    case await_all(AwaitPattern, Timeout) of
+wait_all(AwaitPattern, Opts) ->
+    case await_all(AwaitPattern, Opts) of
         {ok, Match} ->
             Match;
         {noevent, PartialMatch} ->

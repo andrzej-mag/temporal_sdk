@@ -526,12 +526,14 @@ handle_start_scope(Int, StateData) ->
         Err -> {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end.
 
-handle_execute_api_call(From, _ExecutionId, {await, awaited}, StateData) ->
+handle_execute_api_call(From, _ExecutionId, {await, awaited, Evict}, StateData) ->
     #state{executions_awaits = EA} = StateData,
-    handle_execute_maybe_replay(StateData#state{executions_awaits = [From | EA]});
-handle_execute_api_call(From, _ExecutionId, {await, {ExecutionIdx, Commands}}, StateData) ->
+    SD = set_evicted(Evict, StateData),
+    handle_execute_maybe_replay(SD#state{executions_awaits = [From | EA]});
+handle_execute_api_call(From, _ExecutionId, {await, {ExecutionIdx, Commands}, Evict}, StateData) ->
     #state{executions_awaits = EA} = StateData,
-    case spawn_local(Commands, ExecutionIdx, StateData) of
+    SD0 = set_evicted(Evict, StateData),
+    case spawn_local(Commands, ExecutionIdx, SD0) of
         {ok, SD} -> handle_execute_maybe_replay(SD#state{executions_awaits = [From | EA]});
         {error, Err, SD} -> {next_state, fail_task, SD#state{stop_reason = {error, Err, ?EVST}}}
     end;
@@ -540,20 +542,24 @@ handle_execute_api_call(From, _ExecutionId, workflow_info, StateData) ->
 handle_execute_api_call(From, _ExecutionId, get_workflow_result, StateData) ->
     {keep_state_and_data, {reply, From, StateData#state.workflow_result}}.
 
+set_evicted(evict, #state{is_replaying = true} = StateData) -> StateData;
+set_evicted(evict, #state{is_evicted = false} = StateData) -> StateData#state{is_evicted = true};
+set_evicted(_, StateData) -> StateData.
+
 handle_execute_api_cast(_ExecutionId, {set_workflow_result, WR}, StateData) ->
     {keep_state, StateData#state{workflow_result = WR}};
 handle_execute_api_cast(_ExecutionId, {await_open_before_close, IsEnabled}, StateData) ->
     {keep_state, StateData#state{await_open_before_close = IsEnabled}};
-handle_execute_api_cast(_ExecutionId, evict_workflow, #state{is_replaying = true}) ->
-    keep_state_and_data;
-handle_execute_api_cast(_ExecutionId, evict_workflow, #state{is_evicted = true}) ->
-    keep_state_and_data;
 handle_execute_api_cast(_ExecutionId, evict_workflow, StateData) ->
-    {keep_state, StateData#state{is_evicted = true}};
+    set_evicted(StateData);
 handle_execute_api_cast(_ExecutionId, terminate, StateData) ->
     {stop, normal, StateData#state{execution_state = terminated}};
 handle_execute_api_cast(_ExecutionId, {terminate, Reason}, StateData) ->
     {stop, normal, StateData#state{execution_state = terminated, stop_reason = {error, Reason, []}}}.
+
+set_evicted(#state{is_replaying = true}) -> keep_state_and_data;
+set_evicted(#state{is_evicted = false} = SD) -> {keep_state, SD#state{is_evicted = true}};
+set_evicted(_StateData) -> keep_state_and_data.
 
 handle_execute_result(completed, ExecutionIdx, Commands, StateData) ->
     #state{open_executions_count = OEC} = StateData,
