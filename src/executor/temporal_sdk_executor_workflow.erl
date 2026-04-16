@@ -1190,7 +1190,7 @@ handle_evict(cast, {?MSG_PRV, handle_eviction, ignore}, StateData) ->
     {next_state, poll, StateData, {{timeout, evict_timeout}, cancel}};
 handle_evict(cast, {?MSG_PRV, handle_eviction, evict}, StateData) ->
     {next_state, poll, StateData#state{is_evicted = true}, {{timeout, evict_timeout}, cancel}};
-handle_evict(cast, {?MSG_PRV, handle_eviction, force_evict}, StateData) ->
+handle_evict(cast, {?MSG_PRV, handle_eviction, stop}, StateData) ->
     {stop, normal, StateData#state{execution_state = evicted}};
 handle_evict(cast, {?MSG_PRV, handle_eviction, {Class, Reason, Stacktrace}}, StateData) ->
     {next_state, fail_task, StateData#state{stop_reason = {Class, Reason, Stacktrace}}};
