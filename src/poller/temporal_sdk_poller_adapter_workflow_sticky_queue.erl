@@ -41,7 +41,7 @@ handle_execute(ApiContext, Task) ->
         AC = temporal_sdk_scope:init_ctx(
             temporal_sdk_api_context:add_workflow_opts(ApiContext, Task, Mod)
         ),
-        do_handle_execute(temporal_sdk_scope:get_local_members(AC), Task)
+        do_handle_execute(temporal_sdk_scope:get_local_members(AC), AC, Task)
     end.
 
 handle_shutdown(ApiContext) -> temporal_sdk_api_poll:shutdown_worker(ApiContext).
@@ -56,8 +56,13 @@ has_valid_history(Invalid) ->
         invalid_task => Invalid
     }}.
 
-do_handle_execute([], _Task) ->
-    {ok, evicted};
-do_handle_execute(Pids, Task) ->
-    [P ! {?TEMPORAL_SDK_GRPC_TAG, sticky_queue, {ok, Task}} || P <- Pids],
-    {ok, redirected}.
+do_handle_execute([], ApiCtx, Task) ->
+    case temporal_sdk_executor_workflow:start(ApiCtx, Task, undefined) of
+        {ok, _Pid} -> {ok, sticky_miss};
+        Err -> Err
+    end;
+do_handle_execute([Pid], _ApiCtx, Task) ->
+    Pid ! {?TEMPORAL_SDK_GRPC_TAG, sticky_queue, {ok, Task}},
+    {ok, sticky_hit};
+do_handle_execute([_ | _], _ApiCtx, _Task) ->
+    {error, "Unexpected multiple workflow executors when polling workflow sticky queue."}.

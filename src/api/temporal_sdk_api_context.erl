@@ -91,26 +91,6 @@ add_nexus_task_opts(ApiContext, #{task_token := TaskToken}) ->
     ExecutionModule :: module()
 ) -> ApiContextWithTaskOpts :: temporal_sdk_api:context().
 add_workflow_opts(
-    #{worker_type := sticky_queue, worker_opts := #{task_queue := TaskQueue}} = ApiContext,
-    #{
-        task_token := TaskToken,
-        next_page_token := NextPageToken,
-        workflow_type := #{name := WorkflowTypeName},
-        workflow_execution := #{workflow_id := WorkflowId, run_id := RunId}
-    },
-    ExecutionModule
-) when not is_function(TaskQueue) ->
-    ApiContext#{
-        execution_module => ExecutionModule,
-        task_opts => #{
-            token => TaskToken,
-            next_page_token => NextPageToken,
-            workflow_type => WorkflowTypeName,
-            workflow_id => WorkflowId,
-            run_id => RunId
-        }
-    };
-add_workflow_opts(
     #{worker_opts := #{task_queue := TaskQueue}} = ApiContext,
     #{
         task_token := TaskToken,

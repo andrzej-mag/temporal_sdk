@@ -42,7 +42,7 @@
     task_exec_interval :: number(),
     task_polled_at :: integer(),
     task_poll_status = undefined :: undefined | null | task | error,
-    task_execute_status = undefined :: undefined | executed | redirected | evicted | failed,
+    task_execute_status = undefined :: undefined | atom(),
     %% --------------- telemetry
     ev_metadata :: map(),
     ev_poll_at = 0 :: integer(),

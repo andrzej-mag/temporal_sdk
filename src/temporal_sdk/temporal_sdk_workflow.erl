@@ -1499,22 +1499,25 @@
 -export_type([context/0]).
 
 -doc #{group => "Workflow behaviour"}.
--type context_workflow_info() :: #{
-    %% from PollWorkflowTaskQueueResponse:
-    workflow_execution := ?TEMPORAL_SPEC:'temporal.api.common.v1.WorkflowExecution'(),
-    workflow_execution_task_queue := unicode:chardata(),
-    %% from WorkflowExecutionStartedEventAttributes:
-    workflow_type := unicode:chardata(),
-    task_queue := unicode:chardata(),
-    workflow_execution_timeout_msec := erlang:timeout(),
-    workflow_run_timeout_msec := erlang:timeout(),
-    workflow_task_timeout_msec := erlang:timeout(),
-    last_completion_result => temporal_sdk:term_from_payloads(),
-    attempt := pos_integer(),
-    memo => temporal_sdk:term_from_mapstring_payload(),
-    search_attributes => temporal_sdk:term_from_mapstring_payload(),
-    header => temporal_sdk:term_from_mapstring_payload()
-}.
+-type context_workflow_info() ::
+    #{
+        %% from PollWorkflowTaskQueueResponse:
+        workflow_execution := ?TEMPORAL_SPEC:'temporal.api.common.v1.WorkflowExecution'(),
+        workflow_execution_task_queue := unicode:chardata(),
+        %% from WorkflowExecutionStartedEventAttributes:
+        workflow_type := unicode:chardata(),
+        task_queue := unicode:chardata(),
+        workflow_execution_timeout_msec := erlang:timeout(),
+        workflow_run_timeout_msec := erlang:timeout(),
+        workflow_task_timeout_msec := erlang:timeout(),
+        last_completion_result => temporal_sdk:term_from_payloads(),
+        attempt := pos_integer(),
+        memo => temporal_sdk:term_from_mapstring_payload(),
+        search_attributes => temporal_sdk:term_from_mapstring_payload(),
+        header => temporal_sdk:term_from_mapstring_payload()
+    }
+    %% Provisional context workflow info for tasks polled from sticky queue
+    | #{attempt := pos_integer()}.
 -export_type([context_workflow_info/0]).
 
 -doc #{group => "Workflow behaviour"}.
@@ -1538,7 +1541,7 @@
 -callback handle_eviction(
     HandlerContext :: handler_context(),
     PollIdleTime :: undefined | pos_integer()
-) -> evict | stop | ignore | default.
+) -> evict | ignore | default.
 
 -doc #{group => "Workflow behaviour"}.
 -callback handle_failure(

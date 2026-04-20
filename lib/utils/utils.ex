@@ -6,5 +6,8 @@ defmodule TemporalSdk.Utils do
     do:
       erlang_docs_path
       |> File.read!()
+      |> String.replace("`c:", "`c::")
+      |> String.replace("`e:", "`e::")
       |> String.replace("`m:", "`m::")
+      |> String.replace("`t:", "`t::")
 end

@@ -27,7 +27,7 @@ handle_poll(#{worker_type := WorkerType} = ApiContext) ->
 -spec handle_execute(
     ApiContext :: temporal_sdk_api:context(),
     Task :: temporal_sdk_activity:task() | temporal_sdk_workflow:task()
-) -> {ok, Status :: executed | redirected | evicted} | {error, Reason :: term()}.
+) -> {ok, Status :: atom()} | {error, Reason :: term()}.
 handle_execute(#{worker_type := WorkerType} = ApiContext, Task) ->
     M = get_module(WorkerType),
     M:handle_execute(ApiContext, Task).

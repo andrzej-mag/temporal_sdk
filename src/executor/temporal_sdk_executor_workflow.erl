@@ -13,6 +13,7 @@
     callback_mode/0
 ]).
 -export([
+    init/3,
     start_scope/3,
     execute/3,
     replay/3,
@@ -30,6 +31,8 @@
 
 -define(EVENT_ORIGIN, workflow).
 
+-define(PROVISIONAL_STICKY_RUN_TIMEOUT, 10_000).
+-define(PROVISIONAL_STICKY_TASK_TIMEOUT, 5_000).
 -define(DEFAULT_EVICT_TIMEOUT, 5_000).
 -define(EVICT_TIMEOUT_RATIO, 0.5).
 
@@ -174,207 +177,15 @@ start(ApiContext, Task, CallerPid) ->
 
 init([ApiContext, Task, CallerPid]) ->
     process_flag(trap_exit, true),
-
-    #{
-        cluster := Cluster,
-        worker_opts := #{
-            worker_id := WorkerId,
-            namespace := Namespace,
-            task_queue := TaskQueue,
-            task_settings := #{
-                otp_messages_limits := OtpMessagesLimits,
-                await_open_before_close := AwaitOpenBeforeClose
-            }
-        } =
-            WorkerOpts,
-        worker_identity := WorkerIdentity,
-        limiter_counters := [WorkflowLC, _EagerLC, _DirectLC],
-        execution_module := ExecutionModule
-    } = ApiContext,
-    #{
-        workflow_execution := #{workflow_id := WorkflowId, run_id := RunId} = WorkflowExecution,
-        workflow_type := #{name := WorkflowType},
-        previous_started_event_id := PreviousStartedEventId,
-        started_event_id := StartedEventId,
-        attempt := Attempt,
-        history := #{events := TemporalHistoryEvents}
-    } = Task,
-    ScheduledTime =
-        case Task of
-            #{scheduled_time := SchTi} -> temporal_sdk_utils_time:protobuf_to_nanos(SchTi);
-            #{} -> 0
-        end,
-    StartedTime =
-        case Task of
-            #{started_time := StTi} -> temporal_sdk_utils_time:protobuf_to_nanos(StTi);
-            #{} -> 0
-        end,
-
-    ProcLabel = temporal_sdk_utils_path:string_path([
-        ?MODULE, Cluster, Namespace, TaskQueue, WorkflowType, WorkflowId, RunId
-    ]),
-    proc_lib:set_label(ProcLabel),
-    temporal_sdk_limiter:inc(WorkflowLC),
-
-    STask = temporal_sdk_api_workflow_task:workflow_execution_started_event_attributes(Task),
-    {UserHeaderData, SDKHeader} =
-        temporal_sdk_api_header:get_sdk(
-            #{}, STask, 'temporal.api.workflowservice.v1.PollWorkflowTaskQueueResponse', ApiContext
-        ),
-    OtelCtx =
-        case SDKHeader of
-            #{otel_context := OC} -> OC;
-            #{} -> otel_ctx:new()
-        end,
-
-    IsReplaying = PreviousStartedEventId > 0 orelse StartedEventId > 3,
-
-    #{attempt := ExecutionStartedEventAttempt} =
-        WorkflowContextWorkflowInfo = maps:merge(
-            temporal_sdk_api_workflow_task:build_context_workflow_info(ApiContext, Task),
-            UserHeaderData
-        ),
-
-    WorkflowContext = #{
-        execution_id => undefined,
-        cluster => Cluster,
-        executor_pid => self(),
-        otel_ctx => OtelCtx,
-        worker_opts => WorkerOpts,
-        history_table => undefined,
-        index_table => undefined,
-        workflow_info => WorkflowContextWorkflowInfo,
-        task => maps:without([history], Task),
-        attempt => Attempt,
-        is_replaying => IsReplaying
-    },
-
-    WorkflowInfo = maps:merge(?INITIAL_WORKFLOW_INFO, #{
-        attempt => ExecutionStartedEventAttempt, is_replaying => IsReplaying
-    }),
-
-    RunTimeout = fetch_run_timeout(WorkerOpts, Task),
-    TaskTimeout = fetch_task_timeout(WorkerOpts, Task),
-    EvictTimeout =
-        case TaskTimeout of
-            infinity -> ?DEFAULT_EVICT_TIMEOUT;
-            I when is_integer(I) -> round(?EVICT_TIMEOUT_RATIO * TaskTimeout)
-        end,
-
-    EvMetadata =
-        case WorkerOpts of
-            #{disable_telemetry := true} ->
-                #{disable_telemetry => true};
-            #{} ->
-                #{
-                    cluster => Cluster,
-                    worker_id => WorkerId,
-                    namespace => Namespace,
-                    task_queue => TaskQueue,
-                    workflow_type => WorkflowType,
-                    workflow_id => WorkflowId,
-                    workflow_run_id => RunId,
-                    attempt => Attempt,
-
-                    worker_identity => WorkerIdentity,
-                    execution_module => ExecutionModule,
-
-                    scheduled_time => ScheduledTime,
-                    started_time => StartedTime,
-
-                    executor_pid => self()
-                }
-        end,
-
-    SD = #state{
-        %% --------------- input
-        api_ctx = ApiContext,
-        api_ctx_activity = temporal_sdk_api_context:activity_from_workflow(ApiContext),
-        caller_pid = CallerPid,
-        %% --------------- task
-        task_input = temporal_sdk_api_workflow_task:input(ApiContext, Task),
-        task_previous_started_event_id = PreviousStartedEventId,
-        task_started_event_id = StartedEventId,
-        task_workflow_execution = WorkflowExecution,
-        run_timeout = RunTimeout,
-        task_timeout = TaskTimeout,
-        evict_timeout = EvictTimeout,
-        %% event_id = 1
-        is_replaying = IsReplaying,
-        workflow_context = WorkflowContext,
-        workflow_info = WorkflowInfo,
-        %% workflow_result = []
-        %% --------------- executions
-        execution_module = ExecutionModule,
-        %% execution_state = started
-        %% executions_awaits = []
-        %% executions_commands = []
-        %% replayed_commands = []
-        %% commands = []
-        %% pending_commands = []
-        %% completed_commands = []
-        %% --------------- executor
-        proc_label = ProcLabel,
-        %% is_evicted = false
-        %% stop_reason = normal
-        %% linked_pids = []
-        %% direct_execution_pids = []
-        %% open_executions_count = 0
-        %% total_executions_count = 0
-        %% open_tasks_count = 0
-        %% open_locals_count = 0
-        %% has_upserted_events = false
-        %% has_replayed_events = false
-        await_open_before_close = AwaitOpenBeforeClose,
-        otp_messages_count = #{
-            received => {0, proplists:get_value(received, OtpMessagesLimits, infinity)},
-            recorded => {0, proplists:get_value(recorded, OtpMessagesLimits, 1_000)},
-            ignored => {0, proplists:get_value(ignored, OtpMessagesLimits, infinity)}
-        },
-        %% history_events = []
-        %% queries = #{}
-        %% messages = []
-        %% history_table = undefined
-        %% index_table = undefined
-        local_handlers = init_local_handlers(ExecutionModule),
-        %% poll_start_time = undefined
-        %% blocking_awaitable = false
-        %% grpc_req_ref = undefined
-        %% --------------- telemetry
-        %% started_at = 0
-        otel_ctx = OtelCtx,
-        ev_metadata = EvMetadata
-    },
-    T = ?EV(SD, [executor, start]),
-    ?EV(SD, [task, start]),
-    SD1 = SD#state{started_at = T},
+    #{worker_opts := WorkerOpts} = ApiContext,
+    TaskType = temporal_sdk_api_workflow_task:task_type(Task),
+    RunTimeout = fetch_run_timeout(TaskType, WorkerOpts, Task),
+    TaskTimeout = fetch_task_timeout(TaskType, WorkerOpts, Task),
     TActions = [
         {{timeout, run_timeout}, RunTimeout, timeout},
         {{timeout, task_timeout}, TaskTimeout, timeout}
     ],
-    case
-        temporal_sdk_api_awaitable_history_table:append(
-            regular, 1, [], TemporalHistoryEvents, undefined
-        )
-    of
-        {ok, HE} ->
-            SD2 = SD1#state{history_events = HE},
-            case Task of
-                #{scheduled_time := _, started_time := _} -> {ok, start_scope, SD2, TActions};
-                #{} -> {ok, query_closed, SD2, TActions}
-            end;
-        Err ->
-            {ok, fail_task, SD1#state{stop_reason = {error, Err, ?EVST}}}
-    end.
-
-init_local_handlers(EMod) ->
-    Fn = fun({HF, Ar}, Acc) ->
-        case erlang:function_exported(EMod, HF, Ar) of
-            true -> Acc;
-            false -> [HF | Acc]
-        end
-    end,
-    lists:foldl(Fn, [], ?CALLBACK_HANDLERS).
+    {ok, init, [TaskType, ApiContext, Task, CallerPid], TActions}.
 
 terminate(Reason, _State, StateData) ->
     cleanup(StateData),
@@ -433,7 +244,12 @@ callback_mode() -> [state_functions, state_enter].
 %% -------------------------------------------------------------------------------------------------
 %% gen_statem state callbacks
 
-start_scope(enter, start_scope, StateData) ->
+init(enter, init, [TaskType, ApiContext, Task, CallerPid]) ->
+    handle_init_enter(TaskType, ApiContext, Task, CallerPid);
+init(EventType, EventContent, StateData) ->
+    handle_init(EventType, EventContent, StateData).
+
+start_scope(enter, init, StateData) ->
     handle_start_scope_enter(StateData);
 start_scope(info, {?MSG_PRV, {recycled_integer, Int}}, StateData) ->
     handle_start_scope(Int, StateData);
@@ -503,6 +319,55 @@ query_closed(enter, query_closed, StateData) ->
 
 %% -------------------------------------------------------------------------------------------------
 %% state handlers
+
+handle_init_enter(sticky, ApiContext, Task, CallerPid) ->
+    case temporal_sdk_api_workflow:get_workflow_execution_history(ApiContext, ~"") of
+        Ref when is_reference(Ref) -> {keep_state, [Ref, ApiContext, Task, CallerPid]};
+        Err ->
+            case init_state_data(sticky, ApiContext, Task, CallerPid) of
+                {ok, SD} ->
+                    gen_statem:cast(self(), fail),
+                    {keep_state, SD#state{stop_reason = {error, Err, ?EVST}}};
+                {error, #state{stop_reason = {_C, R, _S}} = SD} ->
+                    {keep_state, SD#state{stop_reason = {error, [R, Err], ?EVST}}}
+            end
+    end;
+handle_init_enter(TaskType, ApiContext, Task, CallerPid) ->
+    case init_state_data(TaskType, ApiContext, Task, CallerPid) of
+        {ok, StateData} ->
+            gen_statem:cast(self(), execute),
+            {keep_state, [TaskType, StateData]};
+        {error, StateData} ->
+            gen_statem:cast(self(), fail),
+            {keep_state, StateData}
+    end.
+
+handle_init(cast, execute, [query, StateData]) ->
+    {next_state, query_closed, StateData};
+handle_init(cast, execute, [regular, StateData]) ->
+    {next_state, start_scope, StateData};
+handle_init(cast, fail, StateData) ->
+    {next_state, fail_task, StateData};
+handle_init(
+    info,
+    {?TEMPORAL_SDK_GRPC_TAG, Ref,
+        {ok, #{history := #{events := THE}, next_page_token := NPT, archived := _}}},
+    [Ref, ApiContext, Task, CallerPid]
+) ->
+    T = Task#{history := #{events => THE}, next_page_token := NPT},
+    case init_state_data(regular, ApiContext, T, CallerPid) of
+        {ok, #state{run_timeout = RunTimeout, task_timeout = TaskTimeout} = StateData} ->
+            TActions = [
+                {{timeout, run_timeout}, RunTimeout, timeout},
+                {{timeout, task_timeout}, TaskTimeout, timeout}
+            ],
+            {next_state, start_scope, StateData, TActions};
+        {error, StateData} ->
+            gen_statem:cast(self(), fail),
+            {keep_state, StateData}
+    end;
+handle_init(EventType, EventContent, StateData) ->
+    handle_common(init, EventType, EventContent, StateData).
 
 handle_start_scope_enter(StateData) ->
     #state{api_ctx = ApiCtx0} = StateData,
@@ -1189,11 +1054,15 @@ handle_evict_enter(_State, #state{poll_start_time = undefined} = StateData) ->
 handle_evict(cast, {?MSG_PRV, handle_eviction, ignore}, StateData) ->
     {next_state, poll, StateData, {{timeout, evict_timeout}, cancel}};
 handle_evict(cast, {?MSG_PRV, handle_eviction, evict}, StateData) ->
-    {next_state, poll, StateData#state{is_evicted = true}, {{timeout, evict_timeout}, cancel}};
-handle_evict(cast, {?MSG_PRV, handle_eviction, stop}, StateData) ->
     {stop, normal, StateData#state{execution_state = evicted}};
 handle_evict(cast, {?MSG_PRV, handle_eviction, {Class, Reason, Stacktrace}}, StateData) ->
     {next_state, fail_task, StateData#state{stop_reason = {Class, Reason, Stacktrace}}};
+handle_evict(cast, {?MSG_PRV, handle_eviction, Invalid}, StateData) ->
+    {next_state, fail_task, StateData#state{
+        stop_reason =
+            {error, #{reason => "Invalid handle_evict/2 return value.", invalid_value => Invalid},
+                ?EVST}
+    }};
 handle_evict(EventType, EventContent, StateData) ->
     handle_common(evict, EventType, EventContent, StateData).
 
@@ -2451,13 +2320,17 @@ update_after_poll(_AppendType, #{workflow_execution := WE1}, #state{task_workflo
         expected_workflow_execution => WE2
     }}.
 
-fetch_run_timeout(#{task_settings := #{run_timeout_ratio := Ratio}}, Task) ->
+fetch_run_timeout(sticky, _WorkerOpts, _Task) ->
+    ?PROVISIONAL_STICKY_RUN_TIMEOUT;
+fetch_run_timeout(_TaskType, #{task_settings := #{run_timeout_ratio := Ratio}}, Task) ->
     case temporal_sdk_api_workflow_task:workflow_run_timeout_msec(Task) of
         T when is_integer(T), T > 0 -> round(T * Ratio);
         _ -> infinity
     end.
 
-fetch_task_timeout(#{task_settings := #{task_timeout_ratio := Ratio}}, Task) ->
+fetch_task_timeout(sticky, _WorkerOpts, _Task) ->
+    ?PROVISIONAL_STICKY_TASK_TIMEOUT;
+fetch_task_timeout(_TaskType, #{task_settings := #{task_timeout_ratio := Ratio}}, Task) ->
     case temporal_sdk_api_workflow_task:workflow_task_timeout_msec(Task) of
         T when is_integer(T), T > 0 -> round(T * Ratio);
         _ -> infinity
@@ -2544,6 +2417,219 @@ wait_exits([]) ->
 
 cleanup(StateData) ->
     stop_ets(kill_pids(StateData)).
+
+%% -------------------------------------------------------------------------------------------------
+%% gen_statem state data helpers
+
+init_state_data(TaskType, ApiContext, Task, CallerPid) ->
+    #{
+        cluster := Cluster,
+        worker_opts := #{
+            worker_id := WorkerId,
+            namespace := Namespace,
+            task_queue := TaskQueue,
+            task_settings := #{
+                otp_messages_limits := OtpMessagesLimits,
+                await_open_before_close := AwaitOpenBeforeClose
+            }
+        } =
+            WorkerOpts,
+        worker_identity := WorkerIdentity,
+        limiter_counters := [WorkflowLC, _EagerLC, _DirectLC],
+        execution_module := ExecutionModule
+    } = ApiContext,
+    #{
+        workflow_execution := #{workflow_id := WorkflowId, run_id := RunId} = WorkflowExecution,
+        workflow_type := #{name := WorkflowType},
+        previous_started_event_id := PreviousStartedEventId,
+        started_event_id := StartedEventId,
+        attempt := Attempt,
+        history := #{events := HistoryEvents}
+    } = Task,
+
+    ProcLabel = temporal_sdk_utils_path:string_path([
+        ?MODULE, Cluster, Namespace, TaskQueue, WorkflowType, WorkflowId, RunId
+    ]),
+    proc_lib:set_label(ProcLabel),
+    temporal_sdk_limiter:inc(WorkflowLC),
+
+    ScheduledTime =
+        case Task of
+            #{scheduled_time := SchTi} -> temporal_sdk_utils_time:protobuf_to_nanos(SchTi);
+            #{} -> 0
+        end,
+    StartedTime =
+        case Task of
+            #{started_time := StTi} -> temporal_sdk_utils_time:protobuf_to_nanos(StTi);
+            #{} -> 0
+        end,
+    {UserHeaderData, OtelCtx} = get_header_data(TaskType, Task, ApiContext),
+    IsReplaying = PreviousStartedEventId > 0 orelse StartedEventId > 3,
+    #{attempt := ExecutionStartedEventAttempt} =
+        WorkflowContextWorkflowInfo =
+        case TaskType of
+            sticky ->
+                #{attempt => 1};
+            _ ->
+                maps:merge(
+                    temporal_sdk_api_workflow_task:build_context_workflow_info(ApiContext, Task),
+                    UserHeaderData
+                )
+        end,
+    WorkflowContext = #{
+        cluster => Cluster,
+        executor_pid => self(),
+        otel_ctx => OtelCtx,
+        execution_id => undefined,
+        worker_opts => WorkerOpts,
+        history_table => undefined,
+        index_table => undefined,
+        workflow_info => WorkflowContextWorkflowInfo,
+        task => maps:without([history], Task),
+        attempt => Attempt,
+        is_replaying => IsReplaying
+    },
+
+    WorkflowInfo = maps:merge(?INITIAL_WORKFLOW_INFO, #{
+        attempt => ExecutionStartedEventAttempt, is_replaying => IsReplaying
+    }),
+    RunTimeout = fetch_run_timeout(TaskType, WorkerOpts, Task),
+    TaskTimeout = fetch_task_timeout(TaskType, WorkerOpts, Task),
+    EvictTimeout =
+        case TaskTimeout of
+            infinity -> ?DEFAULT_EVICT_TIMEOUT;
+            I when is_integer(I) -> round(?EVICT_TIMEOUT_RATIO * TaskTimeout)
+        end,
+
+    EvMetadata =
+        case WorkerOpts of
+            #{disable_telemetry := true} ->
+                #{disable_telemetry => true};
+            #{} ->
+                #{
+                    cluster => Cluster,
+                    worker_id => WorkerId,
+                    namespace => Namespace,
+                    task_queue => TaskQueue,
+                    workflow_type => WorkflowType,
+                    workflow_id => WorkflowId,
+                    workflow_run_id => RunId,
+                    attempt => Attempt,
+
+                    worker_identity => WorkerIdentity,
+                    execution_module => ExecutionModule,
+
+                    scheduled_time => ScheduledTime,
+                    started_time => StartedTime,
+
+                    executor_pid => self()
+                }
+        end,
+    TaskInput =
+        case TaskType of
+            sticky -> [];
+            _ -> temporal_sdk_api_workflow_task:input(ApiContext, Task)
+        end,
+
+    SD1 = #state{
+        %% --------------- input
+        api_ctx = ApiContext,
+        api_ctx_activity = temporal_sdk_api_context:activity_from_workflow(ApiContext),
+        caller_pid = CallerPid,
+        %% --------------- task
+        task_input = TaskInput,
+        task_previous_started_event_id = PreviousStartedEventId,
+        task_started_event_id = StartedEventId,
+        task_workflow_execution = WorkflowExecution,
+        run_timeout = RunTimeout,
+        task_timeout = TaskTimeout,
+        evict_timeout = EvictTimeout,
+        %% event_id = 1
+        is_replaying = IsReplaying,
+        workflow_context = WorkflowContext,
+        workflow_info = WorkflowInfo,
+        %% workflow_result = []
+        %% --------------- executions
+        execution_module = ExecutionModule,
+        %% execution_state = started
+        %% executions_awaits = []
+        %% executions_commands = []
+        %% replayed_commands = []
+        %% commands = []
+        %% pending_commands = []
+        %% completed_commands = []
+        %% --------------- executor
+        proc_label = ProcLabel,
+        %% is_evicted = false
+        %% stop_reason = normal
+        %% linked_pids = []
+        %% direct_execution_pids = []
+        %% open_executions_count = 0
+        %% total_executions_count = 0
+        %% open_tasks_count = 0
+        %% open_locals_count = 0
+        %% has_upserted_events = false
+        %% has_replayed_events = false
+        await_open_before_close = AwaitOpenBeforeClose,
+        otp_messages_count = #{
+            received => {0, proplists:get_value(received, OtpMessagesLimits, infinity)},
+            recorded => {0, proplists:get_value(recorded, OtpMessagesLimits, 1_000)},
+            ignored => {0, proplists:get_value(ignored, OtpMessagesLimits, infinity)}
+        },
+        %% history_events = []
+        %% queries = #{}
+        %% messages = []
+        %% history_table = undefined
+        %% index_table = undefined
+        local_handlers = init_local_handlers(ExecutionModule),
+        %% poll_start_time = undefined
+        %% blocking_awaitable = false
+        %% grpc_req_ref = undefined
+        %% --------------- telemetry
+        %% started_at = 0
+        otel_ctx = OtelCtx,
+        ev_metadata = EvMetadata
+    },
+    T = ?EV(SD1, [executor, start]),
+    ?EV(SD1, [task, start]),
+    SD = SD1#state{started_at = T},
+    case TaskType of
+        regular ->
+            case
+                temporal_sdk_api_awaitable_history_table:append(
+                    regular, 1, [], HistoryEvents, undefined
+                )
+            of
+                {ok, HE} -> {ok, SD#state{history_events = HE}};
+                Err -> {error, SD#state{stop_reason = {error, Err, ?EVST}}}
+            end;
+        sticky ->
+            {ok, SD}
+    end.
+
+get_header_data(sticky, _Task, _ApiContext) ->
+    {#{}, #{}};
+get_header_data(_TaskType, Task, ApiContext) ->
+    STask = temporal_sdk_api_workflow_task:workflow_execution_started_event_attributes(Task),
+    {UserHeaderData, SDKHeader} =
+        temporal_sdk_api_header:get_sdk(
+            #{}, STask, 'temporal.api.workflowservice.v1.PollWorkflowTaskQueueResponse', ApiContext
+        ),
+    OtelCtx =
+        case SDKHeader of
+            #{otel_context := OC} -> OC;
+            #{} -> otel_ctx:new()
+        end,
+    {UserHeaderData, OtelCtx}.
+
+init_local_handlers(EMod) ->
+    Fn = fun({HF, Ar}, Acc) ->
+        case erlang:function_exported(EMod, HF, Ar) of
+            true -> Acc;
+            false -> [HF | Acc]
+        end
+    end,
+    lists:foldl(Fn, [], ?CALLBACK_HANDLERS).
 
 %% -------------------------------------------------------------------------------------------------
 %% telemetry

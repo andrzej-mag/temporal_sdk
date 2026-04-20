@@ -5,6 +5,7 @@
 
 -export([
     input/2,
+    task_type/1,
     task_from_history/1,
     is_history_closed/1,
     build_context_workflow_info/2,
@@ -41,6 +42,20 @@ input(ApiCtx, Task) ->
         input,
         maps:get(input, workflow_execution_started_event_attributes(Task), #{payloads => []})
     ).
+
+-spec task_type(Task :: temporal_sdk_workflow:task()) -> regular | sticky | query.
+task_type(#{history := #{events := []}, started_event_id := 0}) ->
+    query;
+task_type(#{
+    history := #{
+        events := [
+            #{event_id := 1, attributes := {workflow_execution_started_event_attributes, #{}}} | _
+        ]
+    }
+}) ->
+    regular;
+task_type(_Task) ->
+    sticky.
 
 -spec task_from_history(History :: ?TEMPORAL_SPEC:'temporal.api.history.v1.History'()) ->
     {ok, temporal_sdk_workflow:task()}
