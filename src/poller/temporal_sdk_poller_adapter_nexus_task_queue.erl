@@ -35,7 +35,7 @@ handle_execute(ApiContext, Task) ->
             ),
         AC = temporal_sdk_api_context:add_nexus_task_opts(ApiContext, Task),
         {ok, _Pid} ?= temporal_sdk_executor_nexus:start(AC, Task, Mod),
-        {ok, executed}
+        {ok, started}
     else
         ignore -> {error, activity_executor_start_ignored};
         Err -> Err

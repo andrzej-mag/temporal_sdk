@@ -64,7 +64,7 @@ has_valid_history(Invalid) ->
 
 do_handle_execute([], ApiCtx, Task) ->
     case temporal_sdk_executor_workflow:start(ApiCtx, Task, undefined) of
-        {ok, _Pid} -> {ok, executed};
+        {ok, _Pid} -> {ok, started};
         Err -> Err
     end;
 do_handle_execute([Pid | TPids], _ApiCtx, Task) ->

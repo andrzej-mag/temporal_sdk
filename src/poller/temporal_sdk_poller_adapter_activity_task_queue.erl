@@ -36,7 +36,7 @@ handle_execute(ApiContext, Task) ->
             ),
         AC = temporal_sdk_api_context:add_activity_opts(ApiContext, Task, Mod),
         {ok, _Pid} ?= temporal_sdk_executor_activity:start(AC, Task),
-        {ok, executed}
+        {ok, started}
     end.
 
 handle_shutdown(_ApiContext) -> ok.
