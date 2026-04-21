@@ -44,7 +44,7 @@ input(ApiCtx, Task) ->
     ).
 
 -spec task_type(Task :: temporal_sdk_workflow:task()) -> regular | sticky | query.
-task_type(#{history := #{events := []}, started_event_id := 0}) ->
+task_type(#{query := _, started_event_id := 0}) ->
     query;
 task_type(#{
     history := #{

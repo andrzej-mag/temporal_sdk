@@ -314,7 +314,7 @@ fail_task({timeout, Timeout}, timeout, StateData) ->
 fail_task(_EventType, _EventContent, _StateData) ->
     keep_state_and_data.
 
-query_closed(enter, query_closed, StateData) ->
+query_closed(enter, init, StateData) ->
     handle_query_closed(StateData).
 
 %% -------------------------------------------------------------------------------------------------
@@ -329,6 +329,7 @@ handle_init_enter(sticky, ApiContext, Task, CallerPid) ->
                     gen_statem:cast(self(), fail),
                     {keep_state, SD#state{stop_reason = {error, Err, ?EVST}}};
                 {error, #state{stop_reason = {_C, R, _S}} = SD} ->
+                    gen_statem:cast(self(), fail),
                     {keep_state, SD#state{stop_reason = {error, [R, Err], ?EVST}}}
             end
     end;
@@ -363,8 +364,7 @@ handle_init(
             ],
             {next_state, start_scope, StateData, TActions};
         {error, StateData} ->
-            gen_statem:cast(self(), fail),
-            {keep_state, StateData}
+            {next_state, fail_task, StateData}
     end;
 handle_init(EventType, EventContent, StateData) ->
     handle_common(init, EventType, EventContent, StateData).
@@ -2594,7 +2594,9 @@ init_state_data(TaskType, ApiContext, Task, CallerPid) ->
     ?EV(SD1, [task, start]),
     SD = SD1#state{started_at = T},
     case TaskType of
-        regular ->
+        sticky ->
+            {ok, SD};
+        _ ->
             case
                 temporal_sdk_api_awaitable_history_table:append(
                     regular, 1, [], HistoryEvents, undefined
@@ -2602,9 +2604,7 @@ init_state_data(TaskType, ApiContext, Task, CallerPid) ->
             of
                 {ok, HE} -> {ok, SD#state{history_events = HE}};
                 Err -> {error, SD#state{stop_reason = {error, Err, ?EVST}}}
-            end;
-        sticky ->
-            {ok, SD}
+            end
     end.
 
 get_header_data(sticky, _Task, _ApiContext) ->
