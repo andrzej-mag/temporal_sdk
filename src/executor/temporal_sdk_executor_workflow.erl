@@ -35,6 +35,7 @@
 -define(PROVISIONAL_STICKY_TASK_TIMEOUT, 5_000).
 -define(DEFAULT_EVICT_TIMEOUT, 5_000).
 -define(EVICT_TIMEOUT_RATIO, 0.5).
+-define(HANDLE_EVICTION_POLL_TIMEOUT, 60_000).
 
 -define(CALLBACK_HANDLERS, [
     {handle_eviction, 2},
@@ -150,7 +151,7 @@
     grpc_req_ref = undefined ::
         undefined
         | {poll, reference()}
-        | {poll, sticky_queue}
+        | {poll, external_queue}
         | {get_history, reference()}
         | {get_history_reverse, reference()}
         | {complete_task, reference()},
@@ -1063,9 +1064,13 @@ handle_evict(cast, {?MSG_PRV, handle_eviction, Invalid}, StateData) ->
             {error, #{reason => "Invalid handle_evict/2 return value.", invalid_value => Invalid},
                 ?EVST}
     }};
+handle_evict(info, _EventContent, _StateData) ->
+    {keep_state_and_data, postpone};
 handle_evict(EventType, EventContent, StateData) ->
     handle_common(evict, EventType, EventContent, StateData).
 
+handle_poll_enter(#state{grpc_req_ref = {poll, external_queue}}) ->
+    {keep_state_and_data, {state_timeout, ?HANDLE_EVICTION_POLL_TIMEOUT, poll_timeout}};
 handle_poll_enter(#state{grpc_req_ref = Ref} = StateData) when Ref =/= undefined ->
     gen_statem:cast(self(), fail_task),
     {keep_state, StateData#state{
@@ -1084,7 +1089,9 @@ handle_poll_enter(StateData) ->
                     }}
             end;
         _ ->
-            {keep_state, StateData#state{grpc_req_ref = {poll, sticky_queue}}}
+            {keep_state, StateData#state{grpc_req_ref = {poll, external_queue}}, {
+                state_timeout, ?HANDLE_EVICTION_POLL_TIMEOUT, poll_timeout
+            }}
     end.
 
 handle_poll(
@@ -1119,6 +1126,8 @@ handle_poll(
     #state{grpc_req_ref = {get_history_reverse, Ref}} = StateData
 ) ->
     {stop, normal, StateData#state{execution_state = stale}};
+handle_poll(state_timeout, poll_timeout, StateData) ->
+    {next_state, evict, StateData};
 handle_poll(EventType, EventContent, StateData) ->
     handle_common(poll, EventType, EventContent, StateData).
 
