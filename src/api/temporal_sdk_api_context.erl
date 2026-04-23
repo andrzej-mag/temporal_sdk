@@ -108,17 +108,22 @@ add_workflow_opts(
             workflow_type => WorkflowTypeName,
             workflow_id => WorkflowId,
             run_id => RunId,
-            sticky_attributes => sticky_attributes(ApiContext)
+            sticky_attributes => sticky_attributes(ApiContext, RunId)
         }
     }.
 
-sticky_attributes(#{worker_opts := #{task_settings := #{sticky_execution := #{type := disabled}}}}) ->
+sticky_attributes(
+    #{worker_opts := #{task_settings := #{sticky_execution := #{type := disabled}}}}, _RunId
+) ->
     disabled;
-sticky_attributes(#{
-    worker_opts := #{
-        task_queue := TQ, task_settings := #{sticky_execution := SE = #{type := local}}
-    }
-}) ->
+sticky_attributes(
+    #{
+        worker_opts := #{
+            task_queue := TQ, task_settings := #{sticky_execution := SE = #{type := local}}
+        }
+    },
+    _RunId
+) ->
     StickyName =
         case SE of
             #{queue_name := N} ->
@@ -135,18 +140,24 @@ sticky_attributes(#{
         #{} ->
             {local, #{worker_task_queue => WTQ}}
     end;
-sticky_attributes(#{
-    worker_opts := #{
-        task_queue := TQ, task_settings := #{sticky_execution := #{type := pool} = SE}
-    }
-}) ->
+sticky_attributes(
+    #{
+        worker_opts := #{
+            task_queue := TQ, task_settings := #{sticky_execution := #{type := pool} = SE}
+        }
+    },
+    RunId
+) ->
     StickyName =
         case SE of
             #{queue_name := N, pool_size := PS} ->
-                temporal_sdk_utils_path:string_path([N, rand:uniform(PS)]);
+                temporal_sdk_utils_path:string_path([N, sticky_queue_id(RunId, PS)]);
             #{pool_size := PS} ->
                 temporal_sdk_utils_path:string_path([
-                    node(), pid_to_list(self()), temporal_sdk_utils:uuid4(), rand:uniform(PS)
+                    node(),
+                    pid_to_list(self()),
+                    temporal_sdk_utils:uuid4(),
+                    sticky_queue_id(RunId, PS)
                 ]);
             #{} ->
                 temporal_sdk_utils_path:string_path([
@@ -160,6 +171,8 @@ sticky_attributes(#{
         #{} ->
             {pool, #{worker_task_queue => WTQ}}
     end.
+
+sticky_queue_id(RunId, PoolSize) -> erlang:adler32([RunId]) rem PoolSize + 1.
 
 -spec restart_workflow_task_opts(
     ApiContext :: temporal_sdk_api:context(),
