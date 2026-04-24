@@ -188,7 +188,7 @@ init([ApiContext, Task, CallerPid]) ->
     ],
     {ok, init, [TaskType, ApiContext, Task, CallerPid], TActions}.
 
-terminate(Reason, _State, StateData) ->
+terminate(Reason, _State, #state{} = StateData) ->
     cleanup(StateData),
     #state{
         api_ctx =
@@ -353,19 +353,117 @@ handle_init(cast, fail, StateData) ->
 handle_init(
     info,
     {?TEMPORAL_SDK_GRPC_TAG, Ref,
-        {ok, #{history := #{events := THE}, next_page_token := NPT, archived := _}}},
-    [Ref, ApiContext, Task, CallerPid]
+        {ok, #{
+            history := #{events := [#{event_id := 1} | _] = THE},
+            next_page_token := NPT,
+            archived := _
+        }}},
+    [Ref, ApiContext, StaleStickyTask, CallerPid]
 ) ->
-    T = Task#{history := #{events => THE}, next_page_token := NPT},
+    T = StaleStickyTask#{history := #{events => THE}},
     case init_state_data(regular, ApiContext, T, CallerPid) of
-        {ok, #state{run_timeout = RunTimeout, task_timeout = TaskTimeout} = StateData} ->
+        {ok, StateData} ->
+            #state{
+                run_timeout = RunTimeout,
+                task_timeout = TaskTimeout,
+                history_events = HistoryEvents,
+                event_id = EventId,
+                history_table = HT
+            } = StateData,
             TActions = [
                 {{timeout, run_timeout}, RunTimeout, timeout},
                 {{timeout, task_timeout}, TaskTimeout, timeout}
             ],
-            {next_state, start_scope, StateData, TActions};
+            #{history := #{events := STHE}} = StaleStickyTask,
+            #{event_id := RegularLEId} = lists:last(THE),
+            #{event_id := StickyFEId} = hd(STHE),
+            case RegularLEId + 1 >= StickyFEId of
+                true ->
+                    case
+                        temporal_sdk_api_awaitable_history_table:append(
+                            get, EventId, HistoryEvents, STHE, HT
+                        )
+                    of
+                        {ok, HE} ->
+                            {next_state, start_scope, StateData#state{history_events = HE},
+                                TActions};
+                        Err ->
+                            {next_state, fail_task,
+                                StateData#state{stop_reason = {error, Err, ?EVST}}, TActions}
+                    end;
+                false ->
+                    case NPT of
+                        NPT1 when NPT1 =:= ~""; NPT1 =:= "" ->
+                            Err = #{
+                                reason =>
+                                    "Empty next_page_token when reconstructing workflow task from the stale task polled from sticky queue."
+                            },
+                            {next_state, fail_task,
+                                StateData#state{stop_reason = {error, Err, ?EVST}}, TActions};
+                        _ ->
+                            case maybe_get_workflow_execution_history(NPT, StateData) of
+                                {ok, SD} ->
+                                    {keep_state, [STHE, SD], TActions};
+                                Err ->
+                                    {next_state, fail_task,
+                                        StateData#state{stop_reason = {error, Err, ?EVST}},
+                                        TActions}
+                            end
+                    end
+            end;
         {error, StateData} ->
             {next_state, fail_task, StateData}
+    end;
+handle_init(
+    info,
+    {?TEMPORAL_SDK_GRPC_TAG, Ref,
+        {ok, #{history := #{events := THE}, next_page_token := NPT, archived := _}}},
+    [STHE, #state{grpc_req_ref = {get_history, Ref}} = StateData]
+) ->
+    #state{history_events = HistoryEvents, event_id = EventId, history_table = HT} = StateData,
+    case temporal_sdk_api_awaitable_history_table:append(get, EventId, HistoryEvents, THE, HT) of
+        {ok, HE} ->
+            {RegularLEId, _, _, _} = lists:last(HE),
+            #{event_id := StickyFEId} = hd(STHE),
+            case RegularLEId + 1 >= StickyFEId of
+                true ->
+                    case
+                        temporal_sdk_api_awaitable_history_table:append(get, EventId, HE, STHE, HT)
+                    of
+                        {ok, HE1} ->
+                            {next_state, start_scope, StateData#state{history_events = HE1}};
+                        Err ->
+                            {next_state, fail_task, StateData#state{
+                                stop_reason = {error, Err, ?EVST}
+                            }}
+                    end;
+                false ->
+                    case NPT of
+                        NPT1 when NPT1 =:= ~""; NPT1 =:= "" ->
+                            Err = #{
+                                reason =>
+                                    "Empty next_page_token when reconstructing workflow task from the stale task polled from sticky queue."
+                            },
+                            {next_state, fail_task, StateData#state{
+                                stop_reason = {error, Err, ?EVST}
+                            }};
+                        _ ->
+                            case
+                                maybe_get_workflow_execution_history(NPT, StateData#state{
+                                    history_events = HE
+                                })
+                            of
+                                {ok, SD} ->
+                                    {keep_state, [STHE, SD]};
+                                Err ->
+                                    {next_state, fail_task, StateData#state{
+                                        stop_reason = {error, Err, ?EVST}
+                                    }}
+                            end
+                    end
+            end;
+        Err ->
+            {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end;
 handle_init(EventType, EventContent, StateData) ->
     handle_common(init, EventType, EventContent, StateData).
@@ -1293,7 +1391,7 @@ handle_common(
     info,
     {?TEMPORAL_SDK_GRPC_TAG, _Ref,
         {ok, #{history := #{events := THE}, next_page_token := NPT, archived := _}}},
-    StateData
+    #state{} = StateData
 ) ->
     #state{history_events = HistoryEvents, event_id = EventId, history_table = HT} = StateData,
     maybe
@@ -1315,7 +1413,7 @@ handle_common(
     _State,
     info,
     {?TEMPORAL_SDK_GRPC_TAG, duplicate_workflow_execution},
-    StateData
+    #state{} = StateData
 ) ->
     {stop, normal, StateData#state{execution_state = duplicate}};
 %% -------------------------------------------------------------------------------------------------
@@ -1325,12 +1423,14 @@ handle_common(
     _State,
     info,
     {?TEMPORAL_SDK_GRPC_TAG, _Ref, {ok, #{reset_history_event_id := _}}},
-    _StateData
+    #state{} = _StateData
 ) ->
     keep_state_and_data;
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: marker
-handle_common(replay, cast, {?MSG_PRV, marker, record, Pid, Value}, StateData) when is_pid(Pid) ->
+handle_common(replay, cast, {?MSG_PRV, marker, record, Pid, Value}, #state{} = StateData) when
+    is_pid(Pid)
+->
     #state{api_ctx = ApiCtx, index_table = IT, commands = Commands, open_locals_count = OLC} =
         StateData,
     MsgName = 'temporal.api.command.v1.RecordMarkerCommandAttributes',
@@ -1403,7 +1503,7 @@ handle_common(
         Err ->
             {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end;
-handle_common(replay, cast, {?MSG_PRV, marker, record, Name, Value}, StateData) ->
+handle_common(replay, cast, {?MSG_PRV, marker, record, Name, Value}, #state{} = StateData) ->
     {next_state, fail_task, StateData#state{
         stop_reason =
             {error,
@@ -1415,24 +1515,30 @@ handle_common(replay, cast, {?MSG_PRV, marker, record, Name, Value}, StateData) 
                 },
                 ?EVST}
     }};
-handle_common(_State, cast, {?MSG_PRV, marker, record, _PidOrName, _Value}, _StateData) ->
+handle_common(_State, cast, {?MSG_PRV, marker, record, _PidOrName, _Value}, #state{} = _StateData) ->
     {keep_state_and_data, postpone};
-handle_common(_State, cast, {?MSG_PRV, marker, ignore, _Name}, StateData) ->
+handle_common(_State, cast, {?MSG_PRV, marker, ignore, _Name}, #state{} = StateData) ->
     case check_message_limit(ignored, StateData) of
         {ok, SD} -> {keep_state, SD};
         Err -> {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end;
 handle_common(
-    State, cast, {?MSG_PRV, marker, fail_task, _Pid, {Message, Source, Stacktrace}}, StateData
+    State,
+    cast,
+    {?MSG_PRV, marker, fail_task, _Pid, {Message, Source, Stacktrace}},
+    #state{} = StateData
 ) when State =:= execute; State =:= replay ->
     {next_state, fail_task, StateData#state{stop_reason = {Source, Message, Stacktrace}}};
 handle_common(
-    State, cast, {?MSG_PRV, marker, failed, _PidOrName, {Class, Reason, Stacktrace}}, StateData
+    State,
+    cast,
+    {?MSG_PRV, marker, failed, _PidOrName, {Class, Reason, Stacktrace}},
+    #state{} = StateData
 ) when State =:= execute; State =:= replay ->
     {next_state, fail_task, StateData#state{stop_reason = {Class, Reason, Stacktrace}}};
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: OTP messages
-handle_common(_State, info, {?TEMPORAL_SDK_OTP_TAG, Name, Value}, StateData) ->
+handle_common(_State, info, {?TEMPORAL_SDK_OTP_TAG, Name, Value}, #state{} = StateData) ->
     case check_message_limit(received, StateData) of
         {ok, SD} ->
             {keep_state, spawn_message_marker(Name, Value, SD)};
@@ -1442,11 +1548,14 @@ handle_common(_State, info, {?TEMPORAL_SDK_OTP_TAG, Name, Value}, StateData) ->
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: direct execution result
 handle_common(
-    execute, cast, {?MSG_PRV, direct_execution, completed, _IndexKey, _Result}, _StateData
+    execute,
+    cast,
+    {?MSG_PRV, direct_execution, completed, _IndexKey, _Result},
+    #state{} = _StateData
 ) ->
     {keep_state_and_data, postpone};
 handle_common(
-    State, cast, {?MSG_PRV, direct_execution, completed, IndexKey, Result}, StateData
+    State, cast, {?MSG_PRV, direct_execution, completed, IndexKey, Result}, #state{} = StateData
 ) ->
     #state{index_table = IndexTable} = StateData,
     Index = {IndexKey, #{result => Result}},
@@ -1462,7 +1571,7 @@ handle_common(
             {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end;
 handle_common(
-    _State, cast, {?MSG_PRV, direct_execution, failed, IndexKey, StopReason}, StateData
+    _State, cast, {?MSG_PRV, direct_execution, failed, IndexKey, StopReason}, #state{} = StateData
 ) ->
     #state{index_table = IndexTable} = StateData,
     Index = {IndexKey, #{last_failure => StopReason}},
@@ -1474,12 +1583,12 @@ handle_common(
 %% handle_common: linked processes exits
 handle_common(_State, info, {'EXIT', CP, timeout}, #state{caller_pid = CP} = _StateData) ->
     stop;
-handle_common(_State, info, {'EXIT', Pid, normal}, StateData) ->
+handle_common(_State, info, {'EXIT', Pid, normal}, #state{} = StateData) ->
     #state{linked_pids = LinkedPids} = StateData,
     {keep_state, StateData#state{linked_pids = lists:delete(Pid, LinkedPids)}};
 handle_common(_State, info, {'EXIT', _Pid, ?LINKED_PID_EXIT_REASON}, _StateData) ->
     keep_state_and_data;
-handle_common(_State, info, {'EXIT', Pid, Reason}, StateData) ->
+handle_common(_State, info, {'EXIT', Pid, Reason}, #state{} = StateData) ->
     {next_state, fail_task, StateData#state{
         stop_reason =
             {error, #{reason => "Linked process abnormal exit.", pid => Pid, exit_reason => Reason},
@@ -1487,21 +1596,21 @@ handle_common(_State, info, {'EXIT', Pid, Reason}, StateData) ->
     }};
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: force_poll cast
-handle_common(complete_task, cast, force_poll, StateData) ->
+handle_common(complete_task, cast, force_poll, #state{} = StateData) ->
     {next_state, evict, StateData};
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: fail_task cast
-handle_common(_State, cast, fail_task, StateData) ->
+handle_common(_State, cast, fail_task, #state{} = StateData) ->
     {next_state, fail_task, StateData};
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: timeout
-handle_common(State, {timeout, Timeout}, timeout, StateData) ->
+handle_common(State, {timeout, Timeout}, timeout, #state{} = StateData) ->
     #state{task_timeout = TT, run_timeout = RT} = StateData,
     Err = {Timeout, #{task_timeout_msec => TT, run_timeout_msec => RT, executor_state => State}},
     {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}};
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: unhandled message
-handle_common(State, EventType, EventContent, StateData) ->
+handle_common(State, EventType, EventContent, #state{} = StateData) ->
     {stop, normal, StateData#state{
         stop_reason =
             {error,

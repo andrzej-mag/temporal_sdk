@@ -100,7 +100,7 @@ reset_event_id(HistoryTable) ->
     EventId :: pos_integer(),
     HistoryEvents :: [temporal_sdk_workflow:history_event()],
     TemporalHistoryEvents :: [?TEMPORAL_SPEC:'temporal.api.history.v1.HistoryEvent'()],
-    HistoryTable :: ets:table()
+    HistoryTable :: ets:table() | undefined
 ) ->
     {ok, [temporal_sdk_workflow:history_event()]} | {error, Reason :: map()}.
 append(_AppendType, _EventId, HistoryEvents, [], _HistoryTable) ->
