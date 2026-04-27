@@ -1,5 +1,61 @@
 # Changelog
 
+## [0.1.18](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.17..v0.1.18) - 2026-04-27
+
+### 🚀 Features
+
+- Add evict option to temporal_sdk_workflow:await/wait - ([7d52104](https://github.com/andrzej-mag/temporal_sdk/commit/7d521042a39e9bf18394adb34c2b5c97d60a5d16))
+- [**breaking**] Add workflow sticky queue poller - ([7c7e469](https://github.com/andrzej-mag/temporal_sdk/commit/7c7e46967d23143a88889aba714f90321ba85cf7))
+- Add temporal_sdk_workflow c:handle_eviction/2 and evict_workflow/0 - ([893c80f](https://github.com/andrzej-mag/temporal_sdk/commit/893c80f85f923b879b74e18bb1b0af4aa7e6e7bd))
+- [**breaking**] Add handler context to c:temporal_sdk_workflow:handle_message - ([3a07c71](https://github.com/andrzej-mag/temporal_sdk/commit/3a07c715f549925a865d3f41f819bc16872149b4))
+- [**breaking**] Add handler context to c:temporal_sdk_workflow:handle_failure - ([f5f1336](https://github.com/andrzej-mag/temporal_sdk/commit/f5f13362fcb2daa6860b080e9e3c3c85f421599e))
+- [**breaking**] Replace temporal_sdk_workflow:record_env with app_env and os_env - ([af72d75](https://github.com/andrzej-mag/temporal_sdk/commit/af72d75739d628d051c2ff2d8309df43ce13d36d))
+- Improve mutable marker - ([4852928](https://github.com/andrzej-mag/temporal_sdk/commit/4852928aee5d6fbaa0b24bcc402d118bdb85a70e))
+- Add temporal_sdk_service:reset_workflow - ([a141552](https://github.com/andrzej-mag/temporal_sdk/commit/a1415521555b859c7184f68f9e2fcb8cc9648943))
+
+### 🐛 Bug Fixes
+
+- Fix temporal_sdk_telemetry:handle_log/4 typespecs - ([1ab4a44](https://github.com/andrzej-mag/temporal_sdk/commit/1ab4a449b4403b833da758724026070ada7c49c8))
+- Fix stale sticky task reconstruction for long history WF - ([b654854](https://github.com/andrzej-mag/temporal_sdk/commit/b65485411895f243120fb2d264f5b10e7607c283))
+- Fix handle_eviction PollIdleTime for disabled and pool sticky_executions - ([715500a](https://github.com/andrzej-mag/temporal_sdk/commit/715500a9b5ed2dc4176511ee67bbee0d3bd281e0))
+- Fix closed workflow query handling - ([b43cf30](https://github.com/andrzej-mag/temporal_sdk/commit/b43cf30e3225e3faa13e48a342feeeb3b96fbd23))
+- Improve t:temporal_sdk_workflow:workflow_info/0 is_replaying eval - ([f57244d](https://github.com/andrzej-mag/temporal_sdk/commit/f57244d913f26adc97840693eef892b103711113))
+- Fix await with timeout NDE on WF replay - ([df52098](https://github.com/andrzej-mag/temporal_sdk/commit/df52098d3acf9e2a3fea776e33265b69c78df6d6))
+- Fix include/workflow.hrl - ([1329cb2](https://github.com/andrzej-mag/temporal_sdk/commit/1329cb289d2a6b5be43714ee189e009b61a52ac7))
+- Fix temporal_sdk_workflow:record_marker_mutable_opts() - ([ef744ad](https://github.com/andrzej-mag/temporal_sdk/commit/ef744adf1c919bae211fde2848ec17f56b8e03ec))
+- [**breaking**] Fix temporal_sdk_workflow:record_env - ([39e8c76](https://github.com/andrzej-mag/temporal_sdk/commit/39e8c76cbc79316e876c7c5d4cc72c5b49a779d0))
+- Fix temporal_sdk_service:reset_workflow_opts() - ([c951c94](https://github.com/andrzej-mag/temporal_sdk/commit/c951c9416c8421df8498947fabe8ddb64f834a0c))
+
+### 🚜 Refactor
+
+- Rename c:temporal_sdk_workflow:handle_eviction force_evict to stop - ([39ef23a](https://github.com/andrzej-mag/temporal_sdk/commit/39ef23a47ca7237f3495eaa0671c0e604054665b))
+- [**breaking**] Rename temporal_sdk_workflow:stop to terminate_executor - ([e1a0c29](https://github.com/andrzej-mag/temporal_sdk/commit/e1a0c298134ef1c2baff53605ee2a26cffc633f3))
+
+### 📚 Documentation
+
+- Unify SDK Samples repo references - ([1fdb22a](https://github.com/andrzej-mag/temporal_sdk/commit/1fdb22aef91555070ed29f4fd05f9fba3864911e))
+- Add WF Sticky Execution and WF Eviction docs - ([b961cee](https://github.com/andrzej-mag/temporal_sdk/commit/b961cee47010180746e00e02436bcb7c5410c233))
+- Add c:temporal_sdk_workflow:handle_eviction/2 md file - ([be4ad73](https://github.com/andrzej-mag/temporal_sdk/commit/be4ad735089c9b123420303acce09d67f47a493e))
+
+### 🧪 Testing
+
+- Add additional replay_test workflow worker configuration cases - ([591c426](https://github.com/andrzej-mag/temporal_sdk/commit/591c426fbd651a30629f6fc900c876ed35ea2748))
+- Fix flaky query replay test - ([dc2dea8](https://github.com/andrzej-mag/temporal_sdk/commit/dc2dea87d06d59af3874eb9c136aca6c8507df2b))
+- Fix flaky eager activity replay tests - ([6ea96bf](https://github.com/andrzej-mag/temporal_sdk/commit/6ea96bf7890ed36b193bd01a6eaf27f0aa9ceac2))
+- Fix flaky a_cancel_loop replay test - ([05d6448](https://github.com/andrzej-mag/temporal_sdk/commit/05d64480c69eff512ce5f3c814ced49c66dd2198))
+- Fix flaky a_cancel_loop replay test - ([e340f26](https://github.com/andrzej-mag/temporal_sdk/commit/e340f264a7b874624379b478d0b87bd2e03f82ca))
+
+### ⚙️ Miscellaneous
+
+- Improve sticky queue name for pool sticky_executions - ([2b2de97](https://github.com/andrzej-mag/temporal_sdk/commit/2b2de97f2d6ef562ccb4e182c3904701eed17619))
+- Bump telemetry to 1.4.1 - ([b757525](https://github.com/andrzej-mag/temporal_sdk/commit/b757525524d41bd5d45b62c8462e2c4145cb1742))
+- Improve temporal_sdk_poller task_execute_status - ([1c764b0](https://github.com/andrzej-mag/temporal_sdk/commit/1c764b0974b778c424ded0427e1e12322a8acba2))
+- Improve workflow eviction implementation - ([6324b9d](https://github.com/andrzej-mag/temporal_sdk/commit/6324b9da1ba768f091c81819535dd2374ad2a022))
+- Improve workflow handlers defaults implementation - ([dda6e25](https://github.com/andrzej-mag/temporal_sdk/commit/dda6e2588d288ff209ccc745f6d2e9839a23169d))
+- Improve workflow context and info - ([ad0a6e0](https://github.com/andrzej-mag/temporal_sdk/commit/ad0a6e018ebb5c23d33c43e8ba25374eeafdea4d))
+- Improve workflow task failure handling - ([22dcbbd](https://github.com/andrzej-mag/temporal_sdk/commit/22dcbbd9a430206b83783afca0491c37647abae7))
+- Remove obsolete opentelemetry_api_experimental from deps locks - ([82b68ca](https://github.com/andrzej-mag/temporal_sdk/commit/82b68ca9a3f1ebebd49fcb64dd8fb0d55728c2e1))
+
 ## [0.1.17](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.16..v0.1.17) - 2026-03-12
 
 ### 🐛 Bug Fixes
