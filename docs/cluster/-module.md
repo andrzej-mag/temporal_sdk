@@ -84,11 +84,9 @@ Example configuration above sets the following options for the `cluster_1` SDK c
 Multiple *virtual* SDK clusters can be configured, each with its own cluster-specific configuration,
 connecting to the same Temporal server.
 
-See [GitHub: SDK samples repository](https://github.com/andrzej-mag/temporal_sdk_samples)
-"Payload Converter" sample for SDK virtual clusters example:
-
-- Elixir: [lib/payload_converter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/lib/payload_converter),
-- Erlang: [src/payload_converter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/src/payload_converter).
+[SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples)
+[Payload Converter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/docs/payload_converter.md)
+example demonstrates virtual clusters usage.
 
 ## Cluster-Specific Configuration
 

@@ -58,11 +58,9 @@ Tuple first element is a payload converter module implementing `m:temporal_sdk_g
 Tuple second element is a payload converter codecs configuration, see `t:converter_codecs/0`.
 SDK provides a built-in Temporal payload converter: `temporal_sdk_proto_converter`.
 
-See [GitHub: SDK samples repository](https://github.com/andrzej-mag/temporal_sdk_samples)
-"Payload Converter" sample for payload converter codec example:
-
-- Elixir: [lib/payload_converter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/lib/payload_converter),
-- Erlang: [src/payload_converter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/src/payload_converter).
+[SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples)
+[Payload Converter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/docs/payload_converter.md)
+sample provides example payload converter codec implementation.
 """.
 -type converter() :: {ConverterModule :: module(), ConverterCodecs :: converter_codecs()}.
 -export_type([converter/0]).

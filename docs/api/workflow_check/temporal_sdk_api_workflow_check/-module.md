@@ -10,5 +10,6 @@ In the `temporal_sdk_api_workflow_check_strict` implementation, actual and repla
 pass the determinism check only if their full specifications match - their *kind*, *type*, and
 *id*/*name* must all be identical.
 
-See also: [GitHub SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples) -
-[Determinism Check](https://github.com/andrzej-mag/temporal_sdk_samples/blob/main/docs/determinism_check.md).
+[SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples)
+[Determinism Check](https://github.com/andrzej-mag/temporal_sdk_samples/blob/main/docs/determinism_check.md)
+provides example implementation of the workflow determinism check behaviour module.

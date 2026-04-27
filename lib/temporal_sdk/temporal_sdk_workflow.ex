@@ -87,7 +87,10 @@ defmodule TemporalSdk.Workflow do
   defdelegate set_workflow_result(workflow_result), to: :temporal_sdk_workflow
   defdelegate await_open_before_close(is_enabled), to: :temporal_sdk_workflow
 
+  @external_resource "docs/temporal_sdk/workflow/evict_workflow-0.md"
+  @doc TemporalSdk.Utils.exdoc!("docs/temporal_sdk/workflow/evict_workflow-0.md")
   defdelegate evict_workflow(), to: :temporal_sdk_workflow
+
   defdelegate terminate_executor(), to: :temporal_sdk_workflow
   defdelegate terminate_executor(reason), to: :temporal_sdk_workflow
 

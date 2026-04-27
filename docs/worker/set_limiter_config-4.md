@@ -9,11 +9,9 @@ For example, if the number of currently ongoing task executions exceeds the conc
 the new rate limiter configuration, new tasks will not be started until the overflow task executions
 are drained to meet the new limits.
 
-See also [SDK Samples repository](https://github.com/andrzej-mag/temporal_sdk_samples)
-rate limiter examples:
-
-- [Elixir](https://hexdocs.pm/temporal_sdk_samples/RateLimiter.html),
-- [Erlang](https://hexdocs.pm/temporal_sdk_samples/rate_limiter.html).
+[SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples)
+[Rate Limiter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/docs/rate_limiter.md)
+example demonstrates function use.
 
 Example:
 <!-- tabs-open -->

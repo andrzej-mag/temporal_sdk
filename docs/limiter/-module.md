@@ -22,10 +22,10 @@ functionality of these limiters may overlap.
 
 See also:
 
-- [SDK Architecture - Rate Limiting](architecture.md#rate-limiting),
-- [SDK Samples repository](https://github.com/andrzej-mag/temporal_sdk_samples) rate limiter examples
-for [Elixir](https://hexdocs.pm/temporal_sdk_samples/RateLimiter.html) and
-[Erlang](https://hexdocs.pm/temporal_sdk_samples/rate_limiter.html).
+- [SDK Architecture - Rate Limiting](architecture.md#rate-limiting).
+- [SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples)
+  [Rate Limiter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/docs/rate_limiter.md)
+  example.
 
 ## OS Rate Limiter
 

@@ -2818,6 +2818,7 @@ set_workflow_result(WorkflowResult) -> cast_id({set_workflow_result, WorkflowRes
 -spec await_open_before_close(IsEnabled :: boolean()) -> ok.
 await_open_before_close(IsEnabled) -> cast_id({await_open_before_close, IsEnabled}).
 
+-doc {file, "../../docs/temporal_sdk/workflow/evict_workflow-0.md"}.
 -doc #{group => "SDK functions"}.
 -spec evict_workflow() -> ok | no_return().
 evict_workflow() -> cast_id(evict_workflow).
