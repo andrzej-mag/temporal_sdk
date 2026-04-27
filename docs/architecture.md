@@ -78,6 +78,203 @@ flowchart TD
   click TemporalServiceN "https://docs.temporal.io/temporal-service" _blank
 ```
 
+## Workflow Execution
+
+After workflow execution is started by calling `TemporalSdk.start_workflow/3` or
+`:temporal_sdk.start_workflow/3`, the given SDK cluster's client sends a `StartWorkflowExecutionRequest`
+gRPC request to the Temporal service Temporal server.
+The Temporal server schedules the new workflow task execution on a user-defined workflow task queue.
+The workflow task execution is then polled from the Temporal server by the SDK workflow task worker
+polling given workflow task queue.
+Workflow task workers typically run across multiple worker hosts within the user's cluster.
+After a new workflow task execution is polled, the SDK is responsible for processing the polled
+workflow task execution using workflow task executor.
+The Temporal server may dispatch the given workflow task execution to one or more user cluster hosts
+running workflow task workers.
+
+### Single Workflow Execution and Workflow Scope
+
+Majority of other Temporal SDK implementations use the concept of
+["Worker Task Slots"](https://docs.temporal.io/develop/worker-performance#slots) when processing task
+executions.
+After a new task execution is polled from a task queue and task slot is reserved by the SDK, task
+execution is cached and executed on each host that polled for the new task.
+If the Temporal server dispatches duplicate task executions to multiple worker hosts in the user cluster,
+other Temporal SDK implementations will cache and execute the polled task on each involved worker host
+using the worker task slots mechanism.
+Each duplicate workflow task execution repeats the same work, replaying the identical event history and
+competing with other executions to reach completion. This approach can lead to redundant task data storage
+and repeated execution of the same task code across multiple worker hosts.
+
+Erlang SDK utilizes Erlang OTP distribution to optimize Temporal workflow task execution.
+If `t::temporal_sdk_node.opts/0` `enable_single_distributed_workflow_execution` configuration option
+is set to true (default and recommended value), after polling a new workflow task execution from
+Temporal server, the SDK will check whether the given workflow task execution is already being
+processed by a workflow task executor on any SDK worker node within the Erlang cluster.
+If there is already a workflow executor processing the given workflow task execution, the polled
+workflow task data is redirected to that workflow executor.
+The workflow task executor, upon receiving a polled workflow execution task, validates the integrity
+of the received workflow task, particularly by comparing the polled task's event history with its
+internal executor event history.
+If the polled task integrity checks pass, the workflow executor appends the newly polled workflow task
+execution events history and proceeds further with the workflow task execution.
+If no workflow executors are found processing polled workflow task execution, a new workflow task
+executor process is spawned on the local worker node that polled given task.
+Task executor processes are not supervised by OTP. Task executions are supervised by the Temporal
+server using timeout-based mechanisms.
+
+In the event of a split-brain state in the Erlang cluster, workflow executors are started on all
+isolated Erlang cluster partitions Erlang nodes that polled workflow task execution.
+Each workflow task executor will progress with workflow task execution until the workflow task
+transitions to a closed state or another workflow executor advances the workflow execution further.
+
+If `enable_single_distributed_workflow_execution` configuration option is set to false (not recommended),
+after polling a new workflow task execution, the SDK will check whether the given workflow task
+execution is already being processed by any workflow task executor running on the local Erlang node.
+If there is already a workflow executor processing the given workflow task execution, the polled
+workflow task will be redirected to that workflow executor, otherwise a new workflow executor process is
+spawned on the local Erlang node.
+
+Described above, single workflow execution per cluster is applied on a best-effort basis.
+After a workflow task is polled from the server, at least one workflow execution will be processed
+by the SDK workers cluster. If multiple executions are started, they may race to completion.
+If the SDK workflow executor attempts to complete a workflow task via the
+`RespondWorkflowTaskCompleted` gRPC call for a workflow execution that has already been
+completed elsewhere, it will generate a `"Workflow task not found"` gRPC error.
+Such errors are common for Temporal server and can usually be safely ignored.
+
+SDK uses sharded `m::pg` process groups to register workflow task executors across the Erlang cluster
+nodes. `t::temporal_sdk_node.opts/0` `scope_config` configuration option is used to specify the number of
+process group shards per SDK cluster.
+The default number of the workflow scope process group shards is set to 10, which should be sufficient
+for most use cases.
+
+### Workflow Sticky Execution
+
+As described in the sections above, once the user initiates a workflow execution, the Temporal server
+schedules the workflow task on the user-defined (regular) task queue, and the SDK starts the workflow
+executor to process the polled task.
+Poll process is handled by the gRPC `PollWorkflowTaskQueueRequest` and its corresponding
+`PollWorkflowTaskQueueResponse`. The task poll response includes workflow execution history starting
+from the first history event. Workflow history may already contain many events during workflow replay.
+The number of history events returned in a single poll request is limited by the
+`limit.historyMaxPageSize` Temporal server configuration option (default: 256). Any remaining events
+must be fetched via additional `GetWorkflowExecutionHistoryRequest` gRPC calls.
+The maximum number of events per such request is controlled by the `maximum_page_size` option
+in `t::temporal_sdk_worker.workflow_settings/0` (default: 256).
+From the above description of the regular task queue, one can observe a key drawback:
+the entire workflow execution history must be retrieved from the Temporal server and reconstructed by
+the SDK, potentially requiring multiple `GetWorkflowExecutionHistoryRequest` calls.
+
+To optimize polling workflow events history Temporal provides a
+[sticky execution](https://docs.temporal.io/sticky-execution) mechanism.
+After workflow task is polled from regular task queue, workflow executor starts execution of the
+user defined workflow implementation. During workflow execution Temporal workflow commands such as
+`start_activity()` are collected by SDK. As soon as workflow execution cannot proceed further due to
+pending results from collected Temporal commands, SDK sends collected commands to Temporal server with
+`RespondWorkflowTaskCompletedRequest` gRPC call. In `RespondWorkflowTaskCompletedRequest` call, SDK
+can indicate that future workflow history events should be provided as incremental events on a
+sticky queue by setting `sticky_attributes`.
+
+SDK sticky execution is configured using the `sticky_execution` worker option in workflow task settings.
+
+The following sticky execution types are supported by this SDK:
+
+- `disabled`: Disables sticky execution. This setting may be suitable, for example, for workflow
+  implementations with a small number of long-running activities that sequentially process large payloads.
+  Evicting workflow after each task completion and releasing memory used by the workflow executor could be
+  beneficial in such cases. In such scenario, the `handle_eviction()` callback should always return `evict`.
+  Note that disabling sticky execution for workflows with a large number of events may significantly
+  degrade performance.
+- `local`: Uses a local, dedicated sticky queue per workflow execution. This setting may be appropriate
+  for example for workflows with many short-running activities, which could generate high load on sticky
+  queue. SDK worker nodes are capable of handling an unlimited number of local sticky queues.
+  When using this option, Temporal server limitations should be considered.
+- `pool`: Uses a pool of sticky queue pollers per worker. This is the default and preferred option in
+  most cases.
+
+### Workflow Eviction
+
+The workflow executor stores Temporal events in two ETS tables: an awaitables index table and an events
+history table, for user convenience. As a result, the workflow executor's memory consumption is roughly
+twice that of the current workflow events history.
+After workflow commands are dispatched to the Temporal server with `RespondWorkflowTaskCompletedRequest`
+gRPC call (as described above), workflow executor waits for new workflow tasks from the server.
+New tasks can arrive via either the regular task queue or the sticky queue.
+If the SDK waits for an extended period and the workflow events history is large, idle workflow executors
+on worker nodes may require significant memory while awaiting tasks from the Temporal server.
+
+To reduce resource usage on SDK worker nodes, workflow executors implement an eviction mechanism
+that terminates the executor and releases its allocated resources.
+Workflow eviction can be requested either before or after the `RespondWorkflowTaskCompletedRequest` gRPC call.
+
+Two options are available to request workflow eviction before task completion via
+`RespondWorkflowTaskCompletedRequest`:
+
+- `:temporal_sdk_workflow.evict_workflow/0` SDK command,
+- `evict` option in `t::temporal_sdk_workflow.await_opts/0`.
+
+When a workflow is evicted before the `RespondWorkflowTaskCompletedRequest` the following sequence
+occurs during workflow execution:
+
+1. The `RespondWorkflowTaskCompletedRequest` `sticky_attributes` is not set, so the Temporal server knows
+   in advance to dispatch the next workflow task to the regular task queue.
+2. If the `RespondWorkflowTaskCompletedResponse` contains no eager tasks, the workflow executor is
+   stopped, releasing its allocated resources.
+3. Next workflow task is polled from regular task queue, and workflow is replayed by a new workflow executor
+   instance.
+
+During workflow replay, eviction requests described above are ignored.
+
+Workflow can also be evicted via the `c::temporal_sdk_workflow.handle_eviction/2` callback function,
+which is executed after the `RespondWorkflowTaskCompletedRequest` is processed.
+If `handle_eviction/2` requests workflow eviction by returning `evict` the following sequence occurs:
+
+1. The `RespondWorkflowTaskCompletedRequest` may include `sticky_attributes` set according to
+   the `sticky_execution` setting discussed previously.
+2. If the `RespondWorkflowTaskCompletedResponse` contains no eager tasks, the workflow executor is
+   stopped, releasing its allocated resources.
+3. Further behaviour depends on the `sticky_execution` `type` setting:
+
+- If `sticky_execution` is set to `disabled`, the next workflow task is polled from the regular task
+  queue and handled by a new workflow executor instance.
+- If `sticky_execution` is set to `local`, a gRPC `ShutdownWorkerRequest` is issued during workflow
+  executor shutdown to notify the server that the given (local) sticky queue will no longer be used.
+  The next workflow task is then polled from the regular task queue and handled by a new workflow
+  executor instance.
+- If `sticky_execution` is set to `pool`, the next stale workflow task is polled from the worker's
+  shared sticky queue. A new workflow executor is started using this stale task, which contains the
+  events history starting from the last event processed by already evicted workflow executor. Missing
+  history events are retrieved via a (multiple) `GetWorkflowExecutionHistoryRequest` and the workflow
+  task is processed as in regular cases using reconstructed events history.
+
+`RespondWorkflowTaskCompletedRequest` is never invoked during workflow replay, consequently
+`handle_eviction/2` it never called during replay.
+
+If the user does not provide an implementation for `handle_eviction/2`, the SDK uses a built-in
+implementation.
+
+The built-in `handle_eviction/2` implementation provides a "smart" eviction mechanism that depends
+on three variables:
+
+- Workflow history size,
+- Workflow history event count,
+- Executor idle time spent polling for new workflow tasks.
+
+Workflows with large history sizes and few events are evicted quickly, as they require few
+`GetWorkflowExecutionHistoryRequest` calls to reconstruct history and can release substantial memory.
+Workflows with small history sizes and many events are evicted only after longer idle polling
+durations, as they would require multiple `GetWorkflowExecutionHistoryRequest` calls, and the memory
+released may be relatively small. See `c::temporal_sdk_workflow.handle_eviction/2` documentation for
+more details.
+
+Following [SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples) provide workflow eviction
+example implementations:
+
+- [Workflow Eviction](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/docs/workflow_eviction.md)
+  demonstrates eviction using `handle_eviction/2`.
+- [Eviction Parallel Handler](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/docs/eviction_parallel_handler.md) demonstrates eviction using `evict_workflow/0`.
+
 ## Rate Limiting
 
 The OS rate limiter process is managed and supervised by the SDK node.
@@ -121,66 +318,3 @@ handle rate limiting where the task poller's pool size exceeds the rate limiter 
 window frequency limits.
 
 See also `m::temporal_sdk_limiter`.
-
-## Workflow Execution Scope
-
-After the user starts workflow execution by calling `TemporalSdk.start_workflow/3` or
-`:temporal_sdk.start_workflow/3`, the given SDK cluster sends a `StartWorkflowExecutionRequest` gRPC
-request to the Temporal service Temporal server.
-The Temporal server schedules the new workflow task execution on a user-defined workflow task queue.
-The workflow task execution is then polled from the Temporal server by the SDK workflow task worker
-polling given workflow task queue.
-Workflow task workers typically run across multiple worker hosts within the user's cluster.
-After a new workflow task execution is polled, the SDK is responsible for processing the polled
-workflow task execution using workflow task executor.
-The Temporal server may dispatch the given workflow task execution to one or more user cluster hosts
-running workflow task workers.
-
-Majority of other Temporal SDK implementations use the concept of
-["Worker Task Slots"](https://docs.temporal.io/develop/worker-performance#slots) when processing task
-executions.
-After a new task execution is polled from a task queue by the SDK, task execution is
-cached and executed on each host that polled for the new task.
-If the Temporal server dispatches duplicate task executions to multiple worker hosts in the user cluster,
-other Temporal SDK implementations will cache and execute the polled task on each involved worker host
-using the worker task slots mechanism.
-This strategy may result in storing duplicate task data and executing the same task code across
-multiple worker hosts.
-
-Erlang SDK utilizes Erlang OTP distribution to optimize Temporal workflow task execution.
-If `t::temporal_sdk_node.opts/0` `enable_single_distributed_workflow_execution` configuration option
-is set to true (default and recommended value), after polling a new workflow task execution from
-Temporal server, the SDK will check whether the given workflow task execution is already being
-processed by a workflow task executor on any SDK node within the Erlang cluster.
-If there is already a workflow executor processing the given workflow task execution, the polled
-workflow task data is redirected to that workflow executor.
-The workflow task executor, upon receiving a polled workflow execution task, validates the integrity
-of the received workflow task, particularly by comparing the polled task's event history with its
-internal executor event history.
-If the polled task integrity checks pass, the workflow executor appends the newly polled workflow task
-execution events history and proceeds further with the workflow task execution.
-If no workflow executors are found processing polled workflow task execution, a new workflow task
-executor process is spawned on the local Erlang node.
-Task executor processes are not supervised by OTP. Task executions are supervised by the Temporal
-server using timeout-based mechanisms.
-
-In the event of a split-brain state in the Erlang cluster, workflow executors are started on all
-isolated Erlang cluster partitions Erlang nodes that polled workflow task execution.
-Each workflow task executor will progress with workflow task execution until the workflow task
-transitions to a closed state or another workflow executor advances the workflow execution further.
-The optimization described above is performed on a best-effort basis.
-If the Temporal server dispatches workflow task execution to multiple Erlang nodes, at least one
-workflow task execution will be processed by the SDK in the Erlang cluster.
-
-If `enable_single_distributed_workflow_execution` configuration option is set to false (not recommended),
-after polling a new workflow task execution, the SDK will check whether the given workflow task
-execution is already being processed by any workflow task executor running on the local Erlang node.
-If there is already a workflow executor processing the given workflow task execution, the polled
-workflow task will be redirected to that workflow executor, otherwise a new workflow executor process is
-spawned on the local Erlang node.
-
-SDK uses sharded `m::pg` process groups to register workflow task executors across the Erlang cluster
-nodes.
-`t::temporal_sdk_node.opts/0` `scope_config` configuration option is used to specify the number of
-process group shards per SDK cluster.
-The default number of process group shards is set to 10, which should be sufficient for most use cases.

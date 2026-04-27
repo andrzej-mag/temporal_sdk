@@ -1,7 +1,5 @@
 Finalize telemetry.
 
-Implement workflow execution eviction.
-
 Rename temporal_sdk_workflow await/wait "one" to "any".
 
 Update `gun` version.
