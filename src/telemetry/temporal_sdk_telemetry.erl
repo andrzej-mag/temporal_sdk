@@ -168,7 +168,7 @@ do_events_sf([], Acc) ->
 
 -doc {file, "../../docs/telemetry/handle_log-4.md"}.
 -spec handle_log(
-    Event :: [telemetry:event_name()],
+    Event :: telemetry:event_name(),
     Measurements :: telemetry:event_measurements(),
     Metadata :: telemetry:event_metadata(),
     HandlerConfig :: telemetry:handler_config()
