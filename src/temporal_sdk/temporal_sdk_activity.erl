@@ -114,8 +114,7 @@
     Stacktrace :: erlang:raise_stacktrace() | temporal_sdk:serializable()
 ) ->
     ApplicationFailure ::
-        temporal_sdk:application_failure()
-        | temporal_sdk:user_application_failure().
+        temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list().
 
 -optional_callbacks([
     terminate/1,
@@ -164,8 +163,7 @@ complete(Result) ->
 %% Can be compared to temporal_sdk_workflow:fail_workflow_execution/1.
 -spec fail(
     ApplicationFailure ::
-        temporal_sdk:application_failure()
-        | temporal_sdk:user_application_failure()
+        temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list()
 ) -> no_return().
 fail(ApplicationFailure) -> call({fail, ApplicationFailure}).
 

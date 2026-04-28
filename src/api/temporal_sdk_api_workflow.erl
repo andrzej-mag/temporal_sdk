@@ -90,8 +90,7 @@ respond_workflow_task_completed(
 -spec respond_workflow_task_failed(
     ApiContext :: temporal_sdk_api:context(),
     ApplicationFailure ::
-        temporal_sdk:application_failure()
-        | temporal_sdk:user_application_failure(),
+        temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list(),
     FailCause ::
         'WORKFLOW_TASK_FAILED_CAUSE_NON_DETERMINISTIC_ERROR'
         | 'WORKFLOW_TASK_FAILED_CAUSE_WORKFLOW_WORKER_UNHANDLED_FAILURE'

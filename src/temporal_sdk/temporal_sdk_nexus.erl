@@ -133,8 +133,7 @@ complete(Result) ->
 
 -spec fail(
     ApplicationFailure ::
-        temporal_sdk:application_failure()
-        | temporal_sdk:user_application_failure()
+        temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list()
 ) -> no_return().
 fail(ApplicationFailure) -> call({fail, ApplicationFailure}).
 

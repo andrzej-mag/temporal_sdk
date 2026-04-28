@@ -13,7 +13,7 @@
 -spec build(
     ApiContext :: temporal_sdk_api:context(),
     ApplicationFailure ::
-        temporal_sdk:application_failure() | temporal_sdk:user_application_failure()
+        temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.failure.v1.Failure'()}
     | {error, {invalid_opts, map()}}.

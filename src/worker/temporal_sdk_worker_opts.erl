@@ -30,7 +30,7 @@
 -spec setup(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: activity | nexus | workflow,
-    WorkerOpts :: temporal_sdk_worker:user_opts() | temporal_sdk_worker:opts()
+    WorkerOpts :: temporal_sdk_worker:opts_as_list() | temporal_sdk_worker:opts()
 ) ->
     {ok, LimiterCounter :: temporal_sdk_limiter:counter(),
         LimiterChildSpecs :: [supervisor:child_spec()], Opts :: temporal_sdk_worker:opts()}
@@ -68,7 +68,7 @@ build_sticky_opts(#{} = Opts) ->
 
 -spec setup_replay(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkerOpts :: temporal_sdk_worker:user_opts() | temporal_sdk_worker:opts()
+    WorkerOpts :: temporal_sdk_worker:opts_as_list() | temporal_sdk_worker:opts()
 ) ->
     {ok, Opts :: temporal_sdk_worker:opts()}
     | {error, {invalid_opts, map()}}.

@@ -43,22 +43,18 @@
         task_poller_limiter => task_poller_limiter(),
         limits => temporal_sdk_limiter:levels_limits(),
         limiter_check_frequency => pos_integer(),
-        limiter_time_windows =>
-            limiter_time_windows_activity()
-            | limiter_time_windows_workflow()
-            | limiter_time_windows_session()
-            | limiter_time_windows_nexus(),
+        limiter_time_windows => limiter_time_windows(),
         telemetry_poll_interval => temporal_sdk:time(),
         disable_telemetry => boolean()
     }.
 -export_type([opts/0]).
 
--type user_opts() ::
+-type opts_as_list() ::
     [
         {worker_id, worker_id()}
         | {namespace, unicode:chardata()}
         | {task_queue, unicode:chardata() | session_task_queue_name_fun()}
-        | {task_settings, task_settings() | user_task_settings()}
+        | {task_settings, task_settings()}
         | {worker_version, worker_version()}
         | {allowed_temporal_names, allowed_temporal_names()}
         | {allowed_erlang_modules, allowed_erlang_modules()}
@@ -66,23 +62,14 @@
         | {task_poller_pool_size, pos_integer()}
         | {task_poller_limiter, task_poller_limiter()}
         | {limits,
-            temporal_sdk_limiter:levels_limits()
-            | temporal_sdk_limiter:user_levels_limits()}
+            temporal_sdk_limiter:levels_limits() | temporal_sdk_limiter:levels_limits_as_list()}
         | {limiter_check_frequency, pos_integer()}
-        | {limiter_time_windows,
-            limiter_time_windows_activity()
-            | limiter_time_windows_workflow()
-            | limiter_time_windows_session()
-            | limiter_time_windows_nexus()
-            | user_limiter_time_windows_activity()
-            | user_limiter_time_windows_workflow()
-            | user_limiter_time_windows_session()
-            | user_limiter_time_windows_nexus()}
+        | {limiter_time_windows, limiter_time_windows()}
         | {telemetry_poll_interval, temporal_sdk:time()}
         | {disable_telemetry, boolean()}
         | disable_telemetry
     ].
--export_type([user_opts/0]).
+-export_type([opts_as_list/0]).
 
 -type session_task_queue_name_fun() ::
     fun(
@@ -94,12 +81,14 @@
     ).
 -export_type([session_task_queue_name_fun/0]).
 
--type task_settings() :: activity_settings() | nexus_settings() | workflow_settings().
+-type task_settings() ::
+    activity_settings()
+    | activity_settings_as_list()
+    | nexus_settings()
+    | nexus_settings_as_list()
+    | workflow_settings()
+    | workflow_settings_as_list().
 -export_type([task_settings/0]).
-
--type user_task_settings() ::
-    user_activity_settings() | user_nexus_settings() | user_workflow_settings().
--export_type([user_task_settings/0]).
 
 -type activity_settings() :: #{
     data => temporal_sdk_activity:data(),
@@ -110,26 +99,28 @@
 }.
 -export_type([activity_settings/0]).
 
--type user_activity_settings() :: [
+-type activity_settings_as_list() :: [
     {data, temporal_sdk_activity:data()}
     | {last_heartbeat, temporal_sdk_activity:heartbeat()}
     | {heartbeat_timeout_ratio, float()}
     | {schedule_to_close_timeout_ratio, float()}
     | {start_to_close_timeout_ratio, float()}
 ].
--export_type([user_activity_settings/0]).
+-export_type([activity_settings_as_list/0]).
 
 -type nexus_settings() :: #{
     data => temporal_sdk_nexus:data(),
     task_timeout_ratio => float(),
     error_type => unicode:chardata()
 }.
+-export_type([nexus_settings/0]).
 
--type user_nexus_settings() :: [
+-type nexus_settings_as_list() :: [
     {data, temporal_sdk_nexus:data()}
     | {task_timeout_ratio, float()}
     | {error_type, unicode:chardata()}
 ].
+-export_type([nexus_settings_as_list/0]).
 
 -type workflow_settings() :: #{
     execution_id => temporal_sdk_workflow:execution_id(),
@@ -149,7 +140,7 @@
 }.
 -export_type([workflow_settings/0]).
 
--type user_workflow_settings() :: [
+-type workflow_settings_as_list() :: [
     {execution_id, temporal_sdk_workflow:execution_id()}
     | {deterministic_check_mod, module()}
     | {run_timeout_ratio, float()}
@@ -162,10 +153,10 @@
         | {recorded, pos_integer() | infinity}
         | {ignored, pos_integer() | infinity}
     ]}
-    | {eager_execution_settings, activity_settings() | user_activity_settings()}
-    | {session_worker, opts() | user_opts() | boolean()}
+    | {eager_execution_settings, activity_settings() | activity_settings_as_list()}
+    | {session_worker, opts() | opts_as_list() | boolean()}
 ].
--export_type([user_workflow_settings/0]).
+-export_type([workflow_settings_as_list/0]).
 
 -type sticky_execution() ::
     #{
@@ -208,15 +199,25 @@
     #{limit := pos_integer() | infinity, time_window := temporal_sdk:time() | undefined}.
 -export_type([task_poller_limiter/0]).
 
+-type limiter_time_windows() ::
+    limiter_time_windows_activity()
+    | limiter_time_windows_activity_as_list()
+    | limiter_time_windows_nexus()
+    | limiter_time_windows_nexus_as_list()
+    | limiter_time_windows_session()
+    | limiter_time_windows_session_as_list()
+    | limiter_time_windows_workflow()
+    | limiter_time_windows_workflow_as_list().
+
 -type limiter_time_windows_activity() :: #{
     activity_regular => temporal_sdk_limiter:time_window()
 }.
 -export_type([limiter_time_windows_activity/0]).
 
--type user_limiter_time_windows_activity() :: [
+-type limiter_time_windows_activity_as_list() :: [
     {activity_regular, temporal_sdk_limiter:time_window()}
 ].
--export_type([user_limiter_time_windows_activity/0]).
+-export_type([limiter_time_windows_activity_as_list/0]).
 
 -type limiter_time_windows_workflow() :: #{
     activity_direct => temporal_sdk_limiter:time_window(),
@@ -225,32 +226,32 @@
 }.
 -export_type([limiter_time_windows_workflow/0]).
 
--type user_limiter_time_windows_workflow() :: [
+-type limiter_time_windows_workflow_as_list() :: [
     {activity_eager, temporal_sdk_limiter:time_window()}
     | {activity_regular, temporal_sdk_limiter:time_window()}
     | {workflow, temporal_sdk_limiter:time_window()}
 ].
--export_type([user_limiter_time_windows_workflow/0]).
+-export_type([limiter_time_windows_workflow_as_list/0]).
 
 -type limiter_time_windows_session() :: #{
     activity_session => temporal_sdk_limiter:time_window()
 }.
 -export_type([limiter_time_windows_session/0]).
 
--type user_limiter_time_windows_session() :: [
+-type limiter_time_windows_session_as_list() :: [
     {activity_session, temporal_sdk_limiter:time_window()}
 ].
--export_type([user_limiter_time_windows_session/0]).
+-export_type([limiter_time_windows_session_as_list/0]).
 
 -type limiter_time_windows_nexus() :: #{
     nexus => temporal_sdk_limiter:time_window()
 }.
 -export_type([limiter_time_windows_nexus/0]).
 
--type user_limiter_time_windows_nexus() :: [
+-type limiter_time_windows_nexus_as_list() :: [
     {nexus, temporal_sdk_limiter:time_window()}
 ].
--export_type([user_limiter_time_windows_nexus/0]).
+-export_type([limiter_time_windows_nexus_as_list/0]).
 
 -doc """
 Dynamic configuration of the rate limiter.
@@ -266,12 +267,12 @@ See `start/3` for descriptions of the configuration options.
 }.
 -export_type([limiter_config/0]).
 
--type user_limiter_config() :: [
+-type limiter_config_as_list() :: [
     {task_poller_limiter, task_poller_limiter()}
     | {limits, temporal_sdk_limiter:levels_limits()}
     | {limiter_check_frequency, pos_integer()}
 ].
--export_type([user_limiter_config/0]).
+-export_type([limiter_config_as_list/0]).
 
 -type invalid_error() :: {error, invalid_cluster | invalid_worker}.
 -export_type([invalid_error/0]).
@@ -374,7 +375,7 @@ get_limiter_config(Cluster, WorkerType, WorkerId) ->
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: worker_type(),
     WorkerId :: worker_id(),
-    NewLimiterConfig :: limiter_config() | user_limiter_config()
+    NewLimiterConfig :: limiter_config() | limiter_config_as_list()
 ) -> set_limiter_config_ret().
 set_limiter_config(Cluster, session, WorkerId, NewLimiterConfig) ->
     maybe
@@ -428,7 +429,7 @@ set_limiter_config(Cluster, WorkerType, WorkerId, NewLimiterConfig) ->
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: worker_type(),
     WorkerId :: worker_id(),
-    NewLimiterConfig :: limiter_config() | user_limiter_config(),
+    NewLimiterConfig :: limiter_config() | limiter_config_as_list(),
     Nodes :: [node()]
 ) -> ok | [{ok, set_limiter_config_ret()} | {error, {erpc, Reason :: term()}} | term()].
 set_limiter_config(Cluster, WorkerType, WorkerId, NewLimiterConfig, Nodes) ->
@@ -443,7 +444,7 @@ set_limiter_config(Cluster, WorkerType, WorkerId, NewLimiterConfig, Nodes) ->
 -spec start(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: activity | nexus | workflow,
-    WorkerOpts :: user_opts() | opts()
+    WorkerOpts :: opts() | opts_as_list()
 ) ->
     {ok, opts()}
     | {invalid_opts, map()}
@@ -455,7 +456,7 @@ start(Cluster, WorkerType, WorkerOpts) ->
 -spec start(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: activity | nexus | workflow,
-    WorkerOpts :: user_opts() | opts(),
+    WorkerOpts :: opts() | opts_as_list(),
     Nodes :: [node()]
 ) -> ok.
 start(Cluster, WorkerType, WorkerOpts, Nodes) ->

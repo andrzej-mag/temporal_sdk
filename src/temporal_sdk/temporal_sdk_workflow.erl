@@ -319,9 +319,7 @@
     {result_type, ?TEMPORAL_SPEC:'temporal.api.enums.v1.QueryResultType'()}
     | {answer, temporal_sdk:term_to_payloads()}
     | {error_message, unicode:chardata()}
-    | {failure,
-        temporal_sdk:application_failure()
-        | temporal_sdk:user_application_failure()}
+    | {failure, temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list()}
     %% SDK options
     | {awaitable_event, request | response | close}
     | {wait, boolean()}
@@ -1108,7 +1106,7 @@
         state := cmd,
         execution_id := execution_id(),
         event_id => event_id(),
-        failure := temporal_sdk:application_failure() | temporal_sdk:user_application_failure()
+        failure := temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list()
     }
     | #{
         state := failed,
@@ -1233,8 +1231,7 @@
         answer => temporal_sdk:term_to_payloads(),
         error_message => unicode:chardata(),
         failure =>
-            temporal_sdk:application_failure()
-            | temporal_sdk:user_application_failure(),
+            temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list(),
         history => [map()]
     }.
 -export_type([query_data/0]).
@@ -1552,8 +1549,7 @@
 ) ->
     default
     | ApplicationFailure ::
-        temporal_sdk:application_failure()
-        | temporal_sdk:user_application_failure().
+        temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list().
 
 -doc #{group => "Workflow behaviour"}.
 -callback handle_message(
@@ -1582,8 +1578,7 @@
     | #{
         error_message => unicode:chardata(),
         failure =>
-            temporal_sdk:application_failure()
-            | temporal_sdk:user_application_failure(),
+            temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list(),
         cause => ?TEMPORAL_SPEC:'temporal.api.enums.v1.WorkflowTaskFailedCause'()
     }.
 
@@ -2172,8 +2167,7 @@ cancel_workflow_execution(Details) ->
 -doc #{group => "Temporal commands"}.
 -spec fail_workflow_execution(
     ApplicationFailure ::
-        temporal_sdk:application_failure()
-        | temporal_sdk:user_application_failure()
+        temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list()
 ) -> fail_workflow_execution().
 fail_workflow_execution(ApplicationFailure) ->
     case temporal_sdk_api_failure:build(?API_CTX, ApplicationFailure) of

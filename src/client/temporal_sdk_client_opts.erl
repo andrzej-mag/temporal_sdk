@@ -76,7 +76,7 @@
 
 -spec init_opts(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    Opts :: temporal_sdk_client:opts() | temporal_sdk_client:user_opts()
+    Opts :: temporal_sdk_client:opts() | temporal_sdk_client:opts_as_list()
 ) ->
     {ok, temporal_sdk_client:opts()} | {error, {invalid_opts, Reason :: term()}}.
 init_opts(Cluster, ClientOpts) ->

@@ -51,8 +51,7 @@ respond_activity_task_completed(ApiContext, Result) ->
     ApiContext :: temporal_sdk_api:context(),
     LastHeartbeatDetails :: temporal_sdk_activity:heartbeat(),
     ApplicationFailure ::
-        temporal_sdk:application_failure()
-        | temporal_sdk:user_application_failure()
+        temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list()
 ) -> temporal_sdk_client:cast_result().
 respond_activity_task_failed(ApiContext, LastHeartbeatDetails, ApplicationFailure) ->
     #{

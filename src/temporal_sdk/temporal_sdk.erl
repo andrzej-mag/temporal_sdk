@@ -122,7 +122,7 @@
 }.
 -export_type([application_failure/0]).
 
--type user_application_failure() :: [
+-type application_failure_as_list() :: [
     %% Failure
     {source, temporal_sdk:serializable()}
     | {message, temporal_sdk:serializable()}
@@ -135,7 +135,7 @@
     | {details, temporal_sdk:term_to_payloads()}
     | {next_retry_delay, temporal_sdk:time()}
 ].
--export_type([user_application_failure/0]).
+-export_type([application_failure_as_list/0]).
 
 -type failure_from_temporal() :: #{
     source => unicode:chardata(),
@@ -317,7 +317,7 @@
     | {failed,
         Failure ::
             temporal_sdk:application_failure()
-            | temporal_sdk:user_application_failure()}
+            | temporal_sdk:application_failure_as_list()}
     | {error, Error :: temporal_sdk_telemetry:exception()}.
 -export_type([replay_workflow_ret/0]).
 

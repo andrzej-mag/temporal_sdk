@@ -18,11 +18,11 @@
 SDK cluster configuration options.
 """.
 -type cluster_config() :: [
-    {cluster, opts() | user_opts()}
-    | {client, temporal_sdk_client:opts() | temporal_sdk_client:user_opts()}
-    | {activities, [temporal_sdk_worker:opts() | temporal_sdk_worker:user_opts()]}
-    | {workflows, [temporal_sdk_worker:opts() | temporal_sdk_worker:user_opts()]}
-    | {nexuses, [temporal_sdk_worker:opts() | temporal_sdk_worker:user_opts()]}
+    {cluster, opts() | opts_as_list()}
+    | {client, temporal_sdk_client:opts() | temporal_sdk_client:opts_as_list()}
+    | {activities, [temporal_sdk_worker:opts() | temporal_sdk_worker:opts_as_list()]}
+    | {workflows, [temporal_sdk_worker:opts() | temporal_sdk_worker:opts_as_list()]}
+    | {nexuses, [temporal_sdk_worker:opts() | temporal_sdk_worker:opts_as_list()]}
 ].
 -export_type([cluster_config/0]).
 
@@ -31,7 +31,8 @@ SDK cluster-specific configuration options as a map.
 """.
 -type opts() :: #{
     limiter_time_windows =>
-        temporal_sdk_node:limiter_time_windows() | temporal_sdk_node:user_limiter_time_windows(),
+        temporal_sdk_node:limiter_time_windows()
+        | temporal_sdk_node:limiter_time_windows_as_lists(),
     enable_single_distributed_workflow_execution => boolean() | undefined,
     workflow_scope => cluster_name(),
     telemetry_poll_interval => temporal_sdk:time()
@@ -41,14 +42,15 @@ SDK cluster-specific configuration options as a map.
 -doc """
 SDK cluster-specific configuration options as a property list.
 """.
--type user_opts() :: [
+-type opts_as_list() :: [
     {limiter_time_windows,
-        temporal_sdk_node:limiter_time_windows() | temporal_sdk_node:user_limiter_time_windows()}
+        temporal_sdk_node:limiter_time_windows()
+        | temporal_sdk_node:limiter_time_windows_as_lists()}
     | {enable_single_distributed_workflow_execution, boolean() | undefined}
     | {workflow_scope, cluster_name()}
     | {telemetry_poll_interval, temporal_sdk:time()}
 ].
--export_type([user_opts/0]).
+-export_type([opts_as_list/0]).
 
 -doc """
 SDK cluster name.
@@ -100,7 +102,7 @@ build_config(Config) ->
     temporal_sdk_utils_opts:build(Defaults, Config).
 
 -doc false.
--spec setup(Cluster :: cluster_name(), Opts :: opts() | user_opts()) ->
+-spec setup(Cluster :: cluster_name(), Opts :: opts() | opts_as_list()) ->
     {ok, LimiterCounter :: temporal_sdk_limiter:counter(),
         LimiterChildSpecs :: [supervisor:child_spec()], ClusterOpts :: opts()}
     | {error, {invalid_opts, map()}}.

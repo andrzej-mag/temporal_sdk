@@ -62,8 +62,7 @@
     | {canceled, Details :: temporal_sdk:term_to_payloads()}
     | {failed,
         Failure ::
-            temporal_sdk:application_failure()
-            | temporal_sdk:user_application_failure()}
+            temporal_sdk:application_failure() | temporal_sdk:application_failure_as_list()}
     | {continued_as_new, #{
         task_queue := unicode:chardata(), workflow_type := unicode:chardata()
     }}

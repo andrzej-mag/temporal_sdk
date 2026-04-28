@@ -41,7 +41,7 @@ init([ApiContext, LimiterCounters]) ->
 -spec start_worker(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkerType :: activity | nexus | workflow,
-    WorkerOpts :: temporal_sdk_worker:user_opts() | temporal_sdk_worker:opts()
+    WorkerOpts :: temporal_sdk_worker:opts_as_list() | temporal_sdk_worker:opts()
 ) ->
     {ok, temporal_sdk_worker:opts()}
     | {invalid_opts, map()}

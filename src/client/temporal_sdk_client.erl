@@ -38,7 +38,7 @@ SDK gRPC client configuration options as a map.
 -doc """
 SDK gRPC client configuration options as a property list.
 """.
--type user_opts() :: [
+-type opts_as_list() :: [
     {adapter, temporal_sdk_grpc:adapter()}
     | {pool_size, pos_integer()}
     | {pool_strategy, round_robin | random}
@@ -46,7 +46,7 @@ SDK gRPC client configuration options as a property list.
     | {grpc_opts_longpoll, grpc_opts()}
     | {helpers, helpers()}
 ].
--export_type([user_opts/0]).
+-export_type([opts_as_list/0]).
 
 -doc """
 Temporal API gRPC service message type specification.

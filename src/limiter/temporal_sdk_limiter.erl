@@ -93,8 +93,8 @@ Rate limiter levels limitables limits as a map.
 -doc """
 Rate limiter levels limitables limits as a proplist.
 """.
--type user_levels_limits() :: [{level(), limits()}].
--export_type([user_levels_limits/0]).
+-type levels_limits_as_list() :: [{level(), limits()}].
+-export_type([levels_limits_as_list/0]).
 
 -doc """
 Rate limiter limitables statistics.

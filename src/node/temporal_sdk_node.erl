@@ -17,7 +17,7 @@
 SDK configuration options.
 """.
 -type sdk_config() :: [
-    {node, NodeOpts :: opts() | user_opts()}
+    {node, NodeOpts :: opts() | opts_as_list()}
     | {clusters, [
         {
             ClusterName :: temporal_sdk_cluster:cluster_name(),
@@ -33,7 +33,7 @@ SDK node configuration options as a map.
 -type opts() :: #{
     enable_single_distributed_workflow_execution => boolean(),
     scope_config => [scope_config()],
-    limiter_time_windows => limiter_time_windows() | user_limiter_time_windows(),
+    limiter_time_windows => limiter_time_windows() | limiter_time_windows_as_lists(),
     telemetry_poll_interval => temporal_sdk:time(),
     telemetry_events_handlers => temporal_sdk_telemetry:events_handlers()
 }.
@@ -42,15 +42,15 @@ SDK node configuration options as a map.
 -doc """
 SDK node configuration options as a proplist.
 """.
--type user_opts() :: [
+-type opts_as_list() :: [
     {enable_single_distributed_workflow_execution, boolean()}
     | enable_single_distributed_workflow_execution
     | {scope_config, [scope_config()]}
-    | {limiter_time_windows, limiter_time_windows() | user_limiter_time_windows()}
+    | {limiter_time_windows, limiter_time_windows() | limiter_time_windows_as_lists()}
     | {telemetry_poll_interval, temporal_sdk:time()}
     | {telemetry_events_handlers, temporal_sdk_telemetry:events_handlers()}
 ].
--export_type([user_opts/0]).
+-export_type([opts_as_list/0]).
 
 -doc """
 SDK node scope configuration options.
@@ -76,7 +76,7 @@ SDK node fixed window rate limiter time windows configuration as a map.
 -doc """
 SDK node fixed window rate limiter time windows configuration as a proplist.
 """.
--type user_limiter_time_windows() :: [
+-type limiter_time_windows_as_lists() :: [
     {activity_direct, temporal_sdk_limiter:time_window()}
     | {activity_eager, temporal_sdk_limiter:time_window()}
     | {activity_regular, temporal_sdk_limiter:time_window()}
@@ -84,7 +84,7 @@ SDK node fixed window rate limiter time windows configuration as a proplist.
     | {nexus, temporal_sdk_limiter:time_window()}
     | {workflow, temporal_sdk_limiter:time_window()}
 ].
--export_type([user_limiter_time_windows/0]).
+-export_type([limiter_time_windows_as_lists/0]).
 
 -define(DEFAULT_LIMITER_TIME_WINDOW, temporal_sdk_limiter:default_time_window()).
 
@@ -107,7 +107,7 @@ os_disk_mounts() -> get_disk_mounts().
 %% internal
 
 -doc false.
--spec setup(LimiterId :: atom(), UserOpts :: opts() | user_opts()) ->
+-spec setup(LimiterId :: atom(), UserOpts :: opts() | opts_as_list()) ->
     {ok, LimiterCounters :: temporal_sdk_limiter:counters(),
         LimiterChildSpecs :: [supervisor:child_spec()], NodeOpts :: opts()}
     | {error, {invalid_opts, map()}}.
