@@ -9,7 +9,8 @@
     mutation_reset_reason/1,
     marker_encode_value/2,
     marker_decode_value/2,
-    run_request/5,
+    run_request/6,
+    run_request/7,
     format_response/4,
     t2e/3
 ]).
@@ -135,18 +136,59 @@ marker_decode_value({DM, DF}, Value) when is_atom(DM), is_atom(DF) -> DM:DF(Valu
     Opts :: proplists:proplist(),
     DefaultOpts :: temporal_sdk_utils_opts:defaults(),
     ServiceName :: temporal_sdk_api:temporal_service(),
-    MessageName :: temporal_sdk_client:msg_name()
+    RequestMessageName :: temporal_sdk_client:msg_name(),
+    ResponseMessageName :: temporal_sdk_client:msg_name()
 ) -> temporal_sdk:response().
-run_request(Cluster, Opts, DefaultOpts, ServiceName, MessageName) ->
+run_request(Cluster, Opts, DefaultOpts, ServiceName, RequestMessageName, ResponseMessageName) ->
+    run_request(
+        Cluster, Opts, DefaultOpts, ServiceName, RequestMessageName, ResponseMessageName, []
+    ).
+
+-spec run_request(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    Opts :: proplists:proplist(),
+    DefaultOpts :: temporal_sdk_utils_opts:defaults(),
+    ServiceName :: temporal_sdk_api:temporal_service(),
+    RequestMessageName :: temporal_sdk_client:msg_name(),
+    ResponseMessageName :: temporal_sdk_client:msg_name(),
+    Customizations :: proplists:proplist()
+) -> temporal_sdk:response().
+run_request(
+    Cluster, Opts, DefaultOpts, ServiceName, RequestMessageName, ResponseMessageName, Customizations
+) ->
     maybe
         {ok, ApiCtx} ?= temporal_sdk_api_context:build(Cluster),
         {ok, FullOpts} ?= temporal_sdk_utils_opts:build(DefaultOpts, Opts, ApiCtx),
         {RawRequest, O1} = maps:take(raw_request, FullOpts),
         {ResponseType, O2} = maps:take(response_type, O1),
-        Req = maps:merge(O2, RawRequest),
-        Response = temporal_sdk_api:request(ServiceName, Cluster, Req, ResponseType, #{}),
-        format_response(MessageName, ResponseType, Response, ApiCtx)
+        {GrpcOpts, O3} =
+            case O2 of
+                #{grpc_opts := GO} -> {GO, maps:without([grpc_opts], O2)};
+                #{} -> {#{}, O2}
+            end,
+        Req1 = maps:merge(O3, RawRequest),
+        Req = do_custom(Customizations, ApiCtx, RequestMessageName, Req1),
+        Response = temporal_sdk_api:request(ServiceName, Cluster, Req, ResponseType, GrpcOpts),
+        format_response(ResponseMessageName, ResponseType, Response, ApiCtx)
     end.
+
+do_custom([{new, {Key, Val}} | TC], ApiCtx, MsgName, Req) ->
+    do_custom(TC, ApiCtx, MsgName, Req#{Key => Val});
+do_custom([{nested, {PKey, CKeys}} | TC], ApiCtx, MsgName, Req) ->
+    R = maps:without(CKeys, Req),
+    do_custom(TC, ApiCtx, MsgName, R#{PKey => maps:with(CKeys, Req)});
+do_custom([{workflow_execution, {Key, WE}} | TC], ApiCtx, MsgName, Req) ->
+    do_custom(TC, ApiCtx, MsgName, Req#{Key => WE});
+do_custom([{workflow_execution, WE} | TC], ApiCtx, MsgName, Req) when is_map(WE) ->
+    do_custom([{workflow_execution, {workflow_execution, WE}} | TC], ApiCtx, MsgName, Req);
+do_custom([identity | TC], ApiCtx, MsgName, Req) ->
+    do_custom(TC, ApiCtx, MsgName, temporal_sdk_api:put_identity(ApiCtx, MsgName, Req));
+do_custom([id | TC], ApiCtx, MsgName, Req) ->
+    do_custom([{id, id} | TC], ApiCtx, MsgName, Req);
+do_custom([{id, Key} | TC], ApiCtx, MsgName, Req) ->
+    do_custom(TC, ApiCtx, MsgName, temporal_sdk_api:put_id(ApiCtx, MsgName, Key, Req));
+do_custom([], _ApiCtx, _MsgName, Req) ->
+    Req.
 
 -spec format_response(
     MessageName :: temporal_sdk_client:msg_name(),

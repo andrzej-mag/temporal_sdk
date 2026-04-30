@@ -35,7 +35,7 @@ base() ->
         temporal_sdk:start_workflow(?CL, ?TQ, WMod, [{namespace, ?NS}, {workflow_id, WId}]),
     ?assertMatch(
         {ok, #{query_result := [_]}},
-        temporal_sdk_service:query_workflow(?CL, WE, ?QUERY_TYPE, [
+        temporal_sdk:query_workflow(?CL, WE, ?QUERY_TYPE, [
             {namespace, ?NS}, {query_args, ["query args"]}
         ])
     ),
@@ -45,7 +45,7 @@ base() ->
     timer:sleep(500),
     ?assertMatch(
         {ok, #{query_result := ["closed result"]}},
-        temporal_sdk_service:query_workflow(?CL, WE, ?QUERY_TYPE, [
+        temporal_sdk:query_workflow(?CL, WE, ?QUERY_TYPE, [
             {namespace, ?NS}, {query_args, ["query args"]}
         ])
     ).

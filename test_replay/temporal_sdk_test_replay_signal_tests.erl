@@ -17,7 +17,7 @@ base_test_() -> ?FIXTURE(?CONFIGS, {inparallel, {timeout, 10, ?TESTS}}).
     case IsReplaying of
         false ->
             spawn(fun() ->
-                temporal_sdk_service:signal_workflow(?CL, WE, ?SIN, [{namespace, ?NS}])
+                temporal_sdk:signal_workflow(?CL, WE, ?SIN, [{namespace, ?NS}])
             end);
         true ->
             ok

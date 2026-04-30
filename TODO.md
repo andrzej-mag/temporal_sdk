@@ -20,6 +20,8 @@ Implement Nexus.
 
 Implement standalone activities.
 
+Add advanced worker pollers features: scaling and heartbeat.
+
 Activity, workflow and nexus tasks: node_execution.
 
 Asynchronous activity completion by heartbeat.
