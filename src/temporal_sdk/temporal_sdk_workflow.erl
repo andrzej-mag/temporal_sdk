@@ -67,24 +67,24 @@
 -export([
     await/1,
     await/2,
-    await_one/1,
-    await_one/2,
     await_all/1,
     await_all/2,
+    await_any/1,
+    await_any/2,
 
     await_info/1,
     await_info/3,
 
     is_awaited/1,
-    is_awaited_one/1,
     is_awaited_all/1,
+    is_awaited_any/1,
 
     wait/1,
     wait/2,
-    wait_one/1,
-    wait_one/2,
     wait_all/1,
     wait_all/2,
+    wait_any/1,
+    wait_any/2,
 
     wait_info/1,
     wait_info/3
@@ -1276,12 +1276,12 @@
 
 -doc #{group => "Awaitables functions types"}.
 -type await_pattern_all() ::
-    {all, [awaitable_pattern() | await_pattern_one() | await_pattern_all()]}.
+    {all, [awaitable_pattern() | await_pattern_all() | await_pattern_any()]}.
 -doc #{group => "Awaitables functions types"}.
--type await_pattern_one() ::
-    {one, [awaitable_pattern() | await_pattern_one() | await_pattern_all()]}.
+-type await_pattern_any() ::
+    {any, [awaitable_pattern() | await_pattern_all() | await_pattern_any()]}.
 -doc #{group => "Awaitables functions types"}.
--type await_pattern() :: awaitable_pattern() | await_pattern_all() | await_pattern_one().
+-type await_pattern() :: awaitable_pattern() | await_pattern_all() | await_pattern_any().
 -export_type([await_pattern/0]).
 
 %% match
@@ -1291,11 +1291,11 @@
 -export_type([awaitable_match/0]).
 
 -doc #{group => "Awaitables functions types"}.
--type await_match_all() :: {all, [awaitable_match() | await_match_one() | await_match_all()]}.
+-type await_match_all() :: {all, [awaitable_match() | await_match_all() | await_match_any()]}.
 -doc #{group => "Awaitables functions types"}.
--type await_match_one() :: {one, [awaitable_match() | await_match_one() | await_match_all()]}.
+-type await_match_any() :: {any, [awaitable_match() | await_match_all() | await_match_any()]}.
 -doc #{group => "Awaitables functions types"}.
--type await_match() :: awaitable_match() | await_match_all() | await_match_one().
+-type await_match() :: awaitable_match() | await_match_all() | await_match_any().
 -export_type([await_match/0]).
 
 -doc #{group => "Awaitables functions types"}.
@@ -2496,8 +2496,8 @@ do_await(AwaitPattern, EvictEvent, Timeout) ->
             Timer = start_timer(Timeout, [{awaitable_id, ?AWAIT_TIMEOUT_ID}]),
             AwaitResult =
                 case EvictEvent of
-                    evict -> await_one([Timer, AwaitPattern], [evict]);
-                    ignore -> await_one([Timer, AwaitPattern])
+                    evict -> await_any([Timer, AwaitPattern], [evict]);
+                    ignore -> await_any([Timer, AwaitPattern])
                 end,
             case AwaitResult of
                 {ok, [#{state := S, event_id := TEId}, _Match]} when S =:= fired; S =:= canceled ->
@@ -2525,20 +2525,6 @@ is_awaited_timeout(AwaitPattern, TimerEId) ->
     end.
 
 -doc #{group => "Awaitables functions"}.
--spec await_one(AwaitPattern :: [await_pattern()]) -> await_ret_list().
-await_one(AwaitPattern) when is_list(AwaitPattern) ->
-    await_one(AwaitPattern, []).
-
--doc #{group => "Awaitables functions"}.
--spec await_one(AwaitPattern :: [await_pattern()], Opts :: await_opts()) ->
-    await_ret_list().
-await_one(AwaitPattern, Opts) when is_list(AwaitPattern) ->
-    case await({one, AwaitPattern}, Opts) of
-        {noevent, {one, AwaitMatchList}} when is_list(AwaitMatchList) -> {noevent, AwaitMatchList};
-        {ok, {one, AwaitMatchList}} when is_list(AwaitMatchList) -> {ok, AwaitMatchList}
-    end.
-
--doc #{group => "Awaitables functions"}.
 -spec await_all(AwaitPattern :: [await_pattern()]) -> await_ret_list().
 await_all(AwaitPattern) when is_list(AwaitPattern) ->
     await_all(AwaitPattern, []).
@@ -2550,6 +2536,20 @@ await_all(AwaitPattern, Opts) when is_list(AwaitPattern) ->
     case await({all, AwaitPattern}, Opts) of
         {noevent, {all, AwaitMatchList}} when is_list(AwaitMatchList) -> {noevent, AwaitMatchList};
         {ok, {all, AwaitMatchList}} when is_list(AwaitMatchList) -> {ok, AwaitMatchList}
+    end.
+
+-doc #{group => "Awaitables functions"}.
+-spec await_any(AwaitPattern :: [await_pattern()]) -> await_ret_list().
+await_any(AwaitPattern) when is_list(AwaitPattern) ->
+    await_any(AwaitPattern, []).
+
+-doc #{group => "Awaitables functions"}.
+-spec await_any(AwaitPattern :: [await_pattern()], Opts :: await_opts()) ->
+    await_ret_list().
+await_any(AwaitPattern, Opts) when is_list(AwaitPattern) ->
+    case await({any, AwaitPattern}, Opts) of
+        {noevent, {any, AwaitMatchList}} when is_list(AwaitMatchList) -> {noevent, AwaitMatchList};
+        {ok, {any, AwaitMatchList}} when is_list(AwaitMatchList) -> {ok, AwaitMatchList}
     end.
 
 -doc #{group => "Awaitables functions"}.
@@ -2599,19 +2599,19 @@ is_awaited(AwaitPattern) when is_tuple(AwaitPattern) ->
     end.
 
 -doc #{group => "Awaitables functions"}.
--spec is_awaited_one(AwaitPattern :: [await_pattern()]) ->
-    {true, [await_match()]} | {false, [await_match()]} | no_return.
-is_awaited_one(AwaitPattern) when is_list(AwaitPattern) ->
-    case is_awaited({one, AwaitPattern}) of
-        {R, {one, AwaitMatchList}} when is_list(AwaitMatchList) -> {R, AwaitMatchList}
-    end.
-
--doc #{group => "Awaitables functions"}.
 -spec is_awaited_all(AwaitPattern :: [await_pattern()]) ->
     {true, [await_match()]} | {false, [await_match()]} | no_return.
 is_awaited_all(AwaitPattern) when is_list(AwaitPattern) ->
     case is_awaited({all, AwaitPattern}) of
         {R, {all, AwaitMatchList}} when is_list(AwaitMatchList) -> {R, AwaitMatchList}
+    end.
+
+-doc #{group => "Awaitables functions"}.
+-spec is_awaited_any(AwaitPattern :: [await_pattern()]) ->
+    {true, [await_match()]} | {false, [await_match()]} | no_return.
+is_awaited_any(AwaitPattern) when is_list(AwaitPattern) ->
+    case is_awaited({any, AwaitPattern}) of
+        {R, {any, AwaitMatchList}} when is_list(AwaitMatchList) -> {R, AwaitMatchList}
     end.
 
 -doc #{group => "Awaitables functions"}.
@@ -2631,22 +2631,6 @@ wait(AwaitPattern, Opts) ->
     end.
 
 -doc #{group => "Awaitables functions"}.
--spec wait_one(AwaitPattern :: [await_pattern()]) -> [await_match()] | no_return().
-wait_one(AwaitPattern) ->
-    wait_one(AwaitPattern, []).
-
--doc #{group => "Awaitables functions"}.
--spec wait_one(AwaitPattern :: [await_pattern()], Opts :: await_opts()) ->
-    [await_match()] | no_return().
-wait_one(AwaitPattern, Opts) ->
-    case await_one(AwaitPattern, Opts) of
-        {ok, Match} ->
-            Match;
-        {noevent, PartialMatch} ->
-            erlang:error(noevent, [{await_pattern, AwaitPattern}, {partial_match, PartialMatch}])
-    end.
-
--doc #{group => "Awaitables functions"}.
 -spec wait_all(AwaitPattern :: [await_pattern()]) -> [await_match()] | no_return().
 wait_all(AwaitPattern) ->
     wait_all(AwaitPattern, []).
@@ -2656,6 +2640,22 @@ wait_all(AwaitPattern) ->
     [await_match()] | no_return().
 wait_all(AwaitPattern, Opts) ->
     case await_all(AwaitPattern, Opts) of
+        {ok, Match} ->
+            Match;
+        {noevent, PartialMatch} ->
+            erlang:error(noevent, [{await_pattern, AwaitPattern}, {partial_match, PartialMatch}])
+    end.
+
+-doc #{group => "Awaitables functions"}.
+-spec wait_any(AwaitPattern :: [await_pattern()]) -> [await_match()] | no_return().
+wait_any(AwaitPattern) ->
+    wait_any(AwaitPattern, []).
+
+-doc #{group => "Awaitables functions"}.
+-spec wait_any(AwaitPattern :: [await_pattern()], Opts :: await_opts()) ->
+    [await_match()] | no_return().
+wait_any(AwaitPattern, Opts) ->
+    case await_any(AwaitPattern, Opts) of
         {ok, Match} ->
             Match;
         {noevent, PartialMatch} ->

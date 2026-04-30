@@ -9,12 +9,12 @@
     fun test_is_awaited/0,
     fun test_await_all/0,
     fun test_await_all_events/0,
-    fun test_await_one/0,
-    fun test_await_one_events/0,
+    fun test_await_any/0,
+    fun test_await_any_events/0,
     fun test_await_all_all/0,
-    fun test_await_one_one/0,
-    fun test_await_all_one/0,
-    fun test_await_one_all/0,
+    fun test_await_any_any/0,
+    fun test_await_all_any/0,
+    fun test_await_any_all/0,
     fun test_await_timeout_1/0,
     fun test_wait_timeout_1/0,
     fun test_await_timeout_2/0,
@@ -50,8 +50,8 @@ test_is_awaited() ->
         {false, noevent} = is_awaited(I),
         {false, {all, [noevent, noevent, noevent]}} = is_awaited({all, [A, T, I]}),
         {false, [noevent, noevent, noevent]} = is_awaited_all([A, T, I]),
-        {false, {one, [noevent, noevent, noevent]}} = is_awaited({one, [A, T, I]}),
-        {false, [noevent, noevent, noevent]} = is_awaited_one([A, T, I]),
+        {false, {any, [noevent, noevent, noevent]}} = is_awaited({any, [A, T, I]}),
+        {false, [noevent, noevent, noevent]} = is_awaited_any([A, T, I]),
 
         ?StD = wait(setelement(1, A, activity_cmd)),
         {false, ?StD} = is_awaited(A),
@@ -59,8 +59,8 @@ test_is_awaited() ->
         {false, noevent} = is_awaited(I),
         {false, {all, [?StD, ?StD, noevent]}} = is_awaited({all, [A, T, I]}),
         {false, [?StD, ?StD, noevent]} = is_awaited_all([A, T, I]),
-        {false, {one, [?StD, ?StD, noevent]}} = is_awaited({one, [A, T, I]}),
-        {false, [?StD, ?StD, noevent]} = is_awaited_one([A, T, I]),
+        {false, {any, [?StD, ?StD, noevent]}} = is_awaited({any, [A, T, I]}),
+        {false, [?StD, ?StD, noevent]} = is_awaited_any([A, T, I]),
 
         [?StC, ?StF] = wait_all([A, T]),
         {true, ?StC} = is_awaited(A),
@@ -70,8 +70,8 @@ test_is_awaited() ->
         {false, [?StC, ?StF, noevent]} = is_awaited_all([A, T, I]),
         {true, {all, [?StC, ?StF]}} = is_awaited({all, [A, T]}),
         {true, [?StC, ?StF]} = is_awaited_all([A, T]),
-        {true, {one, [?StC, ?StF, noevent]}} = is_awaited({one, [A, T, I]}),
-        {true, [?StC, ?StF, noevent]} = is_awaited_one([A, T, I])
+        {true, {any, [?StC, ?StF, noevent]}} = is_awaited({any, [A, T, I]}),
+        {true, [?StC, ?StF, noevent]} = is_awaited_any([A, T, I])
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
@@ -119,62 +119,62 @@ test_await_all_events() ->
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
-test_await_one() ->
+test_await_any() ->
     EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
         A = start_activity(?A_TYPE, []),
         T = start_timer(?TTO),
         case IsReplaying of
             false ->
-                {ok, [?StC, ?StS]} = await_one([A, T]),
-                [?StC, ?StS] = wait_one([A, T]),
-                {ok, {one, [?StC, ?StS]}} =
-                    await({one, [A, T]}),
-                {ok, {one, [?StC, ?StS, ?StC, ?StS]}} =
-                    await({one, [A, T, A, T]}),
-                {ok, {one, [{one, [?StC, ?StS, ?StC, ?StS]}]}} =
-                    await({one, [{one, [A, T, A, T]}]}),
-                {ok, {one, [{one, [{one, [?StC, ?StS, ?StC, ?StS]}]}]}} =
-                    await({one, [{one, [{one, [A, T, A, T]}]}]}),
-                {ok, {one, [{one, [{one, [{one, [?StC, ?StS, ?StC, ?StS]}]}]}]}} =
-                    await({one, [{one, [{one, [{one, [A, T, A, T]}]}]}]});
+                {ok, [?StC, ?StS]} = await_any([A, T]),
+                [?StC, ?StS] = wait_any([A, T]),
+                {ok, {any, [?StC, ?StS]}} =
+                    await({any, [A, T]}),
+                {ok, {any, [?StC, ?StS, ?StC, ?StS]}} =
+                    await({any, [A, T, A, T]}),
+                {ok, {any, [{any, [?StC, ?StS, ?StC, ?StS]}]}} =
+                    await({any, [{any, [A, T, A, T]}]}),
+                {ok, {any, [{any, [{any, [?StC, ?StS, ?StC, ?StS]}]}]}} =
+                    await({any, [{any, [{any, [A, T, A, T]}]}]}),
+                {ok, {any, [{any, [{any, [{any, [?StC, ?StS, ?StC, ?StS]}]}]}]}} =
+                    await({any, [{any, [{any, [{any, [A, T, A, T]}]}]}]});
             true ->
-                {ok, [?StC, ?StF]} = await_one([A, T]),
-                [?StC, ?StF] = wait_one([A, T]),
-                {ok, {one, [?StC, ?StF]}} =
-                    await({one, [A, T]}),
-                {ok, {one, [?StC, ?StF, ?StC, ?StF]}} =
-                    await({one, [A, T, A, T]}),
-                {ok, {one, [{one, [?StC, ?StF, ?StC, ?StF]}]}} =
-                    await({one, [{one, [A, T, A, T]}]}),
-                {ok, {one, [{one, [{one, [?StC, ?StF, ?StC, ?StF]}]}]}} =
-                    await({one, [{one, [{one, [A, T, A, T]}]}]}),
-                {ok, {one, [{one, [{one, [{one, [?StC, ?StF, ?StC, ?StF]}]}]}]}} =
-                    await({one, [{one, [{one, [{one, [A, T, A, T]}]}]}]})
+                {ok, [?StC, ?StF]} = await_any([A, T]),
+                [?StC, ?StF] = wait_any([A, T]),
+                {ok, {any, [?StC, ?StF]}} =
+                    await({any, [A, T]}),
+                {ok, {any, [?StC, ?StF, ?StC, ?StF]}} =
+                    await({any, [A, T, A, T]}),
+                {ok, {any, [{any, [?StC, ?StF, ?StC, ?StF]}]}} =
+                    await({any, [{any, [A, T, A, T]}]}),
+                {ok, {any, [{any, [{any, [?StC, ?StF, ?StC, ?StF]}]}]}} =
+                    await({any, [{any, [{any, [A, T, A, T]}]}]}),
+                {ok, {any, [{any, [{any, [{any, [?StC, ?StF, ?StC, ?StF]}]}]}]}} =
+                    await({any, [{any, [{any, [{any, [A, T, A, T]}]}]}]})
         end
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
-test_await_one_events() ->
+test_await_any_events() ->
     EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
         A = start_activity(?A_TYPE, []),
         T = start_timer(?TTO),
-        {ok, {one, [?StD, ?StD]}} =
-            await({one, [setelement(1, A, activity_cmd), setelement(1, T, timer_cmd)]}),
+        {ok, {any, [?StD, ?StD]}} =
+            await({any, [setelement(1, A, activity_cmd), setelement(1, T, timer_cmd)]}),
         case IsReplaying of
             false ->
-                {ok, {one, [?StC, ?StS]}} =
+                {ok, {any, [?StC, ?StS]}} =
                     await(
-                        {one, [setelement(1, A, activity_schedule), setelement(1, T, timer_start)]}
+                        {any, [setelement(1, A, activity_schedule), setelement(1, T, timer_start)]}
                     ),
-                {ok, {one, [?StC, ?StS]}} =
-                    await({one, [setelement(1, A, activity_start), setelement(1, T, timer_start)]});
+                {ok, {any, [?StC, ?StS]}} =
+                    await({any, [setelement(1, A, activity_start), setelement(1, T, timer_start)]});
             true ->
-                {ok, {one, [?StC, ?StF]}} =
+                {ok, {any, [?StC, ?StF]}} =
                     await(
-                        {one, [setelement(1, A, activity_schedule), setelement(1, T, timer_start)]}
+                        {any, [setelement(1, A, activity_schedule), setelement(1, T, timer_start)]}
                     ),
-                {ok, {one, [?StC, ?StF]}} =
-                    await({one, [setelement(1, A, activity_start), setelement(1, T, timer_start)]})
+                {ok, {any, [?StC, ?StF]}} =
+                    await({any, [setelement(1, A, activity_start), setelement(1, T, timer_start)]})
         end
     end,
     ?assertReplayEqual({completed, []}, EFn).
@@ -190,52 +190,52 @@ test_await_all_all() ->
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
-test_await_one_one() ->
+test_await_any_any() ->
     EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
         A = start_activity(?A_TYPE, []),
         T = start_timer(?TTO),
         case IsReplaying of
             false ->
-                {ok, {one, [{one, [?StC, ?StS]}, {one, [?StC, ?StS]}]}} =
-                    await({one, [{one, [A, T]}, {one, [A, T]}]}),
-                {ok, {one, [{one, [?StC, ?StS, ?StC, ?StS]}, {one, [?StC, ?StS, ?StC, ?StS]}]}} =
-                    await({one, [{one, [A, T, A, T]}, {one, [A, T, A, T]}]});
+                {ok, {any, [{any, [?StC, ?StS]}, {any, [?StC, ?StS]}]}} =
+                    await({any, [{any, [A, T]}, {any, [A, T]}]}),
+                {ok, {any, [{any, [?StC, ?StS, ?StC, ?StS]}, {any, [?StC, ?StS, ?StC, ?StS]}]}} =
+                    await({any, [{any, [A, T, A, T]}, {any, [A, T, A, T]}]});
             true ->
-                {ok, {one, [{one, [?StC, ?StF]}, {one, [?StC, ?StF]}]}} =
-                    await({one, [{one, [A, T]}, {one, [A, T]}]}),
-                {ok, {one, [{one, [?StC, ?StF, ?StC, ?StF]}, {one, [?StC, ?StF, ?StC, ?StF]}]}} =
-                    await({one, [{one, [A, T, A, T]}, {one, [A, T, A, T]}]})
+                {ok, {any, [{any, [?StC, ?StF]}, {any, [?StC, ?StF]}]}} =
+                    await({any, [{any, [A, T]}, {any, [A, T]}]}),
+                {ok, {any, [{any, [?StC, ?StF, ?StC, ?StF]}, {any, [?StC, ?StF, ?StC, ?StF]}]}} =
+                    await({any, [{any, [A, T, A, T]}, {any, [A, T, A, T]}]})
         end
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
-test_await_all_one() ->
+test_await_all_any() ->
     EFn = fun(#{is_replaying := IsReplaying}, _Input) ->
         A = start_activity(?A_TYPE, []),
         T = start_timer(?TTO),
         case IsReplaying of
             false ->
-                {ok, {all, [{one, [?StC, ?StS]}, {one, [?StC, ?StS]}]}} =
-                    await({all, [{one, [A, T]}, {one, [A, T]}]}),
-                {ok, {all, [{all, [?StC, ?StF]}, {one, [?StC, ?StF]}]}} =
-                    await({all, [{all, [A, T]}, {one, [A, T]}]});
+                {ok, {all, [{any, [?StC, ?StS]}, {any, [?StC, ?StS]}]}} =
+                    await({all, [{any, [A, T]}, {any, [A, T]}]}),
+                {ok, {all, [{all, [?StC, ?StF]}, {any, [?StC, ?StF]}]}} =
+                    await({all, [{all, [A, T]}, {any, [A, T]}]});
             true ->
-                {ok, {all, [{one, [?StC, ?StF]}, {one, [?StC, ?StF]}]}} =
-                    await({all, [{one, [A, T]}, {one, [A, T]}]}),
-                {ok, {all, [{all, [?StC, ?StF]}, {one, [?StC, ?StF]}]}} =
-                    await({all, [{all, [A, T]}, {one, [A, T]}]})
+                {ok, {all, [{any, [?StC, ?StF]}, {any, [?StC, ?StF]}]}} =
+                    await({all, [{any, [A, T]}, {any, [A, T]}]}),
+                {ok, {all, [{all, [?StC, ?StF]}, {any, [?StC, ?StF]}]}} =
+                    await({all, [{all, [A, T]}, {any, [A, T]}]})
         end
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
-test_await_one_all() ->
+test_await_any_all() ->
     EFn = fun(_Context, _Input) ->
         A = start_activity(?A_TYPE, []),
         T = start_timer(?TTO),
-        {ok, {one, [{all, [?StC, ?StF]}, {all, [?StC, ?StF]}]}} =
-            await({one, [{all, [A, T]}, {all, [A, T]}]}),
-        {ok, {one, [{all, [?StC, ?StF]}, {one, [?StC, ?StF]}]}} =
-            await({one, [{all, [A, T]}, {one, [A, T]}]})
+        {ok, {any, [{all, [?StC, ?StF]}, {all, [?StC, ?StF]}]}} =
+            await({any, [{all, [A, T]}, {all, [A, T]}]}),
+        {ok, {any, [{all, [?StC, ?StF]}, {any, [?StC, ?StF]}]}} =
+            await({any, [{all, [A, T]}, {any, [A, T]}]})
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
@@ -243,9 +243,9 @@ test_await_timeout_1() ->
     EFn = fun(_Context, _Input) ->
         A = start_activity(?A_TYPE, []),
         T = start_timer(?TTO),
-        {ok, {one, [?StC, ?StS]}} = await({one, [A, T]}, round(?TTO / 4)),
+        {ok, {any, [?StC, ?StS]}} = await({any, [A, T]}, round(?TTO / 4)),
         {ok, {all, [?StC, ?StF]}} = await({all, [A, T]}, round(?TTO / 4)),
-        {ok, {one, [?StC, ?StF]}} = await({one, [A, T]}, round(?TTO / 4))
+        {ok, {any, [?StC, ?StF]}} = await({any, [A, T]}, round(?TTO / 4))
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
@@ -253,9 +253,9 @@ test_wait_timeout_1() ->
     EFn = fun(_Context, _Input) ->
         A = start_activity(?A_TYPE, []),
         T = start_timer(?TTO),
-        {one, [?StC, ?StS]} = wait({one, [A, T]}, round(?TTO / 4)),
+        {any, [?StC, ?StS]} = wait({any, [A, T]}, round(?TTO / 4)),
         {all, [?StC, ?StF]} = wait({all, [A, T]}, round(?TTO / 4)),
-        {one, [?StC, ?StF]} = wait({one, [A, T]}, round(?TTO / 4))
+        {any, [?StC, ?StF]} = wait({any, [A, T]}, round(?TTO / 4))
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
@@ -263,9 +263,9 @@ test_await_timeout_2() ->
     EFn = fun(_Context, _Input) ->
         A = start_activity(?A_TYPE, []),
         T = start_timer(?TTO),
-        {ok, [?StC, ?StS]} = await_one([A, T], round(?TTO / 4)),
+        {ok, [?StC, ?StS]} = await_any([A, T], round(?TTO / 4)),
         {ok, [?StC, ?StF]} = await_all([A, T], round(?TTO / 4)),
-        {ok, [?StC, ?StF]} = await_one([A, T], round(?TTO / 4))
+        {ok, [?StC, ?StF]} = await_any([A, T], round(?TTO / 4))
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
@@ -273,9 +273,9 @@ test_wait_timeout_2() ->
     EFn = fun(_Context, _Input) ->
         A = start_activity(?A_TYPE, []),
         T = start_timer(?TTO),
-        [?StC, ?StS] = wait_one([A, T], round(?TTO / 4)),
+        [?StC, ?StS] = wait_any([A, T], round(?TTO / 4)),
         [?StC, ?StF] = wait_all([A, T], round(?TTO / 4)),
-        [?StC, ?StF] = wait_one([A, T], round(?TTO / 4))
+        [?StC, ?StF] = wait_any([A, T], round(?TTO / 4))
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
@@ -284,12 +284,12 @@ test_await_noevent() ->
         A = start_activity(?A_TYPE, []),
         T = start_timer(?TTO),
         M = {marker, none, invalid},
-        {ok, {one, [?StC, ?StS, noevent]}} = await({one, [A, T, M]}),
-        {ok, {one, [?StC, ?StS, noevent]}} = await({one, [A, T, M]}, round(?TTO / 4)),
+        {ok, {any, [?StC, ?StS, noevent]}} = await({any, [A, T, M]}),
+        {ok, {any, [?StC, ?StS, noevent]}} = await({any, [A, T, M]}, round(?TTO / 4)),
         {noevent, {all, [?StC, ?StF, noevent]}} = await({all, [A, T, M]}, round(?TTO / 4)),
         {noevent, {all, [?StC, ?StF, noevent]}} = await({all, [A, T, M]}),
-        {ok, {one, [?StC, ?StF, noevent]}} = await({one, [A, T, M]}, round(?TTO / 4)),
-        {ok, {one, [?StC, ?StF, noevent]}} = await({one, [A, T, M]})
+        {ok, {any, [?StC, ?StF, noevent]}} = await({any, [A, T, M]}, round(?TTO / 4)),
+        {ok, {any, [?StC, ?StF, noevent]}} = await({any, [A, T, M]})
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
@@ -338,8 +338,8 @@ raising_wait() ->
         ?assertError(noevent, wait(I, 1_000)),
         ?assertError(noevent, wait_all([A, T, I])),
         ?assertError(noevent, wait_all([A, T, I], 1_000)),
-        ?assertError(noevent, wait_one([I])),
-        ?assertError(noevent, wait_one([I], 1_000))
+        ?assertError(noevent, wait_any([I])),
+        ?assertError(noevent, wait_any([I], 1_000))
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
@@ -365,11 +365,11 @@ test_await_info() ->
         {noevent, noevent} = await_info(test_info_m, 1, 1),
 
         set_info({all, [A, T, M]}, [{info_id, test_info_all}]),
-        set_info({one, [A, T, M]}, [{info_id, test_info_one}]),
+        set_info({any, [A, T, M]}, [{info_id, test_info_any}]),
         {noevent, {all, [?StC, ?StF, noevent]}} = await_info(test_info_all),
         {noevent, {all, [?StC, ?StF, noevent]}} = await_info(test_info_all, 1, 1),
-        {ok, {one, [?StC, ?StF, noevent]}} = await_info(test_info_one),
-        {ok, {one, [?StC, ?StF, noevent]}} = await_info(test_info_one, 1, 1)
+        {ok, {any, [?StC, ?StF, noevent]}} = await_info(test_info_any),
+        {ok, {any, [?StC, ?StF, noevent]}} = await_info(test_info_any, 1, 1)
     end,
     ?assertReplayEqual({completed, []}, EFn).
 
@@ -395,11 +395,11 @@ test_wait_info() ->
         ?assertError(noevent, wait_info(test_info_m, 1, 1)),
 
         set_info({all, [A, T, M]}, [{info_id, test_info_all}]),
-        set_info({one, [A, T, M]}, [{info_id, test_info_one}]),
+        set_info({any, [A, T, M]}, [{info_id, test_info_any}]),
         ?assertError(noevent, wait_info(test_info_all)),
         ?assertError(noevent, wait_info(test_info_all, 1, 1)),
-        {one, [?StC, ?StF, noevent]} = wait_info(test_info_one),
-        {one, [?StC, ?StF, noevent]} = wait_info(test_info_one, 1, 1)
+        {any, [?StC, ?StF, noevent]} = wait_info(test_info_any),
+        {any, [?StC, ?StF, noevent]} = wait_info(test_info_any, 1, 1)
     end,
     ?assertReplayEqual({completed, []}, EFn).
 

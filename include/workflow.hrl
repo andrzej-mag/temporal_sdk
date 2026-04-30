@@ -66,24 +66,24 @@
 -import(temporal_sdk_workflow, [
     await/1,
     await/2,
-    await_one/1,
-    await_one/2,
     await_all/1,
     await_all/2,
+    await_any/1,
+    await_any/2,
 
     await_info/1,
     await_info/3,
 
     is_awaited/1,
-    is_awaited_one/1,
     is_awaited_all/1,
+    is_awaited_any/1,
 
     wait/1,
     wait/2,
-    wait_one/1,
-    wait_one/2,
     wait_all/1,
     wait_all/2,
+    wait_any/1,
+    wait_any/2,
 
     wait_info/1,
     wait_info/3

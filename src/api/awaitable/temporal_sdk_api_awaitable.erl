@@ -18,7 +18,7 @@
     AwaitPattern :: temporal_sdk_workflow:await_pattern() | [temporal_sdk_workflow:await_pattern()],
     ApiCtx :: temporal_sdk_api:context()
 ) -> tuple().
-cast_key({Operator, [P | TPattern]}, ApiContext) when Operator =:= one; Operator =:= all ->
+cast_key({Operator, [P | TPattern]}, ApiContext) when Operator =:= all; Operator =:= any ->
     {H1, H2} = cast_key(P, ApiContext),
     {T1, T2} = cast_key(TPattern, ApiContext),
     {{Operator, [H1 | T1]}, {Operator, [H2 | T2]}};
@@ -36,7 +36,7 @@ cast_key(Pattern, ApiContext) ->
 -spec init_match(AwaitPattern :: temporal_sdk_workflow:await_pattern(), {
     HistoryTable :: ets:table(), IndexTable :: ets:table()
 }) -> temporal_sdk_workflow:await_match().
-init_match({Operator, Pattern}, Tables) when Operator =:= one; Operator =:= all ->
+init_match({Operator, Pattern}, Tables) when Operator =:= all; Operator =:= any ->
     {Operator, [init_match(P, Tables) || P <- Pattern]};
 init_match({event, HistoryEventPattern}, {HistoryTable, _IndexTable}) ->
     temporal_sdk_api_awaitable_history_table:fetch(HistoryTable, HistoryEventPattern);
@@ -46,7 +46,7 @@ init_match(IndexKey, {_HistoryTable, IndexTable}) ->
     % eqwalizer:ignore
     temporal_sdk_api_awaitable_index_table:fetch(IndexTable, IndexKey).
 
-match_test({Operator, Pattern}, {Operator, Match}) when Operator =:= one; Operator =:= all ->
+match_test({Operator, Pattern}, {Operator, Match}) when Operator =:= all; Operator =:= any ->
     {Operator, lists:zipwith(fun match_test/2, Pattern, Match)};
 match_test(awaitable_data, _AwaitableData) ->
     {true, true};
@@ -57,7 +57,7 @@ match_test(Pattern, Match) ->
         temporal_sdk_api_awaitable_index:is_closed(A, Match)
     }.
 
-match_test({Operator, Pattern}, {Operator, Match}, EId) when Operator =:= one; Operator =:= all ->
+match_test({Operator, Pattern}, {Operator, Match}, EId) when Operator =:= all; Operator =:= any ->
     {Operator, lists:zipwith(fun(P, M) -> match_test(P, M, EId) end, Pattern, Match)};
 match_test(awaitable_data, _AwaitableData, _EId) ->
     {true, true};
@@ -68,7 +68,7 @@ match_test(Pattern, Match, EId) ->
         temporal_sdk_api_awaitable_index:is_closed(A, Match)
     }.
 
-is_ready({one, [M | TMatches] = Matches}) ->
+is_ready({any, [M | TMatches] = Matches}) ->
     case
         lists:member({true, false}, Matches) orelse lists:member({true, true}, Matches) orelse
             lists:member(true, Matches)
@@ -77,12 +77,12 @@ is_ready({one, [M | TMatches] = Matches}) ->
             true;
         false ->
             case M of
-                {O, _} when O =:= one; O =:= all -> is_ready({one, [is_ready(M) | TMatches]});
-                {_, _} -> is_ready({one, TMatches});
-                false -> is_ready({one, TMatches})
+                {O, _} when O =:= any; O =:= all -> is_ready({any, [is_ready(M) | TMatches]});
+                {_, _} -> is_ready({any, TMatches});
+                false -> is_ready({any, TMatches})
             end
     end;
-is_ready({one, []}) ->
+is_ready({any, []}) ->
     false;
 is_ready({all, [M | TMatches] = Matches}) ->
     case lists:member({false, false}, Matches) orelse lists:member(false, Matches) of
@@ -90,7 +90,7 @@ is_ready({all, [M | TMatches] = Matches}) ->
             false;
         false ->
             case M of
-                {O, _} when O =:= one; O =:= all -> is_ready({all, [is_ready(M) | TMatches]});
+                {O, _} when O =:= any; O =:= all -> is_ready({all, [is_ready(M) | TMatches]});
                 {_, _} -> is_ready({all, TMatches});
                 true -> is_ready({all, TMatches})
             end
@@ -114,7 +114,7 @@ update_match(Pattern, PatternKey, Match, Test, IndexTable, HistoryTable) ->
             end
     end.
 
-do_update({O, Pattern}, {O, Match}, {O, Test}, IT, HT) when O =:= one; O =:= all ->
+do_update({O, Pattern}, {O, Match}, {O, Test}, IT, HT) when O =:= all; O =:= any ->
     {O, lists:zipwith3(fun(P, M, T) -> do_update(P, M, T, IT, HT) end, Pattern, Match, Test)};
 do_update(_Pattern, Match, {true, true}, _IndexTable, _HistoryTable) ->
     Match;
