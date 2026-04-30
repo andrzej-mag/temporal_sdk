@@ -1,9 +1,5 @@
 Finalize telemetry.
 
-Rename temporal_sdk_workflow await/wait "one" to "any".
-
-Update `gun` version.
-
 Implement workflow updates and remaining workflow commands.
 
 Gradually add remaining Temporal services commands.
