@@ -59,6 +59,14 @@ defmodule TemporalSdk do
     to: @delegate_mod
 
   @doc group: "Workflow commands"
+  defdelegate terminate_workflow(cluster, workflow_execution), to: @delegate_mod
+
+  @external_resource "docs/temporal_sdk/terminate_workflow-3.md"
+  @doc TemporalSdk.Utils.exdoc!("docs/temporal_sdk/terminate_workflow-3.md")
+  @doc group: "Workflow commands"
+  defdelegate terminate_workflow(cluster, workflow_execution, opts), to: @delegate_mod
+
+  @doc group: "Workflow commands"
   defdelegate update_workflow(cluster, workflow_execution, name, opts), to: @delegate_mod
 
   @doc group: "Utility functions"

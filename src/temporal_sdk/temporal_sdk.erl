@@ -35,6 +35,9 @@
     signal_workflow/3,
     signal_workflow/4,
 
+    terminate_workflow/2,
+    terminate_workflow/3,
+
     update_workflow/4
 ]).
 
@@ -397,6 +400,22 @@
 -export_type([signal_workflow_opts/0]).
 
 -doc #{group => "Workflow commands"}.
+-type terminate_workflow_opts() :: [
+    {namespace, unicode:chardata()}
+    %% temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
+    | {reason, unicode:chardata()}
+    | {details, temporal_sdk:term_to_payloads()}
+    | {identity, unicode:chardata()}
+    | {first_execution_run_id, unicode:chardata()}
+    %% repeated temporal.api.common.v1.Link links = 7;
+    %% SDK
+    | {raw_request,
+        ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.TerminateWorkflowExecutionRequest'()}
+    | {response_type, temporal_sdk:response_type()}
+].
+-export_type([terminate_workflow_opts/0]).
+
+-doc #{group => "Workflow commands"}.
 -type update_workflow_opts() :: [
     {namespace, unicode:chardata()}
     %% temporal.api.common.v1.WorkflowExecution execution = 2;
@@ -406,7 +425,7 @@
         ?TEMPORAL_SPEC:'temporal.api.enums.v1.UpdateWorkflowExecutionLifecycleStage'()}
     %% temporal.api.update.v1.Request request meta:
     | {update_id, unicode:chardata()}
-    %% string identity = 2;
+    | {identity, unicode:chardata()}
     %% temporal.api.update.v1.Request request input:
     | {header, temporal_sdk:term_to_mapstring_payload()}
     %% string name = 2;
@@ -1060,7 +1079,7 @@ cancel_workflow(Cluster, WorkflowExecution, Opts) ->
     SName = 'RequestCancelWorkflowExecution',
     ReqMN = 'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionRequest',
     RspMN = 'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionResponse',
-    Custom = [{workflow_execution, WorkflowExecution}],
+    Custom = [identity, {workflow_execution, WorkflowExecution}],
     temporal_sdk_api_common:run_request(Cluster, Opts, DefaultOpts, SName, ReqMN, RspMN, Custom).
 
 -doc #{group => "Workflow commands"}.
@@ -1197,6 +1216,44 @@ signal_workflow(Cluster, WorkflowExecution, SignalName, Opts) ->
     temporal_sdk_api_common:run_request(Cluster, Opts, DefaultOpts, SName, ReqMN, RspMN, Custom).
 
 -doc #{group => "Workflow commands"}.
+-spec terminate_workflow(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    WorkflowExecution :: temporal_sdk:workflow_execution()
+) ->
+    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionResponse'()}
+    | temporal_sdk:response().
+terminate_workflow(Cluster, WorkflowExecution) ->
+    terminate_workflow(Cluster, WorkflowExecution, []).
+
+-doc {file, "../../docs/temporal_sdk/terminate_workflow-3.md"}.
+-doc #{group => "Workflow commands"}.
+-spec terminate_workflow(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    Opts :: terminate_workflow_opts()
+) ->
+    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionResponse'()}
+    | temporal_sdk:response().
+terminate_workflow(Cluster, WorkflowExecution, Opts) ->
+    ReqMN = 'temporal.api.workflowservice.v1.TerminateWorkflowExecutionRequest',
+    DefaultOpts = [
+        {namespace, unicode, "default"},
+        %% temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
+        {reason, unicode, '$_optional'},
+        {details, payloads, '$_optional', {ReqMN, details}},
+        {identity, unicode, '$_optional'},
+        {first_execution_run_id, unicode, '$_optional'},
+        %% repeated temporal.api.common.v1.Link links = 7;
+        %% SDK
+        {raw_request, map, #{}},
+        {response_type, atom, call_formatted}
+    ],
+    SName = 'TerminateWorkflowExecution',
+    RspMN = 'temporal.api.workflowservice.v1.TerminateWorkflowExecutionResponse',
+    Custom = [identity, {workflow_execution, WorkflowExecution}],
+    temporal_sdk_api_common:run_request(Cluster, Opts, DefaultOpts, SName, ReqMN, RspMN, Custom).
+
+-doc #{group => "Workflow commands"}.
 -spec update_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkflowExecution :: temporal_sdk:workflow_execution(),
@@ -1216,7 +1273,7 @@ update_workflow(Cluster, WorkflowExecution, Name, Opts) ->
                 'UPDATE_WORKFLOW_EXECUTION_LIFECYCLE_STAGE_COMPLETED'},
             %% temporal.api.update.v1.Request request meta:
             {update_id, unicode, '$_optional'},
-            %% string identity = 2;
+            {identity, unicode, '$_optional'},
             %% temporal.api.update.v1.Request request input:
             {header, mapstring_payload, '$_optional', {MsgName, [request, input, header]}},
             %% string name = 2;

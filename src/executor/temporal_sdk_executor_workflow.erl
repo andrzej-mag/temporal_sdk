@@ -66,13 +66,14 @@
     | {continued_as_new, #{
         task_queue := unicode:chardata(), workflow_type := unicode:chardata()
     }}
+    | terminated
     | error
     | queried
     | mutated
     | duplicate
     | stale
     | evicted
-    | terminated.
+    | executor_terminated.
 -export_type([execution_state/0]).
 
 %% -------------------------------------------------------------------------------------------------
@@ -516,9 +517,11 @@ handle_execute_api_cast(_ExecutionId, {await_open_before_close, IsEnabled}, Stat
 handle_execute_api_cast(_ExecutionId, evict_workflow, StateData) ->
     set_evicted(StateData);
 handle_execute_api_cast(_ExecutionId, terminate, StateData) ->
-    {stop, normal, StateData#state{execution_state = terminated}};
+    {stop, normal, StateData#state{execution_state = executor_terminated}};
 handle_execute_api_cast(_ExecutionId, {terminate, Reason}, StateData) ->
-    {stop, normal, StateData#state{execution_state = terminated, stop_reason = {error, Reason, []}}}.
+    {stop, normal, StateData#state{
+        execution_state = executor_terminated, stop_reason = {error, Reason, []}
+    }}.
 
 set_evicted(#state{is_replaying = true}) -> keep_state_and_data;
 set_evicted(#state{is_evicted = false} = SD) -> {keep_state, SD#state{is_evicted = true}};
@@ -1219,12 +1222,27 @@ handle_poll(
     {next_state, evict, StateData#state{grpc_req_ref = undefined}};
 handle_poll(
     info,
+    {?TEMPORAL_SDK_GRPC_TAG, Ref,
+        {ok, #{
+            history := #{events := [#{event_type := 'EVENT_TYPE_WORKFLOW_EXECUTION_TERMINATED'}]}
+        }}},
+    #state{grpc_req_ref = {get_history_reverse, Ref}} = StateData
+) ->
+    {stop, normal, StateData#state{execution_state = terminated}};
+handle_poll(
+    info,
     {?TEMPORAL_SDK_GRPC_TAG, Ref, {ok, #{}}},
     #state{grpc_req_ref = {get_history_reverse, Ref}} = StateData
 ) ->
     {stop, normal, StateData#state{execution_state = stale}};
 handle_poll(state_timeout, poll_timeout, StateData) ->
-    {next_state, evict, StateData};
+    #state{api_ctx = ApiCtx} = StateData,
+    case temporal_sdk_api_workflow:get_workflow_execution_history_reverse(ApiCtx, 1) of
+        NRef when is_reference(NRef) ->
+            {keep_state, StateData#state{grpc_req_ref = {get_history_reverse, NRef}}};
+        Err ->
+            {stop, normal, StateData#state{stop_reason = {error, Err, ?EVST}}}
+    end;
 handle_poll(EventType, EventContent, StateData) ->
     handle_common(poll, EventType, EventContent, StateData).
 
