@@ -40,6 +40,11 @@ defmodule TemporalSdk do
   defdelegate cancel_workflow(cluster, workflow_execution, opts), to: @delegate_mod
 
   @doc group: "Workflow commands"
+  defdelegate delete_workflow(cluster, workflow_execution), to: @delegate_mod
+  @doc group: "Workflow commands"
+  defdelegate delete_workflow(cluster, workflow_execution, opts), to: @delegate_mod
+
+  @doc group: "Workflow commands"
   defdelegate query_workflow(cluster, workflow_execution, query_type), to: @delegate_mod
 
   @doc group: "Workflow commands"
