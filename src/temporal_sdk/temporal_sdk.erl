@@ -26,6 +26,9 @@
     cancel_workflow/2,
     cancel_workflow/3,
 
+    delete_workflow/2,
+    delete_workflow/3,
+
     query_workflow/3,
     query_workflow/4,
 
@@ -39,6 +42,8 @@
     terminate_workflow/3,
 
     update_workflow/4
+    % TODO
+    % 'PollWorkflowExecutionUpdate'
 ]).
 
 %% utilities
@@ -333,6 +338,17 @@
 -export_type([get_workflow_history_opts/0]).
 
 -doc #{group => "Workflow commands"}.
+-type delete_workflow_opts() :: [
+    {namespace, unicode:chardata()}
+    %% temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
+    %% SDK
+    | {raw_request,
+        ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.DeleteWorkflowExecutionRequest'()}
+    | {response_type, temporal_sdk:response_type()}
+].
+-export_type([delete_workflow_opts/0]).
+
+-doc #{group => "Workflow commands"}.
 -type cancel_workflow_opts() :: [
     {namespace, unicode:chardata()}
     %% temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
@@ -431,7 +447,8 @@
     %% string name = 2;
     | {args, temporal_sdk:term_to_payloads()}
     %% SDK
-    | {raw_request, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.QueryWorkflowRequest'()}
+    | {raw_request,
+        ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.UpdateWorkflowExecutionRequest'()}
     | {response_type, temporal_sdk:response_type()}
 ].
 -export_type([update_workflow_opts/0]).
@@ -1083,6 +1100,38 @@ cancel_workflow(Cluster, WorkflowExecution, Opts) ->
     temporal_sdk_api_common:run_request(Cluster, Opts, DefaultOpts, SName, ReqMN, RspMN, Custom).
 
 -doc #{group => "Workflow commands"}.
+-spec delete_workflow(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    WorkflowExecution :: temporal_sdk:workflow_execution()
+) ->
+    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.DeleteWorkflowExecutionResponse'()}
+    | temporal_sdk:response().
+delete_workflow(Cluster, WorkflowExecution) ->
+    delete_workflow(Cluster, WorkflowExecution, []).
+
+-doc #{group => "Workflow commands"}.
+-spec delete_workflow(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    Opts :: delete_workflow_opts()
+) ->
+    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.DeleteWorkflowExecutionResponse'()}
+    | temporal_sdk:response().
+delete_workflow(Cluster, WorkflowExecution, Opts) ->
+    DefaultOpts = [
+        {namespace, unicode, "default"},
+        %% temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
+        %% SDK
+        {raw_request, map, #{}},
+        {response_type, atom, call_formatted}
+    ],
+    SName = 'DeleteWorkflowExecution',
+    ReqMN = 'temporal.api.workflowservice.v1.DeleteWorkflowExecutionRequest',
+    RspMN = 'temporal.api.workflowservice.v1.DeleteWorkflowExecutionResponse',
+    Custom = [{workflow_execution, WorkflowExecution}],
+    temporal_sdk_api_common:run_request(Cluster, Opts, DefaultOpts, SName, ReqMN, RspMN, Custom).
+
+-doc #{group => "Workflow commands"}.
 -spec query_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkflowExecution :: temporal_sdk:workflow_execution(),
@@ -1220,7 +1269,7 @@ signal_workflow(Cluster, WorkflowExecution, SignalName, Opts) ->
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkflowExecution :: temporal_sdk:workflow_execution()
 ) ->
-    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionResponse'()}
+    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.TerminateWorkflowExecutionResponse'()}
     | temporal_sdk:response().
 terminate_workflow(Cluster, WorkflowExecution) ->
     terminate_workflow(Cluster, WorkflowExecution, []).
@@ -1232,7 +1281,7 @@ terminate_workflow(Cluster, WorkflowExecution) ->
     WorkflowExecution :: temporal_sdk:workflow_execution(),
     Opts :: terminate_workflow_opts()
 ) ->
-    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionResponse'()}
+    {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.TerminateWorkflowExecutionResponse'()}
     | temporal_sdk:response().
 terminate_workflow(Cluster, WorkflowExecution, Opts) ->
     ReqMN = 'temporal.api.workflowservice.v1.TerminateWorkflowExecutionRequest',
