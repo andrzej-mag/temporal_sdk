@@ -60,12 +60,15 @@ mutation_reset_reason(Name) ->
         Decoder ::
             none
             | list
+            | dlist
             | term
             | fun((temporal_sdk:term_from_payloads()) -> term())
             | {Module :: module(), Function :: atom()}}
     | {error, Reason :: map()}.
 marker_encode_value(list, Value) ->
     {ok, [Value], list};
+marker_encode_value(dlist, Value) ->
+    {ok, [[Value]], list};
 marker_encode_value(term, Value) ->
     {ok, [erlang:term_to_binary(Value)], term};
 marker_encode_value(none, Value) when is_list(Value) ->
@@ -120,12 +123,14 @@ do_encode_type_err(Encoder, Value, EncodedValue) ->
     Decoder ::
         none
         | list
+        | dlist
         | term
         | fun((temporal_sdk:term_from_payloads()) -> term())
         | {Module :: module(), Function :: atom()},
     Value :: temporal_sdk:term_from_payloads()
 ) -> DecodedValue :: term().
 marker_decode_value(list, [Value]) -> Value;
+marker_decode_value(dlist, [[Value]]) -> Value;
 marker_decode_value(term, [Value]) -> erlang:binary_to_term(Value);
 marker_decode_value(none, Value) -> Value;
 marker_decode_value(DF, Value) when is_function(DF, 1) -> DF(Value);

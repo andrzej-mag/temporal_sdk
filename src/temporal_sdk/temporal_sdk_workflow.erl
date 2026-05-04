@@ -196,6 +196,7 @@
 -type marker_value_codec() ::
     none
     | list
+    | dlist
     | term
     | {
         Encoder ::
@@ -2310,7 +2311,10 @@ record_uuid4() ->
 -doc #{group => "Temporal marker commands"}.
 -spec record_uuid4(Opts :: record_marker_opts()) -> marker() | marker_data() | no_return().
 record_uuid4(Opts) ->
-    record_marker(fun temporal_sdk_utils:uuid4/0, add_marker_type(uuid4, Opts)).
+    record_marker(
+        fun() -> temporal_sdk_utils_unicode:characters_to_binary1(temporal_sdk_utils:uuid4()) end,
+        add_marker_dli_ser(uuid4, Opts)
+    ).
 
 -doc #{group => "Temporal marker commands"}.
 -spec record_system_time() -> marker() | no_return().
@@ -2409,6 +2413,12 @@ add_marker_li_ser(Type, Opts) ->
     case proplists:is_defined(value_codec, Opts) of
         true -> erlang:error("<value_codec> cannot be defined for this marker.", [Type, Opts]);
         false -> add_marker_type(Type, [{value_codec, list} | Opts])
+    end.
+
+add_marker_dli_ser(Type, Opts) ->
+    case proplists:is_defined(value_codec, Opts) of
+        true -> erlang:error("<value_codec> cannot be defined for this marker.", [Type, Opts]);
+        false -> add_marker_type(Type, [{value_codec, dlist} | Opts])
     end.
 
 %% -------------------------------------------------------------------------------------------------
