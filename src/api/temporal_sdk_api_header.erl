@@ -82,6 +82,7 @@ decode_sdk_data(EncHeadersData) ->
     Decoder ::
         none
         | list
+        | dlist
         | term
         | fun((temporal_sdk:term_from_payloads()) -> term())
         | {Module :: module(), Function :: atom()},
