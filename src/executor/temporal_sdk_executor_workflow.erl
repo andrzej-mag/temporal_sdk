@@ -1083,17 +1083,14 @@ handle_complete_task({error, #{reason := maximum_request_size_exceeded}}, StateD
         pending_commands = [lists:last(Commands) | PendingCommands]
     },
     {repeat_state, SD};
-handle_complete_task({error, #{grpc_response_headers := GH}} = Error, StateData) ->
-    case proplists:get_value(~"grpc-message", GH, undefined) of
-        ~"Workflow task not found." ->
-            %% Ignore Temporal server PollWorkflowTaskQueueResponse race condition
-            case StateData#state.open_tasks_count > 0 of
-                true ->
-                    {next_state, evict, StateData#state{grpc_req_ref = undefined}};
-                false ->
-                    {stop, normal, StateData#state{stop_reason = {error, Error, ?EVST}}}
-            end;
-        _ ->
+handle_complete_task(
+    {error, #{grpc_response_headers := #{~"grpc-message" := M}} = Error}, StateData
+) when M =:= ~"Workflow task not found."; M =:= "Workflow task not found." ->
+    %% Ignore Temporal server PollWorkflowTaskQueueResponse race condition
+    case StateData#state.open_tasks_count > 0 of
+        true ->
+            {next_state, evict, StateData#state{grpc_req_ref = undefined}};
+        false ->
             {stop, normal, StateData#state{stop_reason = {error, Error, ?EVST}}}
     end;
 handle_complete_task(Error, StateData) ->
@@ -1625,6 +1622,10 @@ handle_common(State, {timeout, Timeout}, timeout, #state{} = StateData) ->
     #state{task_timeout = TT, run_timeout = RT} = StateData,
     Err = {Timeout, #{task_timeout_msec => TT, run_timeout_msec => RT, executor_state => State}},
     {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}};
+%% -------------------------------------------------------------------------------------------------
+%% handle_common: gRPC error
+handle_common(_State, info, {?TEMPORAL_SDK_GRPC_TAG, _Ref, {error, Error}}, #state{} = StateData) ->
+    {stop, normal, StateData#state{stop_reason = {error, Error, ?EVST}}};
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: unhandled message
 handle_common(State, EventType, EventContent, #state{} = StateData) ->

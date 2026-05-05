@@ -66,19 +66,25 @@ request(Cluster, Method, Path, Headers, Body, Timeout) ->
         Timeout1 = Timeout - (erlang:monotonic_time(millisecond) - T1),
         {ok, Msg, HeadersTrailers} ?= gun_pool:await_body(GunRef, Timeout1),
         {ok, Status} ?= temporal_sdk_grpc_adapter_gun_common:fetch_status(HeadersTrailers),
+        HR = temporal_sdk_grpc_adapter_gun_common:headers_to_map(HeadersResponse),
         case Status of
             0 ->
-                {ok, Pool, Msg, HeadersResponse};
+                {ok, Pool, Msg, HR};
             S ->
+                HT = temporal_sdk_grpc_adapter_gun_common:headers_to_map(HeadersTrailers),
                 {request_error, Pool, #{
                     grpc_response_status => S,
-                    grpc_response_headers => HeadersResponse,
-                    grpc_response_trailers => HeadersTrailers
+                    grpc_response_headers => HR,
+                    grpc_response_trailers => HT
                 }}
         end
     else
         {response, fin, 200, HeadersErrResponse} ->
-            {request_error, Pool, #{grpc_response_headers => HeadersErrResponse}};
+            {request_error, Pool, #{
+                grpc_response_headers => temporal_sdk_grpc_adapter_gun_common:headers_to_map(
+                    HeadersErrResponse
+                )
+            }};
         {error, Err} ->
             {request_error, Pool, {grpc_error, Err}};
         {error, Reason, Err} ->

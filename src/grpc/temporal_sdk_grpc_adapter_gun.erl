@@ -62,20 +62,26 @@ request(Cluster, Method, Path, Headers, Body, Timeout) ->
                 {ok, Msg, HeadersTrailers} ?= gun:await_body(ConnPid, StreamRef, Timeout1),
                 gun:close(ConnPid),
                 {ok, Status} ?= temporal_sdk_grpc_adapter_gun_common:fetch_status(HeadersTrailers),
+                HR = temporal_sdk_grpc_adapter_gun_common:headers_to_map(HeadersResponse),
                 case Status of
                     0 ->
-                        {ok, HostPort, Msg, HeadersResponse};
+                        {ok, HostPort, Msg, HR};
                     S ->
+                        HT = temporal_sdk_grpc_adapter_gun_common:headers_to_map(HeadersTrailers),
                         {request_error, HostPort, #{
                             grpc_response_status => S,
-                            grpc_response_headers => HeadersResponse,
-                            grpc_response_trailers => HeadersTrailers
+                            grpc_response_headers => HR,
+                            grpc_response_trailers => HT
                         }}
                 end
             else
                 {response, fin, 200, HeadersErrResponse} ->
                     gun:close(ConnPid),
-                    {request_error, HostPort, #{grpc_response_headers => HeadersErrResponse}};
+                    {request_error, HostPort, #{
+                        grpc_response_headers => temporal_sdk_grpc_adapter_gun_common:headers_to_map(
+                            HeadersErrResponse
+                        )
+                    }};
                 {error, Err} ->
                     gun:close(ConnPid),
                     {request_error, HostPort, {grpc_error, Err}};

@@ -532,7 +532,11 @@ decompress_decode_response(Cluster, Body, Headers, RequestInfo, Opts) ->
             {error, malformed_grpc_response}
     end.
 
-fetch_content_type([{~"content-type", ContentType} | _]) when is_binary(ContentType) ->
+fetch_content_type(#{~"content-type" := ContentType}) when is_binary(ContentType) ->
+    ContentType;
+fetch_content_type(#{"content-type" := ContentType}) when is_binary(ContentType) ->
+    ContentType;
+fetch_content_type(#{'content-type' := ContentType}) when is_binary(ContentType) ->
     ContentType.
 
 %% -------------------------------------------------------------------------------------------------

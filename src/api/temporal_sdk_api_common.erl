@@ -200,13 +200,18 @@ do_custom([], _ApiCtx, _MsgName, Req) ->
 format_response(MessageName, call_formatted, {ok, Response}, ApiCtx) ->
     {ok, t2e(MessageName, Response, ApiCtx)};
 format_response(
-    _MessageName, call_formatted, {error, #{grpc_response_headers := H}}, _ApiCtx
-) when is_list(H) ->
-    Err =
-        case proplists:get_value(~"grpc-message", H, '$_undefined') of
-            '$_undefined' -> proplists:get_value("grpc-message", H, undefined);
-            E -> E
-        end,
+    _MessageName,
+    call_formatted,
+    {error, #{grpc_response_headers := #{~"grpc-message" := Err}}},
+    _ApiCtx
+) ->
+    {error, Err};
+format_response(
+    _MessageName,
+    call_formatted,
+    {error, #{grpc_response_headers := #{"grpc-message" := Err}}},
+    _ApiCtx
+) ->
     {error, Err};
 format_response(_MessageName, _Opts, Response, _ApiCtx) ->
     Response.

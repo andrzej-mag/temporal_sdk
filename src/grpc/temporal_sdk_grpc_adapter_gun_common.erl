@@ -7,7 +7,8 @@
     init_endpoints/1,
     set_config/3,
     get_config/2,
-    fetch_status/1
+    fetch_status/1,
+    headers_to_map/1
 ]).
 
 -type endpoint() ::
@@ -86,6 +87,10 @@ fetch_status(HeadersTrailers) ->
                 invalid_headers => HeadersTrailers
             }}
     end.
+
+-spec headers_to_map(Headers :: list() | map()) -> map().
+headers_to_map(Headers) when is_map(Headers) -> Headers;
+headers_to_map(Headers) when is_list(Headers) -> proplists:to_map(Headers).
 
 -spec host_port_binary(
     Host :: inet:hostname() | inet:ip_address() | binary(), Port :: inet:port_number()

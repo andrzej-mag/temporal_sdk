@@ -800,8 +800,7 @@ get_workflow_state(Cluster, WorkflowExecution) ->
     Opts :: get_workflow_state_opts()
 ) -> get_workflow_state_ret().
 get_workflow_state(Cluster, WorkflowExecution, Opts) ->
-    O = [{response_type, call} | Opts],
-    case describe_workflow(Cluster, WorkflowExecution, O) of
+    case describe_workflow(Cluster, WorkflowExecution, Opts) of
         {ok, #{workflow_execution_info := #{status := Status}}} ->
             {ok, temporal_sdk_api_history:workflow_execution_status(Status)};
         {ok, InvalidTemporalResponse} ->
@@ -871,8 +870,8 @@ get_workflow_history(Cluster, WorkflowExecution, Opts) ->
     end,
     DefaultGrpcOpts = #{
         retry_policy => #{
-            %% Maximum retry timeout: 47.5 seconds
-            max_attempts => 50,
+            %% Maximum retry timeout: 12.5 seconds
+            max_attempts => 15,
             backoff_coefficient => 2,
             initial_interval => 100,
             maximum_interval => 1_000,
