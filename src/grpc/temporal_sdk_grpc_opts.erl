@@ -40,6 +40,8 @@ check_opts([{headers, H} | Opts], Acc) when is_list(H); is_map(H) ->
     check_opts(Opts, Acc);
 check_opts([{maximum_request_size, S} | Opts], Acc) when is_integer(S), S > 0 ->
     check_opts(Opts, Acc);
+check_opts([{disable_telemetry, D} | Opts], Acc) when is_boolean(D) ->
+    check_opts(Opts, Acc);
 check_opts([Invalid | Opts], Acc) ->
     check_opts(Opts, [Invalid | Acc]);
 check_opts([], []) ->

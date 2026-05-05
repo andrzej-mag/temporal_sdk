@@ -67,6 +67,8 @@
     disable_telemetry, {task_settings, [{sticky_execution, [{type, disabled}]}]}
 ]).
 
+-define(DEFAULT_GRPC_OPTS, #{disable_telemetry => true}).
+
 %% -------------------------------------------------------------------------------------------------
 %% Common typespecs
 
@@ -284,6 +286,7 @@
 -type describe_workflow_opts() :: [
     {namespace, unicode:chardata()}
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.DescribeWorkflowExecutionRequest'()}
     | {response_type, temporal_sdk:response_type()}
@@ -293,6 +296,8 @@
 -doc #{group => "Workflow commands"}.
 -type get_workflow_state_opts() :: [
     {namespace, unicode:chardata()}
+    %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
 ].
 -export_type([get_workflow_state_opts/0]).
 
@@ -319,10 +324,10 @@
     | {wait_new_event, boolean()}
     | {history_event_filter_type, ?TEMPORAL_SPEC:'temporal.api.enums.v1.HistoryEventFilterType'()}
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryRequest'()}
     | {timeout, time() | infinity}
-    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {await_all, boolean()}
     | await_all
     | {await_all_close, boolean()}
@@ -342,6 +347,7 @@
     {namespace, unicode:chardata()}
     %% temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.DeleteWorkflowExecutionRequest'()}
     | {response_type, temporal_sdk:response_type()}
@@ -358,6 +364,7 @@
     | {reason, unicode:chardata()}
     %% repeated temporal.api.common.v1.Link links = 7;
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionRequest'()}
     | {response_type, temporal_sdk:response_type()}
@@ -373,6 +380,7 @@
     | {header, temporal_sdk:term_to_mapstring_payload()}
     | {query_reject_condition, ?TEMPORAL_SPEC:'temporal.api.enums.v1.QueryRejectCondition'()}
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.QueryWorkflowRequest'()}
     | {response_type, temporal_sdk:response_type()}
 ].
@@ -392,6 +400,7 @@
     | {post_reset_operations, list()}
     | {identity, unicode:chardata()}
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.ResetWorkflowExecutionRequest'()}
     | {response_type, temporal_sdk:response_type()}
@@ -409,6 +418,7 @@
     | {header, temporal_sdk:term_to_mapstring_payload()}
     %% repeated temporal.api.common.v1.Link links = 10;
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.SignalWorkflowExecutionRequest'()}
     | {response_type, temporal_sdk:response_type()}
@@ -425,6 +435,7 @@
     | {first_execution_run_id, unicode:chardata()}
     %% repeated temporal.api.common.v1.Link links = 7;
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.TerminateWorkflowExecutionRequest'()}
     | {response_type, temporal_sdk:response_type()}
@@ -447,6 +458,7 @@
     %% string name = 2;
     | {args, temporal_sdk:term_to_payloads()}
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.UpdateWorkflowExecutionRequest'()}
     | {response_type, temporal_sdk:response_type()}
@@ -763,6 +775,7 @@ describe_workflow(Cluster, WorkflowExecution, Opts) ->
     DefaultOpts = [
         {namespace, unicode, "default"},
         %% SDK
+        {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
         {raw_request, map, #{}},
         {response_type, atom, call_formatted}
     ],
@@ -865,7 +878,8 @@ get_workflow_history(Cluster, WorkflowExecution, Opts) ->
             maximum_interval => 1_000,
             is_retryable => IsRetryableFn
         },
-        timeout => 30_000
+        timeout => 30_000,
+        disable_telemetry => true
     },
     DefaultAAC =
         case
@@ -883,9 +897,9 @@ get_workflow_history(Cluster, WorkflowExecution, Opts) ->
         {wait_new_event, boolean, '$_optional'},
         {history_event_filter_type, atom, '$_optional'},
         %% SDK
+        {grpc_opts, map, DefaultGrpcOpts, merge},
         {raw_request, map, #{}},
         {timeout, [time, infinity], infinity},
-        {grpc_opts, map, DefaultGrpcOpts, merge},
         {await_all, boolean, false},
         DefaultAAC,
         {await_close, boolean, false},
@@ -1090,6 +1104,7 @@ cancel_workflow(Cluster, WorkflowExecution, Opts) ->
         {reason, unicode, '$_optional'},
         % repeated temporal.api.common.v1.Link links = 7;
         %% SDK
+        {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
         {raw_request, map, #{}},
         {response_type, atom, call_formatted}
     ],
@@ -1122,6 +1137,7 @@ delete_workflow(Cluster, WorkflowExecution, Opts) ->
         {namespace, unicode, "default"},
         %% temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
         %% SDK
+        {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
         {raw_request, map, #{}},
         {response_type, atom, call_formatted}
     ],
@@ -1162,6 +1178,7 @@ query_workflow(Cluster, WorkflowExecution, QueryType, Opts) ->
             {header, mapstring_payload, '$_optional', {ReqMN, [query, header]}},
             {query_reject_condition, atom, '$_optional'},
             %% SDK
+            {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
             {raw_request, map, #{}},
             {response_type, atom, call_formatted}
         ],
@@ -1205,6 +1222,7 @@ reset_workflow(Cluster, WorkflowExecution, Opts) ->
         {post_reset_operations, list, '$_optional'},
         {identity, unicode, '$_optional'},
         %% SDK
+        {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
         {raw_request, map, #{}},
         {response_type, atom, call_formatted}
     ],
@@ -1251,6 +1269,7 @@ signal_workflow(Cluster, WorkflowExecution, SignalName, Opts) ->
             {header, header, '$_optional', {ReqMN, header}},
             %% repeated temporal.api.common.v1.Link links = 10;
             %% SDK
+            {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
             {raw_request, map, #{}},
             {response_type, atom, call_formatted}
         ],
@@ -1294,6 +1313,7 @@ terminate_workflow(Cluster, WorkflowExecution, Opts) ->
         {first_execution_run_id, unicode, '$_optional'},
         %% repeated temporal.api.common.v1.Link links = 7;
         %% SDK
+        {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
         {raw_request, map, #{}},
         {response_type, atom, call_formatted}
     ],
@@ -1328,6 +1348,7 @@ update_workflow(Cluster, WorkflowExecution, Name, Opts) ->
             %% string name = 2;
             {args, payloads, '$_optional', {MsgName, [request, input, args]}},
             %% SDK
+            {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
             {raw_request, map, #{}},
             {response_type, atom, call_formatted}
         ],
@@ -1335,6 +1356,7 @@ update_workflow(Cluster, WorkflowExecution, Name, Opts) ->
         {ok, ApiCtx} ?= temporal_sdk_api_context:build(Cluster),
         {ok,
             #{
+                grpc_opts := GrpcOpts,
                 raw_request := RawRequest,
                 response_type := ResponseType,
                 wait_for_stage := WaitForStage
@@ -1352,7 +1374,9 @@ update_workflow(Cluster, WorkflowExecution, Name, Opts) ->
         RInput = RInput0#{name => Name},
         R = #{meta => RMeta, input => RInput},
         Req = maps:merge(Req1#{request => R}, RawRequest),
-        Response = temporal_sdk_api:request('UpdateWorkflowExecution', ApiCtx, Req, ResponseType),
+        Response = temporal_sdk_api:request(
+            'UpdateWorkflowExecution', Cluster, Req, ResponseType, GrpcOpts
+        ),
         temporal_sdk_api_common:format_response(
             'temporal.api.workflowservice.v1.UpdateWorkflowExecutionResponse',
             ResponseType,

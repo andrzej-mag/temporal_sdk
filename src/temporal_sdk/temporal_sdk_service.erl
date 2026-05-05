@@ -22,6 +22,8 @@
 
 -include("proto.hrl").
 
+-define(DEFAULT_GRPC_OPTS, #{disable_telemetry => true}).
+
 -type get_workflow_history_opts() :: [
     {namespace, unicode:chardata()}
     %% temporal.api.common.v1.WorkflowExecution execution = 2;
@@ -30,10 +32,10 @@
     | {wait_new_event, boolean()}
     | {history_event_filter_type, ?TEMPORAL_SPEC:'temporal.api.enums.v1.HistoryEventFilterType'()}
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryReverseRequest'()}
     | {response_type, temporal_sdk:response_type()}
-    | {grpc_opts, temporal_sdk_client:grpc_opts()}
 ].
 -export_type([get_workflow_history_opts/0]).
 
@@ -43,10 +45,10 @@
     | {maximum_page_size, pos_integer()}
     | {next_page_token, binary()}
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryReverseRequest'()}
     | {response_type, temporal_sdk:response_type()}
-    | {grpc_opts, temporal_sdk_client:grpc_opts()}
 ].
 -export_type([get_workflow_history_reverse_opts/0]).
 
@@ -59,6 +61,7 @@
         {execution_filter, ?TEMPORAL_SPEC:'temporal.api.filter.v1.WorkflowExecutionFilter'()}
         | {type_filter, ?TEMPORAL_SPEC:'temporal.api.filter.v1.WorkflowTypeFilter'()}}
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.ListOpenWorkflowExecutionsRequest'()}
     | {response_type, temporal_sdk:response_type()}
@@ -75,6 +78,7 @@
         | {type_filter, ?TEMPORAL_SPEC:'temporal.api.filter.v1.WorkflowTypeFilter'()}
         | {status_filter, ?TEMPORAL_SPEC:'temporal.api.filter.v1.StatusFilter'()}}
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.ListClosedWorkflowExecutionsRequest'()}
     | {response_type, temporal_sdk:response_type()}
@@ -87,6 +91,7 @@
     | {next_page_token, binary()}
     | {query, unicode:chardata()}
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.ListWorkflowExecutionsRequest'()}
     | {response_type, temporal_sdk:response_type()}
@@ -99,6 +104,7 @@
     | {next_page_token, binary()}
     | {query, unicode:chardata()}
     %% SDK
+    | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.ListArchivedWorkflowExecutionsRequest'()}
     | {response_type, temporal_sdk:response_type()}
@@ -148,9 +154,9 @@ get_workflow_history(Cluster, WorkflowExecution, Opts) ->
         {wait_new_event, boolean, '$_optional'},
         {history_event_filter_type, atom, '$_optional'},
         %% SDK
+        {grpc_opts, map, DefaultGrpcOpts, merge},
         {raw_request, map, #{}},
-        {response_type, atom, call_formatted},
-        {grpc_opts, map, DefaultGrpcOpts, merge}
+        {response_type, atom, call_formatted}
     ],
     SName = 'GetWorkflowExecutionHistory',
     ReqMN = 'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryRequest',
@@ -198,9 +204,9 @@ get_workflow_history_reverse(Cluster, WorkflowExecution, Opts) ->
         {maximum_page_size, pos_integer, '$_optional'},
         {next_page_token, binary, '$_optional'},
         %% SDK
+        {grpc_opts, map, DefaultGrpcOpts, merge},
         {raw_request, map, #{}},
-        {response_type, atom, call_formatted},
-        {grpc_opts, map, DefaultGrpcOpts, merge}
+        {response_type, atom, call_formatted}
     ],
     SName = 'GetWorkflowExecutionHistoryReverse',
     ReqMN = 'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryReverseRequest',
@@ -230,6 +236,7 @@ list_open_workflows(Cluster, Opts) ->
         {start_time_filter, map, '$_optional'},
         {filters, tuple, '$_optional'},
         %% SDK
+        {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
         {raw_request, map, #{}},
         {response_type, atom, call_formatted}
     ],
@@ -260,6 +267,7 @@ list_closed_workflows(Cluster, Opts) ->
         {start_time_filter, map, '$_optional'},
         {filters, tuple, '$_optional'},
         %% SDK
+        {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
         {raw_request, map, #{}},
         {response_type, atom, call_formatted}
     ],
@@ -289,6 +297,7 @@ list_workflows(Cluster, Opts) ->
         {next_page_token, binary, '$_optional'},
         {query, unicode, '$_optional'},
         %% SDK
+        {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
         {raw_request, map, #{}},
         {response_type, atom, call_formatted}
     ],
@@ -318,6 +327,7 @@ list_archived_workflows(Cluster, Opts) ->
         {next_page_token, binary, '$_optional'},
         {query, unicode, '$_optional'},
         %% SDK
+        {grpc_opts, map, ?DEFAULT_GRPC_OPTS, merge},
         {raw_request, map, #{}},
         {response_type, atom, call_formatted}
     ],

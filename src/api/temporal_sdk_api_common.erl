@@ -166,11 +166,7 @@ run_request(
         {ok, FullOpts} ?= temporal_sdk_utils_opts:build(DefaultOpts, Opts, ApiCtx),
         {RawRequest, O1} = maps:take(raw_request, FullOpts),
         {ResponseType, O2} = maps:take(response_type, O1),
-        {GrpcOpts, O3} =
-            case O2 of
-                #{grpc_opts := GO} -> {GO, maps:without([grpc_opts], O2)};
-                #{} -> {#{}, O2}
-            end,
+        {GrpcOpts, O3} = maps:take(grpc_opts, O2),
         Req1 = maps:merge(O3, RawRequest),
         Req = do_custom(Customizations, ApiCtx, RequestMessageName, Req1),
         Response = temporal_sdk_api:request(ServiceName, Cluster, Req, ResponseType, GrpcOpts),
