@@ -94,4 +94,12 @@ defmodule TemporalSdk do
 
   @doc group: "Utility functions"
   defdelegate format_response(cluster, message_name, response), to: @delegate_mod
+
+  @doc group: "Utility functions"
+  defdelegate evict_workflow(cluster, workflow_execution), to: @delegate_mod
+
+  @external_resource "docs/temporal_sdk/evict_workflow-3.md"
+  @doc TemporalSdk.Utils.exdoc!("docs/temporal_sdk/evict_workflow-3.md")
+  @doc group: "Utility functions"
+  defdelegate evict_workflow(cluster, workflow_execution, opts), to: @delegate_mod
 end

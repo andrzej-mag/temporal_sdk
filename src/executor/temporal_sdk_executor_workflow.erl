@@ -73,6 +73,7 @@
     | duplicate
     | stale
     | evicted
+    | {external_evict, evicted | deleted | terminated | atom()}
     | executor_terminated.
 -export_type([execution_state/0]).
 
@@ -1626,6 +1627,10 @@ handle_common(State, {timeout, Timeout}, timeout, #state{} = StateData) ->
 %% handle_common: gRPC error
 handle_common(_State, info, {?TEMPORAL_SDK_GRPC_TAG, _Ref, {error, Error}}, #state{} = StateData) ->
     {stop, normal, StateData#state{stop_reason = {error, Error, ?EVST}}};
+%% -------------------------------------------------------------------------------------------------
+%% handle_common: external eviction
+handle_common(_State, info, {?MSG_PRV, external_evict, Reason}, #state{} = StateData) ->
+    {stop, normal, StateData#state{execution_state = {external_evict, Reason}}};
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: unhandled message
 handle_common(State, EventType, EventContent, #state{} = StateData) ->

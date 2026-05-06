@@ -57,11 +57,15 @@
     replay_task/4,
     replay_task/5,
 
-    format_response/3
+    format_response/3,
+
+    evict_workflow/2,
+    evict_workflow/3
 ]).
 
 -include("proto.hrl").
 -include("sdk.hrl").
+-include("src/executor/temporal_sdk_executor.hrl").
 
 -define(DEFAULT_REPLAY_WORKER_OPTS, [
     disable_telemetry, {task_settings, [{sticky_execution, [{type, disabled}]}]}
@@ -141,30 +145,30 @@
 
 -type application_failure() :: #{
     %% Failure
-    source => temporal_sdk:serializable(),
-    message => temporal_sdk:serializable(),
-    stack_trace => temporal_sdk:serializable(),
-    encoded_attributes => temporal_sdk:term_to_payload(),
+    source => serializable(),
+    message => serializable(),
+    stack_trace => serializable(),
+    encoded_attributes => term_to_payload(),
     %% ApplicationFailureInfo
     type => unicode:chardata(),
     non_retryable => boolean(),
-    details => temporal_sdk:term_to_payloads(),
-    next_retry_delay => temporal_sdk:time()
+    details => term_to_payloads(),
+    next_retry_delay => time()
 }.
 -export_type([application_failure/0]).
 
 -type application_failure_as_list() :: [
     %% Failure
-    {source, temporal_sdk:serializable()}
-    | {message, temporal_sdk:serializable()}
-    | {stack_trace, temporal_sdk:serializable()}
-    | {encoded_attributes, temporal_sdk:term_to_payload()}
+    {source, serializable()}
+    | {message, serializable()}
+    | {stack_trace, serializable()}
+    | {encoded_attributes, term_to_payload()}
     %% ApplicationFailureInfo
     | {type, unicode:chardata()}
     | {non_retryable, boolean()}
     | non_retryable
-    | {details, temporal_sdk:term_to_payloads()}
-    | {next_retry_delay, temporal_sdk:time()}
+    | {details, term_to_payloads()}
+    | {next_retry_delay, time()}
 ].
 -export_type([application_failure_as_list/0]).
 
@@ -172,13 +176,13 @@
     source => unicode:chardata(),
     message => unicode:chardata(),
     stack_trace => unicode:chardata(),
-    encoded_attributes => temporal_sdk:term_from_payload(),
+    encoded_attributes => term_from_payload(),
     failure_info =>
         {atom(), map()}
         | {application_failure_info, #{
             type => unicode:chardata(),
             non_retryable => boolean(),
-            details => temporal_sdk:term_from_payloads(),
+            details => term_from_payloads(),
             next_retry_delay => pos_integer()
         }}
 }.
@@ -294,14 +298,6 @@
 -export_type([describe_workflow_opts/0]).
 
 -doc #{group => "Workflow commands"}.
--type get_workflow_state_opts() :: [
-    {namespace, unicode:chardata()}
-    %% SDK
-    | {grpc_opts, temporal_sdk_client:grpc_opts()}
-].
--export_type([get_workflow_state_opts/0]).
-
--doc #{group => "Workflow commands"}.
 -type get_workflow_state_ret() ::
     {ok,
         completed
@@ -376,8 +372,8 @@
     {namespace, unicode:chardata()}
     %% temporal.api.common.v1.WorkflowExecution execution = 2;
     %% string query_type = 1;
-    | {query_args, temporal_sdk:term_to_payloads()}
-    | {header, temporal_sdk:term_to_mapstring_payload()}
+    | {query_args, term_to_payloads()}
+    | {header, term_to_mapstring_payload()}
     | {query_reject_condition, ?TEMPORAL_SPEC:'temporal.api.enums.v1.QueryRejectCondition'()}
     %% SDK
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
@@ -412,10 +408,10 @@
     {namespace, unicode:chardata()}
     %% temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
     %% string signal_name = 3;
-    | {input, temporal_sdk:term_to_payloads()}
+    | {input, term_to_payloads()}
     | {identity, unicode:chardata()}
     | {request_id, unicode:chardata()}
-    | {header, temporal_sdk:term_to_mapstring_payload()}
+    | {header, term_to_mapstring_payload()}
     %% repeated temporal.api.common.v1.Link links = 10;
     %% SDK
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
@@ -430,7 +426,7 @@
     {namespace, unicode:chardata()}
     %% temporal.api.common.v1.WorkflowExecution workflow_execution = 2;
     | {reason, unicode:chardata()}
-    | {details, temporal_sdk:term_to_payloads()}
+    | {details, term_to_payloads()}
     | {identity, unicode:chardata()}
     | {first_execution_run_id, unicode:chardata()}
     %% repeated temporal.api.common.v1.Link links = 7;
@@ -454,9 +450,9 @@
     | {update_id, unicode:chardata()}
     | {identity, unicode:chardata()}
     %% temporal.api.update.v1.Request request input:
-    | {header, temporal_sdk:term_to_mapstring_payload()}
+    | {header, term_to_mapstring_payload()}
     %% string name = 2;
-    | {args, temporal_sdk:term_to_payloads()}
+    | {args, term_to_payloads()}
     %% SDK
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
@@ -474,17 +470,14 @@
     | {client_opts, temporal_sdk_client:opts()}
     | {worker_id, term()}
     | {worker_opts, term()}
-    | {task_overwrites, [{input, temporal_sdk:term_to_payloads()}]}
+    | {task_overwrites, [{input, term_to_payloads()}]}
 ].
 
 -doc #{group => "Utility functions"}.
 -type replay_workflow_ret() ::
-    {completed, Result :: temporal_sdk:term_to_payloads()}
-    | {canceled, Details :: temporal_sdk:term_to_payloads()}
-    | {failed,
-        Failure ::
-            temporal_sdk:application_failure()
-            | temporal_sdk:application_failure_as_list()}
+    {completed, Result :: term_to_payloads()}
+    | {canceled, Details :: term_to_payloads()}
+    | {failed, Failure :: application_failure() | application_failure_as_list()}
     | {error, Error :: temporal_sdk_telemetry:exception()}.
 -export_type([replay_workflow_ret/0]).
 
@@ -511,6 +504,14 @@
     | {history_file_write_modes, [file:mode()]}
 ].
 -export_type([replay_task_opts/0]).
+
+-doc #{group => "Utility functions"}.
+-type evict_workflow_opts() :: [
+    {namespace, unicode:chardata()}
+    %% SDK
+    | {reason, atom()}
+].
+-export_type([evict_workflow_opts/0]).
 
 %% -------------------------------------------------------------------------------------------------
 %% Workflow commands
@@ -588,7 +589,8 @@ start_workflow(Cluster, TaskQueue, WorkflowType, Opts) ->
         {wait, [time, infinity, boolean], '$_optional'}
     ],
     maybe
-        {ok, ApiCtx1} ?= temporal_sdk_api_context:build(Cluster),
+        {ok, #{client_opts := #{grpc_opts := #{codec := {Codec, _, _}}}} = ApiCtx1} ?=
+            temporal_sdk_api_context:build(Cluster),
         {ok, FullOpts} ?= temporal_sdk_utils_opts:build(DefaultOpts, Opts, ApiCtx1),
         ok ?= check_opts(start_workflow, FullOpts),
         {RawRequest, ReqFromOpts1} = maps:take(raw_request, FullOpts),
@@ -607,7 +609,7 @@ start_workflow(Cluster, TaskQueue, WorkflowType, Opts) ->
         Response = #{
             request_id => RequestId,
             started => Started,
-            workflow_execution => #{run_id => RunId, workflow_id => WorkflowId}
+            workflow_execution => #{run_id => RunId, workflow_id => Codec:cast(WorkflowId)}
         },
         do_start_workflow_fin(Cluster, FullOpts, Response)
     else
@@ -757,21 +759,21 @@ wait_workflow(Cluster, WorkflowExecution, Opts) ->
 -doc #{group => "Workflow commands"}.
 -spec describe_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution()
+    WorkflowExecution :: workflow_execution()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.DescribeWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 describe_workflow(Cluster, WorkflowExecution) ->
     describe_workflow(Cluster, WorkflowExecution, []).
 
 -doc #{group => "Workflow commands"}.
 -spec describe_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecution :: workflow_execution(),
     Opts :: describe_workflow_opts()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.DescribeWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 describe_workflow(Cluster, WorkflowExecution, Opts) ->
     DefaultOpts = [
         {namespace, unicode, "default"},
@@ -798,7 +800,7 @@ get_workflow_state(Cluster, WorkflowExecution) ->
 -spec get_workflow_state(
     Cluster :: temporal_sdk_cluster:cluster_name(),
     WorkflowExecution :: workflow_execution(),
-    Opts :: get_workflow_state_opts()
+    Opts :: describe_workflow_opts()
 ) -> get_workflow_state_ret().
 get_workflow_state(Cluster, WorkflowExecution, Opts) ->
     case describe_workflow(Cluster, WorkflowExecution, Opts) of
@@ -1079,21 +1081,21 @@ fname_get_workflow_history(#{history_file := HTF, run_id := RunId}) ->
 -doc #{group => "Workflow commands"}.
 -spec cancel_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution()
+    WorkflowExecution :: workflow_execution()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 cancel_workflow(Cluster, WorkflowExecution) ->
     cancel_workflow(Cluster, WorkflowExecution, []).
 
 -doc #{group => "Workflow commands"}.
 -spec cancel_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecution :: workflow_execution(),
     Opts :: cancel_workflow_opts()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 cancel_workflow(Cluster, WorkflowExecution, Opts) ->
     DefaultOpts = [
         {namespace, unicode, "default"},
@@ -1117,21 +1119,22 @@ cancel_workflow(Cluster, WorkflowExecution, Opts) ->
 -doc #{group => "Workflow commands"}.
 -spec delete_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution()
+    WorkflowExecution :: workflow_execution()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.DeleteWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 delete_workflow(Cluster, WorkflowExecution) ->
     delete_workflow(Cluster, WorkflowExecution, []).
 
+-doc {file, "../../docs/temporal_sdk/delete_workflow-3.md"}.
 -doc #{group => "Workflow commands"}.
 -spec delete_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecution :: workflow_execution(),
     Opts :: delete_workflow_opts()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.DeleteWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 delete_workflow(Cluster, WorkflowExecution, Opts) ->
     DefaultOpts = [
         {namespace, unicode, "default"},
@@ -1144,29 +1147,29 @@ delete_workflow(Cluster, WorkflowExecution, Opts) ->
     SName = 'DeleteWorkflowExecution',
     ReqMN = 'temporal.api.workflowservice.v1.DeleteWorkflowExecutionRequest',
     RspMN = 'temporal.api.workflowservice.v1.DeleteWorkflowExecutionResponse',
-    Custom = [{workflow_execution, WorkflowExecution}],
+    Custom = [{workflow_execution, WorkflowExecution}, {evict, deleted}],
     temporal_sdk_api_common:run_request(Cluster, Opts, DefaultOpts, SName, ReqMN, RspMN, Custom).
 
 -doc #{group => "Workflow commands"}.
 -spec query_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecution :: workflow_execution(),
     QueryType :: unicode:chardata()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.QueryWorkflowResponse'()}
-    | temporal_sdk:response().
+    | response().
 query_workflow(Cluster, WorkflowExecution, QueryType) ->
     query_workflow(Cluster, WorkflowExecution, QueryType, []).
 
 -doc #{group => "Workflow commands"}.
 -spec query_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecution :: workflow_execution(),
     QueryType :: unicode:chardata(),
     Opts :: query_workflow_opts()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.QueryWorkflowResponse'()}
-    | temporal_sdk:response().
+    | response().
 query_workflow(Cluster, WorkflowExecution, QueryType, Opts) ->
     ReqMN = 'temporal.api.workflowservice.v1.QueryWorkflowRequest',
     DefaultOpts =
@@ -1194,21 +1197,21 @@ query_workflow(Cluster, WorkflowExecution, QueryType, Opts) ->
 -doc #{group => "Workflow commands"}.
 -spec reset_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution()
+    WorkflowExecution :: workflow_execution()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.ResetWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 reset_workflow(Cluster, WorkflowExecution) ->
     reset_workflow(Cluster, WorkflowExecution, []).
 
 -doc #{group => "Workflow commands"}.
 -spec reset_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecution :: workflow_execution(),
     Opts :: reset_workflow_opts()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.ResetWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 reset_workflow(Cluster, WorkflowExecution, Opts) ->
     DefaultOpts = [
         {namespace, unicode, "default"},
@@ -1239,23 +1242,23 @@ reset_workflow(Cluster, WorkflowExecution, Opts) ->
 -doc #{group => "Workflow commands"}.
 -spec signal_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecution :: workflow_execution(),
     SignalName :: unicode:chardata()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.SignalWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 signal_workflow(Cluster, WorkflowExecution, SignalName) ->
     signal_workflow(Cluster, WorkflowExecution, SignalName, []).
 
 -doc #{group => "Workflow commands"}.
 -spec signal_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecution :: workflow_execution(),
     SignalName :: unicode:chardata(),
     Opts :: signal_workflow_opts()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.SignalWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 signal_workflow(Cluster, WorkflowExecution, SignalName, Opts) ->
     ReqMN = 'temporal.api.workflowservice.v1.SignalWorkflowExecutionRequest',
     DefaultOpts =
@@ -1286,10 +1289,10 @@ signal_workflow(Cluster, WorkflowExecution, SignalName, Opts) ->
 -doc #{group => "Workflow commands"}.
 -spec terminate_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution()
+    WorkflowExecution :: workflow_execution()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.TerminateWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 terminate_workflow(Cluster, WorkflowExecution) ->
     terminate_workflow(Cluster, WorkflowExecution, []).
 
@@ -1297,11 +1300,11 @@ terminate_workflow(Cluster, WorkflowExecution) ->
 -doc #{group => "Workflow commands"}.
 -spec terminate_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecution :: workflow_execution(),
     Opts :: terminate_workflow_opts()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.TerminateWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 terminate_workflow(Cluster, WorkflowExecution, Opts) ->
     ReqMN = 'temporal.api.workflowservice.v1.TerminateWorkflowExecutionRequest',
     DefaultOpts = [
@@ -1319,18 +1322,18 @@ terminate_workflow(Cluster, WorkflowExecution, Opts) ->
     ],
     SName = 'TerminateWorkflowExecution',
     RspMN = 'temporal.api.workflowservice.v1.TerminateWorkflowExecutionResponse',
-    Custom = [identity, {workflow_execution, WorkflowExecution}],
+    Custom = [identity, {workflow_execution, WorkflowExecution}, {evict, terminated}],
     temporal_sdk_api_common:run_request(Cluster, Opts, DefaultOpts, SName, ReqMN, RspMN, Custom).
 
 -doc #{group => "Workflow commands"}.
 -spec update_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecution :: workflow_execution(),
     Name :: unicode:chardata(),
     Opts :: update_workflow_opts()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.UpdateWorkflowExecutionResponse'()}
-    | temporal_sdk:response().
+    | response().
 update_workflow(Cluster, WorkflowExecution, Name, Opts) ->
     MsgName = 'temporal.api.workflowservice.v1.UpdateWorkflowExecutionRequest',
     DefaultOpts =
@@ -1638,6 +1641,61 @@ format_response(Cluster, MessageName, Response) ->
             temporal_sdk_api_common:format_response(MessageName, call_formatted, Response, ApiCtx);
         Err ->
             Err
+    end.
+
+-doc #{group => "Utility functions"}.
+-spec evict_workflow(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    WorkflowExecution :: workflow_execution()
+) -> ok | temporal_sdk_client:call_result_error().
+evict_workflow(Cluster, WorkflowExecution) ->
+    evict_workflow(Cluster, WorkflowExecution, []).
+
+-doc {file, "../../docs/temporal_sdk/evict_workflow-3.md"}.
+-doc #{group => "Utility functions"}.
+-spec evict_workflow(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    WorkflowExecution :: workflow_execution(),
+    Opts :: evict_workflow_opts()
+) -> ok | temporal_sdk_client:call_result_error().
+evict_workflow(Cluster, #{workflow_id := WorkflowId, run_id := RunId}, Opts) ->
+    DefaultOpts = [
+        {namespace, unicode, "default"},
+        %% SDK
+        {reason, atom, evicted}
+    ],
+    maybe
+        {ok, ApiCtx} ?= temporal_sdk_api_context:build(Cluster),
+        {ok, #{namespace := Namespace, reason := Reason}} ?=
+            temporal_sdk_utils_opts:build(DefaultOpts, Opts, ApiCtx),
+        AC = ApiCtx#{
+            worker_opts => #{namespace => Namespace, task_queue => "undefined"},
+            task_opts => #{
+                workflow_id => WorkflowId,
+                run_id => RunId,
+                token => undefined,
+                workflow_type => "undefined"
+            }
+        },
+        Pids = temporal_sdk_scope:get_members(temporal_sdk_scope:init_ctx(AC)),
+        [P ! {?MSG_PRV, external_evict, Reason} || P <- Pids],
+        ok
+    else
+        Err -> Err
+    end;
+evict_workflow(Cluster, #{workflow_id := WorkflowId} = WorkflowExecution, Opts) ->
+    DefaultOpts = [
+        {namespace, unicode, "default"},
+        %% SDK
+        {reason, atom, evicted}
+    ],
+    maybe
+        {ok, #{namespace := Namespace}} ?= temporal_sdk_utils_opts:build(DefaultOpts, Opts),
+        {ok, #{workflow_execution_info := #{execution := #{run_id := RunId}}}} ?=
+            describe_workflow(Cluster, WorkflowExecution, [{namespace, Namespace}]),
+        evict_workflow(Cluster, #{workflow_id => WorkflowId, run_id => RunId}, Opts)
+    else
+        Err -> Err
     end.
 
 %% -------------------------------------------------------------------------------------------------

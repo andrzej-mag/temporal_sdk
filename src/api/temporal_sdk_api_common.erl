@@ -164,6 +164,7 @@ run_request(
     maybe
         {ok, ApiCtx} ?= temporal_sdk_api_context:build(Cluster),
         {ok, FullOpts} ?= temporal_sdk_utils_opts:build(DefaultOpts, Opts, ApiCtx),
+        ok ?= maybe_evict(Cluster, FullOpts, proplists:to_map(Customizations)),
         {RawRequest, O1} = maps:take(raw_request, FullOpts),
         {ResponseType, O2} = maps:take(response_type, O1),
         {GrpcOpts, O3} = maps:take(grpc_opts, O2),
@@ -172,6 +173,18 @@ run_request(
         Response = temporal_sdk_api:request(ServiceName, Cluster, Req, ResponseType, GrpcOpts),
         format_response(ResponseMessageName, ResponseType, Response, ApiCtx)
     end.
+
+maybe_evict(Cluster, #{namespace := Namespace}, #{evict := EvictReason} = Customizations) ->
+    WorkflowExecution =
+        case Customizations of
+            #{workflow_execution := {_, WE}} -> WE;
+            #{workflow_execution := WE} -> WE
+        end,
+    temporal_sdk:evict_workflow(Cluster, WorkflowExecution, [
+        {namespace, Namespace}, {reason, EvictReason}
+    ]);
+maybe_evict(_Cluster, _Opts, _Customizations) ->
+    ok.
 
 do_custom([{new, {Key, Val}} | TC], ApiCtx, MsgName, Req) ->
     do_custom(TC, ApiCtx, MsgName, Req#{Key => Val});
@@ -188,6 +201,8 @@ do_custom([id | TC], ApiCtx, MsgName, Req) ->
     do_custom([{id, id} | TC], ApiCtx, MsgName, Req);
 do_custom([{id, Key} | TC], ApiCtx, MsgName, Req) ->
     do_custom(TC, ApiCtx, MsgName, temporal_sdk_api:put_id(ApiCtx, MsgName, Key, Req));
+do_custom([{evict, _} | TC], ApiCtx, MsgName, Req) ->
+    do_custom(TC, ApiCtx, MsgName, Req);
 do_custom([], _ApiCtx, _MsgName, Req) ->
     Req.
 
