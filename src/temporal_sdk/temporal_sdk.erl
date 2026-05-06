@@ -289,7 +289,7 @@
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.DescribeWorkflowExecutionRequest'()}
-    | {response_type, temporal_sdk:response_type()}
+    | {response_type, response_type()}
 ].
 -export_type([describe_workflow_opts/0]).
 
@@ -350,7 +350,7 @@
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.DeleteWorkflowExecutionRequest'()}
-    | {response_type, temporal_sdk:response_type()}
+    | {response_type, response_type()}
 ].
 -export_type([delete_workflow_opts/0]).
 
@@ -367,7 +367,7 @@
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.RequestCancelWorkflowExecutionRequest'()}
-    | {response_type, temporal_sdk:response_type()}
+    | {response_type, response_type()}
 ].
 -export_type([cancel_workflow_opts/0]).
 
@@ -382,7 +382,7 @@
     %% SDK
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.QueryWorkflowRequest'()}
-    | {response_type, temporal_sdk:response_type()}
+    | {response_type, response_type()}
 ].
 -export_type([query_workflow_opts/0]).
 
@@ -403,7 +403,7 @@
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.ResetWorkflowExecutionRequest'()}
-    | {response_type, temporal_sdk:response_type()}
+    | {response_type, response_type()}
 ].
 -export_type([reset_workflow_opts/0]).
 
@@ -421,7 +421,7 @@
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.SignalWorkflowExecutionRequest'()}
-    | {response_type, temporal_sdk:response_type()}
+    | {response_type, response_type()}
 ].
 -export_type([signal_workflow_opts/0]).
 
@@ -438,7 +438,7 @@
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.TerminateWorkflowExecutionRequest'()}
-    | {response_type, temporal_sdk:response_type()}
+    | {response_type, response_type()}
 ].
 -export_type([terminate_workflow_opts/0]).
 
@@ -461,7 +461,7 @@
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.UpdateWorkflowExecutionRequest'()}
-    | {response_type, temporal_sdk:response_type()}
+    | {response_type, response_type()}
 ].
 -export_type([update_workflow_opts/0]).
 
@@ -713,6 +713,7 @@ await_workflow(Cluster, WorkflowExecution) ->
 await_workflow(Cluster, WorkflowExecution, Opts) ->
     DefaultOpts = [
         {namespace, unicode, "default"},
+        %% SDK
         {timeout, [time, infinity], infinity}
     ],
     maybe
