@@ -218,6 +218,7 @@ terminate(Reason, _State, #state{} = StateData) ->
 
     CState =
         case ExecutionState of
+            {external_evict, _} = ES -> ES;
             {ES, _} -> ES;
             started -> error;
             Err -> Err
