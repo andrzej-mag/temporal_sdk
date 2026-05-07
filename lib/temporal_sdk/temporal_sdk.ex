@@ -10,69 +10,70 @@ defmodule TemporalSdk do
   defdelegate start_workflow(cluster, task_queue, workflow_type, opts), to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate await_workflow(cluster, workflow_execution), to: @delegate_mod
+  defdelegate await_workflow(cluster, workflow_execution_or_id), to: @delegate_mod
   @doc group: "Workflow commands"
-  defdelegate await_workflow(cluster, workflow_execution, opts), to: @delegate_mod
+  defdelegate await_workflow(cluster, workflow_execution_or_id, opts), to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate wait_workflow(cluster, workflow_execution), to: @delegate_mod
+  defdelegate wait_workflow(cluster, workflow_execution_or_id), to: @delegate_mod
   @doc group: "Workflow commands"
-  defdelegate wait_workflow(cluster, workflow_execution, opts), to: @delegate_mod
+  defdelegate wait_workflow(cluster, workflow_execution_or_id, opts), to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate describe_workflow(cluster, workflow_execution), to: @delegate_mod
+  defdelegate describe_workflow(cluster, workflow_execution_or_id), to: @delegate_mod
   @doc group: "Workflow commands"
-  defdelegate describe_workflow(cluster, workflow_execution, opts), to: @delegate_mod
+  defdelegate describe_workflow(cluster, workflow_execution_or_id, opts), to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate get_workflow_state(cluster, workflow_execution), to: @delegate_mod
+  defdelegate get_workflow_state(cluster, workflow_execution_or_id), to: @delegate_mod
   @doc group: "Workflow commands"
-  defdelegate get_workflow_state(cluster, workflow_execution, opts), to: @delegate_mod
+  defdelegate get_workflow_state(cluster, workflow_execution_or_id, opts), to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate get_workflow_history(cluster, workflow_execution), to: @delegate_mod
+  defdelegate get_workflow_history(cluster, workflow_execution_or_id), to: @delegate_mod
   @doc group: "Workflow commands"
-  defdelegate get_workflow_history(cluster, workflow_execution, opts), to: @delegate_mod
+  defdelegate get_workflow_history(cluster, workflow_execution_or_id, opts), to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate cancel_workflow(cluster, workflow_execution), to: @delegate_mod
+  defdelegate cancel_workflow(cluster, workflow_execution_or_id), to: @delegate_mod
   @doc group: "Workflow commands"
-  defdelegate cancel_workflow(cluster, workflow_execution, opts), to: @delegate_mod
+  defdelegate cancel_workflow(cluster, workflow_execution_or_id, opts), to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate delete_workflow(cluster, workflow_execution), to: @delegate_mod
+  defdelegate delete_workflow(cluster, workflow_execution_or_id), to: @delegate_mod
   @doc group: "Workflow commands"
-  defdelegate delete_workflow(cluster, workflow_execution, opts), to: @delegate_mod
+  defdelegate delete_workflow(cluster, workflow_execution_or_id, opts), to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate query_workflow(cluster, workflow_execution, query_type), to: @delegate_mod
+  defdelegate query_workflow(cluster, workflow_execution_or_id, query_type), to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate query_workflow(cluster, workflow_execution, query_type, opts),
+  defdelegate query_workflow(cluster, workflow_execution_or_id, query_type, opts),
     to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate reset_workflow(cluster, workflow_execution), to: @delegate_mod
+  defdelegate reset_workflow(cluster, workflow_execution_or_id), to: @delegate_mod
   @doc group: "Workflow commands"
-  defdelegate reset_workflow(cluster, workflow_execution, opts), to: @delegate_mod
+  defdelegate reset_workflow(cluster, workflow_execution_or_id, opts), to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate signal_workflow(cluster, workflow_execution, signal_name), to: @delegate_mod
+  defdelegate signal_workflow(cluster, workflow_execution_or_id, signal_name), to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate signal_workflow(cluster, workflow_execution, signal_name, opts),
+  defdelegate signal_workflow(cluster, workflow_execution_or_id, signal_name, opts),
     to: @delegate_mod
 
   @doc group: "Workflow commands"
-  defdelegate terminate_workflow(cluster, workflow_execution), to: @delegate_mod
+  defdelegate terminate_workflow(cluster, workflow_execution_or_id), to: @delegate_mod
 
   @external_resource "docs/temporal_sdk/terminate_workflow-3.md"
   @doc TemporalSdk.Utils.exdoc!("docs/temporal_sdk/terminate_workflow-3.md")
   @doc group: "Workflow commands"
-  defdelegate terminate_workflow(cluster, workflow_execution, opts), to: @delegate_mod
+  defdelegate terminate_workflow(cluster, workflow_execution_or_id, opts), to: @delegate_mod
 
-  @doc group: "Workflow commands"
-  defdelegate update_workflow(cluster, workflow_execution, name, opts), to: @delegate_mod
+  # TODO
+  # @doc group: "Workflow commands"
+  # defdelegate update_workflow(cluster, workflow_execution_or_id, name, opts), to: @delegate_mod
 
   @doc group: "Utility functions"
   defdelegate replay_json(cluster, workflow_mod, json), to: @delegate_mod
@@ -96,10 +97,10 @@ defmodule TemporalSdk do
   defdelegate format_response(cluster, message_name, response), to: @delegate_mod
 
   @doc group: "Utility functions"
-  defdelegate evict_workflow(cluster, workflow_execution), to: @delegate_mod
+  defdelegate evict_workflow(cluster, workflow_execution_or_id), to: @delegate_mod
 
   @external_resource "docs/temporal_sdk/evict_workflow-3.md"
   @doc TemporalSdk.Utils.exdoc!("docs/temporal_sdk/evict_workflow-3.md")
   @doc group: "Utility functions"
-  defdelegate evict_workflow(cluster, workflow_execution, opts), to: @delegate_mod
+  defdelegate evict_workflow(cluster, workflow_execution_or_id, opts), to: @delegate_mod
 end

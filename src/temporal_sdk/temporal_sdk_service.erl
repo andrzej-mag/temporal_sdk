@@ -116,21 +116,21 @@
 
 -spec get_workflow_history(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution()
+    WorkflowExecutionOrId :: temporal_sdk:workflow_execution_or_id()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryResponse'()}
     | temporal_sdk:response().
-get_workflow_history(Cluster, WorkflowExecution) ->
-    get_workflow_history(Cluster, WorkflowExecution, []).
+get_workflow_history(Cluster, WorkflowExecutionOrId) ->
+    get_workflow_history(Cluster, WorkflowExecutionOrId, []).
 
 -spec get_workflow_history(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecutionOrId :: temporal_sdk:workflow_execution_or_id(),
     Opts :: get_workflow_history_opts()
 ) ->
     {ok, ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryResponse'()}
     | temporal_sdk:response().
-get_workflow_history(Cluster, WorkflowExecution, Opts) ->
+get_workflow_history(Cluster, WorkflowExecutionOrId, Opts) ->
     IsRetryableFn = fun
         ({ok, _Result}, _RequestInfo, _Attempt) -> false;
         (_Error, _RequestInfo, _Attempt) -> true
@@ -161,28 +161,28 @@ get_workflow_history(Cluster, WorkflowExecution, Opts) ->
     SName = 'GetWorkflowExecutionHistory',
     ReqMN = 'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryRequest',
     RspMN = 'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryResponse',
-    Custom = [{workflow_execution, {execution, WorkflowExecution}}],
+    Custom = [{workflow_execution, {execution, WorkflowExecutionOrId}}],
     temporal_sdk_api_common:run_request(Cluster, Opts, DefaultOpts, SName, ReqMN, RspMN, Custom).
 
 -spec get_workflow_history_reverse(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution()
+    WorkflowExecutionOrId :: temporal_sdk:workflow_execution_or_id()
 ) ->
     {ok,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryReverseResponse'()}
     | temporal_sdk:response().
-get_workflow_history_reverse(Cluster, WorkflowExecution) ->
-    get_workflow_history_reverse(Cluster, WorkflowExecution, []).
+get_workflow_history_reverse(Cluster, WorkflowExecutionOrId) ->
+    get_workflow_history_reverse(Cluster, WorkflowExecutionOrId, []).
 
 -spec get_workflow_history_reverse(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecution :: temporal_sdk:workflow_execution(),
+    WorkflowExecutionOrId :: temporal_sdk:workflow_execution_or_id(),
     Opts :: get_workflow_history_reverse_opts()
 ) ->
     {ok,
         ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryReverseResponse'()}
     | temporal_sdk:response().
-get_workflow_history_reverse(Cluster, WorkflowExecution, Opts) ->
+get_workflow_history_reverse(Cluster, WorkflowExecutionOrId, Opts) ->
     IsRetryableFn = fun
         ({ok, _Result}, _RequestInfo, _Attempt) -> false;
         (_Error, _RequestInfo, _Attempt) -> true
@@ -211,7 +211,7 @@ get_workflow_history_reverse(Cluster, WorkflowExecution, Opts) ->
     SName = 'GetWorkflowExecutionHistoryReverse',
     ReqMN = 'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryReverseRequest',
     RspMN = 'temporal.api.workflowservice.v1.GetWorkflowExecutionHistoryReverseResponse',
-    Custom = [{workflow_execution, {execution, WorkflowExecution}}],
+    Custom = [{workflow_execution, {execution, WorkflowExecutionOrId}}],
     temporal_sdk_api_common:run_request(Cluster, Opts, DefaultOpts, SName, ReqMN, RspMN, Custom).
 
 -spec list_open_workflows(

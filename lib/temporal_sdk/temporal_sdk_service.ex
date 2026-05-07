@@ -4,11 +4,11 @@ defmodule TemporalSdk.Service do
 
   @delegate_mod :temporal_sdk_service
 
-  defdelegate get_workflow_history(cluster, workflow_execution), to: @delegate_mod
-  defdelegate get_workflow_history(cluster, workflow_execution, opts), to: @delegate_mod
-  defdelegate get_workflow_history_reverse(cluster, workflow_execution), to: @delegate_mod
+  defdelegate get_workflow_history(cluster, workflow_execution_or_id), to: @delegate_mod
+  defdelegate get_workflow_history(cluster, workflow_execution_or_id, opts), to: @delegate_mod
+  defdelegate get_workflow_history_reverse(cluster, workflow_execution_or_id), to: @delegate_mod
 
-  defdelegate get_workflow_history_reverse(cluster, workflow_execution, opts),
+  defdelegate get_workflow_history_reverse(cluster, workflow_execution_or_id, opts),
     to: @delegate_mod
 
   defdelegate list_open_workflows(cluster), to: @delegate_mod

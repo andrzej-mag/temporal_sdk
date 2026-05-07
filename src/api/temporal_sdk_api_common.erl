@@ -11,6 +11,8 @@
     marker_decode_value/2,
     run_request/6,
     run_request/7,
+    transform_workflow_execution/1,
+    put_run_id/3,
     format_response/4,
     t2e/3
 ]).
@@ -194,8 +196,8 @@ do_custom([{nested, {PKey, CKeys}} | TC], ApiCtx, MsgName, Req) ->
     R = maps:without(CKeys, Req),
     do_custom(TC, ApiCtx, MsgName, R#{PKey => maps:with(CKeys, Req)});
 do_custom([{workflow_execution, {Key, WE}} | TC], ApiCtx, MsgName, Req) ->
-    do_custom(TC, ApiCtx, MsgName, Req#{Key => WE});
-do_custom([{workflow_execution, WE} | TC], ApiCtx, MsgName, Req) when is_map(WE) ->
+    do_custom(TC, ApiCtx, MsgName, Req#{Key => transform_workflow_execution(WE)});
+do_custom([{workflow_execution, WE} | TC], ApiCtx, MsgName, Req) ->
     do_custom([{workflow_execution, {workflow_execution, WE}} | TC], ApiCtx, MsgName, Req);
 do_custom([identity | TC], ApiCtx, MsgName, Req) ->
     do_custom(TC, ApiCtx, MsgName, temporal_sdk_api:put_identity(ApiCtx, MsgName, Req));
@@ -207,6 +209,34 @@ do_custom([{evict, _} | TC], ApiCtx, MsgName, Req) ->
     do_custom(TC, ApiCtx, MsgName, Req);
 do_custom([], _ApiCtx, _MsgName, Req) ->
     Req.
+
+-spec transform_workflow_execution(
+    WorkflowExecutionOrId :: temporal_sdk:workflow_execution_or_id()
+) -> temporal_sdk:workflow_execution().
+transform_workflow_execution(#{workflow_id := _} = WE) -> WE;
+transform_workflow_execution(WId) when is_binary(WId); is_list(WId) -> #{workflow_id => WId}.
+
+-spec put_run_id(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    WorkflowExecutionOrId :: temporal_sdk:workflow_execution_or_id(),
+    Opts :: map()
+) -> {ok, temporal_sdk:workflow_execution()} | {error, Reason :: term()}.
+put_run_id(_Cluster, #{run_id := _} = WE, _Opts) ->
+    {ok, WE};
+put_run_id(Cluster, WorkflowExecutionOrId, #{namespace := Namespace}) ->
+    case temporal_sdk:describe_workflow(Cluster, WorkflowExecutionOrId, [{namespace, Namespace}]) of
+        {ok, #{workflow_execution_info := #{execution := #{run_id := RunId}}}} ->
+            WE = temporal_sdk_api_common:transform_workflow_execution(WorkflowExecutionOrId),
+            {ok, WE#{run_id => RunId}};
+        {ok, Response} ->
+            {error, #{
+                reason => "Invalid describe_workflow response - missing run_id.",
+                invalid_response => Response
+            }};
+        Err ->
+            % eqwalizer:ignore
+            Err
+    end.
 
 -spec format_response(
     MessageName :: temporal_sdk_client:msg_name(),
