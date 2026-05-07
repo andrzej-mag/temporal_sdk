@@ -174,15 +174,17 @@ run_request(
         format_response(ResponseMessageName, ResponseType, Response, ApiCtx)
     end.
 
-maybe_evict(Cluster, #{namespace := Namespace}, #{evict := EvictReason} = Customizations) ->
-    WorkflowExecution =
-        case Customizations of
-            #{workflow_execution := {_, WE}} -> WE;
-            #{workflow_execution := WE} -> WE
+maybe_evict(
+    Cluster,
+    #{namespace := Namespace},
+    #{evict := EvictReason, workflow_execution := WorkflowExecution}
+) ->
+    WE =
+        case WorkflowExecution of
+            {_, W} -> W;
+            W -> W
         end,
-    temporal_sdk:evict_workflow(Cluster, WorkflowExecution, [
-        {namespace, Namespace}, {reason, EvictReason}
-    ]);
+    temporal_sdk:evict_workflow(Cluster, WE, [{namespace, Namespace}, {reason, EvictReason}]);
 maybe_evict(_Cluster, _Opts, _Customizations) ->
     ok.
 

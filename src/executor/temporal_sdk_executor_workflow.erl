@@ -1629,8 +1629,12 @@ handle_common(_State, info, {?TEMPORAL_SDK_GRPC_TAG, _Ref, {error, Error}}, #sta
     {stop, normal, StateData#state{stop_reason = {error, Error, ?EVST}}};
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: external eviction
-handle_common(_State, info, {?MSG_PRV, external_evict, Reason}, #state{} = StateData) ->
+handle_common(State, info, {?MSG_PRV, external_evict, Reason}, #state{} = StateData) when
+    State =:= evict; State =:= poll
+->
     {stop, normal, StateData#state{execution_state = {external_evict, Reason}}};
+handle_common(_State, info, {?MSG_PRV, external_evict, _Reason}, #state{}) ->
+    {keep_state_and_data, postpone};
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: unhandled message
 handle_common(State, EventType, EventContent, #state{} = StateData) ->
