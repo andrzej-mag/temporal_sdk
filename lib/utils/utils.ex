@@ -74,6 +74,9 @@ defmodule TemporalSdk.Utils do
   # alternative:
   # defp tx({:string, _, chars}, _), do: List.to_string(chars)
 
+  defp tx({:bin, 1, [{:bin_element, 1, {:string, 1, val}, :default, [:utf8]}]}, _),
+    do: List.to_string(val)
+
   defp tx({:tuple, _, el}, is_erl), do: Enum.map(el, fn e -> tx(e, is_erl) end) |> List.to_tuple()
 
   defp tx({:map, _, fields}, is_erl),

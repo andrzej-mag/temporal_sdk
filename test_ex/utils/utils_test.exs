@@ -54,6 +54,10 @@ defmodule TemporalSdk.UtilsTest do
     assert ts("\"string_string\"") == "\"string_string\""
   end
 
+  test "binary" do
+    assert ts("~\"binary\"") == "binary"
+  end
+
   test "tuple" do
     assert ts("{ok, error}") == "{:ok, :error}"
   end
