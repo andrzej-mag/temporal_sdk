@@ -29,7 +29,7 @@ defmodule TemporalSdk.Utils do
 
               case rest1 do
                 [] -> tx_mod(fmod1)
-                _ -> "#{fmod1}:#{rest1}"
+                _ -> mod
               end
 
             true ->
