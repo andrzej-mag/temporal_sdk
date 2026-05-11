@@ -32,6 +32,7 @@ defmodule TemporalSdk.UtilsTest do
   test "external" do
     assert ts("e:module") == "e::module"
     assert ts("e:module#section_ref") == "e::module#section_ref"
+    assert ts("e:module:test.md#section_ref") == "e::module:test.md#section_ref"
     assert ts("e:my_mod:func/3") == "e::my_mod.func/3"
   end
 
@@ -80,11 +81,13 @@ defmodule TemporalSdk.UtilsTest do
     assert ts("m:temporal_sdk#section_ref") == "m:TemporalSdk#section_ref"
     assert ts("e:temporal_sdk") == "e:TemporalSdk"
     assert ts("e:temporal_sdk#section_ref") == "e:TemporalSdk#section_ref"
+    assert ts("e:temporal_sdk:test.md#section_ref") == "e:TemporalSdk:test.md#section_ref"
 
     assert ts("m:temporal_sdk_cluster") == "m:TemporalSdk.Cluster"
     assert ts("m:temporal_sdk_cluster#section_ref") == "m:TemporalSdk.Cluster#section_ref"
     assert ts("e:temporal_sdk_cluster") == "e:TemporalSdk.Cluster"
     assert ts("e:temporal_sdk_cluster#section_ref") == "e:TemporalSdk.Cluster#section_ref"
+    assert ts("e:temporal_sdk_cluster:t.md#section") == "e:TemporalSdk.Cluster:t.md#section"
 
     assert ts("temporal_sdk:func/3") == "TemporalSdk.func/3"
     assert ts("temporal_sdk_cluster:func/3") == "TemporalSdk.Cluster.func/3"

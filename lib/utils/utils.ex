@@ -24,8 +24,16 @@ defmodule TemporalSdk.Utils do
 
         tx_mod =
           case String.contains?(mod, "/") do
-            false -> tx_mod(mod)
-            true -> to_elixir(mod, false)
+            false ->
+              [fmod1 | rest1] = String.split(mod, ":", parts: 2, trim: true)
+
+              case rest1 do
+                [] -> tx_mod(fmod1)
+                _ -> "#{tx_mod(fmod1)}:#{rest1}"
+              end
+
+            true ->
+              to_elixir(mod, false)
           end
 
         case rest do
