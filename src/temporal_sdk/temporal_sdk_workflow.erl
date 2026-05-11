@@ -1430,6 +1430,10 @@
     [{EtsMatchHead :: awaitable_index_pattern(), EtsMatchGuard :: [_], EtsMatchResult :: [_]}].
 -export_type([awaitable_index_pattern_match_spec/0]).
 
+-doc #{group => "SDK functions types"}.
+-type ets_match() :: term().
+-export_type([ets_match/0]).
+
 %% index table internal typespecs
 
 -doc false.
@@ -2839,10 +2843,10 @@ terminate_executor(Reason) -> cast_id({terminate, Reason}).
 
 -doc #{group => "SDK functions"}.
 -spec select_index
-    (AwaitableIndexPattern :: awaitable_index_pattern()) -> [awaitable_index()];
-    (IndexPatternSpec :: awaitable_index_pattern_match_spec()) -> [awaitable_index()];
+    (AwaitableIndexPattern :: awaitable_index_pattern()) -> [ets_match()];
+    (IndexPatternSpec :: awaitable_index_pattern_match_spec()) -> [ets_match()];
     (Continuation :: ets_continuation()) ->
-        {[awaitable_index()], Continuation :: ets_continuation()} | '$end_of_table'.
+        {[ets_match()], Continuation :: ets_continuation()} | '$end_of_table'.
 select_index(AwaitableIndexPattern) when
     is_tuple(AwaitableIndexPattern), tuple_size(AwaitableIndexPattern) =:= 2
 ->
@@ -2859,17 +2863,17 @@ select_index(Continuation) when is_tuple(Continuation), tuple_size(Continuation)
     IndexPatternSpec :: awaitable_index_pattern_match_spec(),
     Limit :: pos_integer()
 ) ->
-    {[awaitable_index()], Continuation :: ets_continuation()} | '$end_of_table'.
+    {[ets_match()], Continuation :: ets_continuation()} | '$end_of_table'.
 select_index(IndexPatternSpec, Limit) when is_integer(Limit) ->
     ets:select(?INDEX_TABLE, IndexPatternSpec, Limit).
 
 -doc #{group => "SDK functions"}.
 -spec select_history
     (EventId :: pos_integer()) -> history_event() | noevent;
-    (HistoryEventPattern :: history_event_table_pattern()) -> [history_event()];
-    (HistoryPatternSpec :: history_event_table_pattern_match_spec()) -> [history_event()];
+    (HistoryEventPattern :: history_event_table_pattern()) -> [ets_match()];
+    (HistoryPatternSpec :: history_event_table_pattern_match_spec()) -> [ets_match()];
     (Continuation :: ets_continuation()) ->
-        {[history_event()], Continuation :: ets_continuation()} | '$end_of_table'.
+        {[ets_match()], Continuation :: ets_continuation()} | '$end_of_table'.
 select_history(EventId) when is_integer(EventId), EventId > 0 ->
     case ets:select(?HISTORY_TABLE, [{{EventId, '_', '_', '_'}, [], ['$_']}], 1) of
         {[Match], '$end_of_table'} -> Match;
@@ -2891,7 +2895,7 @@ select_history(Continuation) when is_tuple(Continuation), tuple_size(Continuatio
     HistoryPatternSpec :: history_event_table_pattern_match_spec(),
     Limit :: pos_integer()
 ) ->
-    {[history_event()], Continuation :: ets_continuation()} | '$end_of_table'.
+    {[ets_match()], Continuation :: ets_continuation()} | '$end_of_table'.
 select_history(HistoryPatternSpec, Limit) when is_integer(Limit) ->
     ets:select(?HISTORY_TABLE, HistoryPatternSpec, Limit).
 
