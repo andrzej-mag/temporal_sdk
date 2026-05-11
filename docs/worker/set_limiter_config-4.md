@@ -1,7 +1,7 @@
 Updates the dynamic configuration of the rate limiter.
 
 Default values for the `limits` limiter levels are set to `#{}`, which means that setting
-`limits => #{}` will reset all rate limiter concurrency and fixed window limits.
+`limits` to `#{}` will reset all rate limiter concurrency and fixed window limits.
 
 Task worker will not start new tasks until the new rate limiter limits, defined in the updated limiter
 configuration, are satisfied.
