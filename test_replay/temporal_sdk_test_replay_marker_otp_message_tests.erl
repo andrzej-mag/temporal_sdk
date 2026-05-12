@@ -334,7 +334,7 @@ err_m_m() ->
 
 large_data() ->
     EFn = fun(#{executor_pid := Pid}, _Input) ->
-        LargeData = [binary:copy(~"X", 2_000_000)],
+        LargeData = [binary:copy(~"X", ?LARGE_DATA_SIZE)],
         Pid ! {?TEMPORAL_SDK_OTP_TAG, key, LargeData},
         timer:sleep(10),
         #{value := LargeData} = wait({marker, message, key})

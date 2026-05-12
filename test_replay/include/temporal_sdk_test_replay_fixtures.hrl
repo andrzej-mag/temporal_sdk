@@ -8,6 +8,8 @@
 -define(BASE_DIR, "test_replay").
 -define(LOOP_SIZE, 50).
 -define(DATA, ["string", <<"binary">>, 123, 1.23, true]).
+-define(MAXIMUM_REQUEST_SIZE, 1_000_000).
+-define(LARGE_DATA_SIZE, 900_000).
 
 -include("workflow.hrl").
 -include("test/include/temporal_sdk_test_fixtures_helpers.hrl").
@@ -146,7 +148,10 @@
         {clusters, [
             {?CL, [
                 {client, #{
-                    grpc_opts => #{codec => {temporal_sdk_codec_binaries, [], []}},
+                    grpc_opts => #{
+                        codec => {temporal_sdk_codec_binaries, [], []},
+                        maximum_request_size => ?MAXIMUM_REQUEST_SIZE
+                    },
                     grpc_opts_longpoll => #{codec => {temporal_sdk_codec_binaries, [], []}}
                 }},
                 {activities, ?WORKER_CONFIG},
@@ -159,7 +164,10 @@
         {clusters, [
             {?CL, [
                 {client, #{
-                    grpc_opts => #{codec => {temporal_sdk_codec_strings, [], []}},
+                    grpc_opts => #{
+                        codec => {temporal_sdk_codec_strings, [], []},
+                        maximum_request_size => ?MAXIMUM_REQUEST_SIZE
+                    },
                     grpc_opts_longpoll => #{codec => {temporal_sdk_codec_strings, [], []}}
                 }},
                 {activities, ?WORKER_CONFIG},
@@ -172,7 +180,10 @@
         {clusters, [
             {?CL, [
                 {client, #{
-                    grpc_opts => #{codec => {temporal_sdk_codec_binaries, [], []}},
+                    grpc_opts => #{
+                        codec => {temporal_sdk_codec_binaries, [], []},
+                        maximum_request_size => ?MAXIMUM_REQUEST_SIZE
+                    },
                     grpc_opts_longpoll => #{codec => {temporal_sdk_codec_binaries, [], []}}
                 }},
                 {activities, ?WORKER_CONFIG},
@@ -185,7 +196,10 @@
         {clusters, [
             {?CL, [
                 {client, #{
-                    grpc_opts => #{codec => {temporal_sdk_codec_binaries, [], []}},
+                    grpc_opts => #{
+                        codec => {temporal_sdk_codec_binaries, [], []},
+                        maximum_request_size => ?MAXIMUM_REQUEST_SIZE
+                    },
                     grpc_opts_longpoll => #{codec => {temporal_sdk_codec_binaries, [], []}}
                 }},
                 {activities, ?WORKER_CONFIG},
@@ -198,7 +212,10 @@
         {clusters, [
             {?CL, [
                 {client, #{
-                    grpc_opts => #{codec => {temporal_sdk_codec_binaries, [], []}},
+                    grpc_opts => #{
+                        codec => {temporal_sdk_codec_binaries, [], []},
+                        maximum_request_size => ?MAXIMUM_REQUEST_SIZE
+                    },
                     grpc_opts_longpoll => #{codec => {temporal_sdk_codec_binaries, [], []}}
                 }},
                 {activities, ?WORKER_CONFIG},

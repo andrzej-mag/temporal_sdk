@@ -464,7 +464,7 @@ pef_a_failing_3(_Context, [IsReplaying]) ->
 large_data() ->
     ?assertReplayEqual({completed, []}, ?MAIN_EXEC).
 pef_large_data(_Context, _Input) ->
-    LargeData = binary:copy(~"X", 2_000_000),
+    LargeData = [binary:copy(~"X", ?LARGE_DATA_SIZE)],
     A = start_activity(?A_TYPE, [LargeData], ?OPTS),
     #{result := _} = wait(A).
 

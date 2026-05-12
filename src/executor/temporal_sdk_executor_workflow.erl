@@ -1718,7 +1718,7 @@ next_event_id(#state{commands = Cmds}) when Cmds =/= [] ->
             }}
     end;
 next_event_id(#state{history_events = HE}) when HE =/= [] ->
-    do_next_eid(HE, 1).
+    {ok, do_next_eid(HE, 1)}.
 
 do_next_eid([{EId, T, _, _} | THE], _) when
     T =:= 'EVENT_TYPE_WORKFLOW_EXECUTION_STARTED';
@@ -1730,14 +1730,19 @@ do_next_eid([{EId, T, _, _} | THE], _) when
 ->
     do_next_eid(THE, EId + 1);
 do_next_eid([{EId, _, _, _} | _THE], _) ->
-    {ok, EId};
+    EId;
 do_next_eid([], EId) ->
-    {ok, EId + 1}.
+    EId + 1.
 
-update_event_id(false, _EId, Cmds, _SD) ->
-    {ok, Cmds};
-update_event_id(true, _EId, [{{_IK, #{event_id := _}}, _C} | _] = Cmds, _SD) ->
-    {ok, Cmds};
+update_event_id(false, EId, [{{_IK, #{event_id := EId}}, _C} | _] = Cmds, SD) ->
+    NEId = do_next_eid(SD#state.history_events, EId),
+    ShEId = NEId - EId,
+    Fn = fun
+        ({{IK, #{event_id := OEId} = IV}, C}) -> {{IK, IV#{event_id := OEId + ShEId}}, C};
+        (IdxCmd) -> IdxCmd
+    end,
+    temporal_sdk_api_awaitable_index_table:shift_event_id(SD#state.index_table, EId, ShEId),
+    {ok, [Fn(C) || C <- Cmds]};
 update_event_id(true, EId, [{{{complete_workflow_execution}, #{}} = Idx, C} | TIC], SD) ->
     case temporal_sdk_api_awaitable_index_table:update_event_id(SD#state.index_table, Idx, EId) of
         {ok, NewIdx} -> {ok, [{NewIdx, C} | TIC]};

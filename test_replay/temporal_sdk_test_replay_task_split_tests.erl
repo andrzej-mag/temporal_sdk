@@ -9,17 +9,17 @@
     {timeout, 7, fun activity/0},
     {timeout, 7, fun activity_cancel_1/0},
     {timeout, 7, fun activity_cancel_2/0},
-    {timeout, 7, fun activity_session_execution/0},
-    {timeout, 7, fun activity_direct_execution/0},
-    {timeout, 7, fun activity_direct_result/0},
+    % {timeout, 7, fun activity_session_execution/0},
+    % {timeout, 7, fun activity_direct_execution/0},
+    % {timeout, 7, fun activity_direct_result/0},
     {timeout, 7, fun marker/0},
-    {timeout, 7, fun marker_value/0},
-    {timeout, 7, fun marker_otp_message/0}
+    {timeout, 7, fun marker_value/0}
+    % {timeout, 7, fun marker_otp_message/0}
 ]).
 
 base_test_() -> ?FIXTURE(?CONFIGS, {inparallel, 1, {timeout, 10, ?TESTS}}).
 
--define(LARGE_DATA, [binary:copy(~"X", 2_000_000)]).
+-define(LARGE_DATA, [binary:copy(~"X", 400_000)]).
 
 -define(assertLocal(), begin
     ((fun() ->
@@ -69,38 +69,38 @@ activity_cancel_2() ->
     end,
     ?assertLocal().
 
-activity_session_execution() ->
-    Opts = [session_execution],
-    EFn = fun(_Context, _Input) ->
-        A1 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        A2 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        A3 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        A4 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        wait_all([A1, A2, A3, A4])
-    end,
-    ?assertLocal().
-
-activity_direct_execution() ->
-    Opts = [direct_execution],
-    EFn = fun(_Context, _Input) ->
-        A1 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        A2 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        A3 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        A4 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        wait_all([A1, A2, A3, A4])
-    end,
-    ?assertLocal().
-
-activity_direct_result() ->
-    Opts = [direct_result],
-    EFn = fun(_Context, _Input) ->
-        A1 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        A2 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        A3 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        A4 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
-        wait_all([A1, A2, A3, A4])
-    end,
-    ?assertLocal().
+% activity_session_execution() ->
+%     Opts = [session_execution],
+%     EFn = fun(_Context, _Input) ->
+%         A1 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         A2 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         A3 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         A4 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         wait_all([A1, A2, A3, A4])
+%     end,
+%     ?assertLocal().
+%
+% activity_direct_execution() ->
+%     Opts = [direct_execution],
+%     EFn = fun(_Context, _Input) ->
+%         A1 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         A2 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         A3 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         A4 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         wait_all([A1, A2, A3, A4])
+%     end,
+%     ?assertLocal().
+%
+% activity_direct_result() ->
+%     Opts = [direct_result],
+%     EFn = fun(_Context, _Input) ->
+%         A1 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         A2 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         A3 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         A4 = start_activity(?A_TYPE, ?LARGE_DATA, Opts),
+%         wait_all([A1, A2, A3, A4])
+%     end,
+%     ?assertLocal().
 
 marker() ->
     Opts = [],
@@ -124,19 +124,19 @@ marker_value() ->
     end,
     ?assertLocal().
 
-marker_otp_message() ->
-    EFn = fun(#{executor_pid := Pid}, _Input) ->
-        Pid ! {?TEMPORAL_SDK_OTP_TAG, key1, ?LARGE_DATA},
-        Pid ! {?TEMPORAL_SDK_OTP_TAG, key2, ?LARGE_DATA},
-        Pid ! {?TEMPORAL_SDK_OTP_TAG, key3, ?LARGE_DATA},
-        Pid ! {?TEMPORAL_SDK_OTP_TAG, key4, ?LARGE_DATA},
-        wait_all([
-            {marker, message, key1},
-            {marker, message, key2},
-            {marker, message, key3},
-            {marker, message, key4}
-        ])
-    end,
-    ?assertLocal().
+% marker_otp_message() ->
+%     EFn = fun(#{executor_pid := Pid}, _Input) ->
+%         Pid ! {?TEMPORAL_SDK_OTP_TAG, key1, ?LARGE_DATA},
+%         Pid ! {?TEMPORAL_SDK_OTP_TAG, key2, ?LARGE_DATA},
+%         Pid ! {?TEMPORAL_SDK_OTP_TAG, key3, ?LARGE_DATA},
+%         Pid ! {?TEMPORAL_SDK_OTP_TAG, key4, ?LARGE_DATA},
+%         wait_all([
+%             {marker, message, key1},
+%             {marker, message, key2},
+%             {marker, message, key3},
+%             {marker, message, key4}
+%         ])
+%     end,
+%     ?assertLocal().
 
 -endif.

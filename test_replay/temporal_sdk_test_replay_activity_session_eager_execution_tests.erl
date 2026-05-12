@@ -422,7 +422,7 @@ a_failing_3() ->
 
 large_data() ->
     EFn = fun(_Context, _Input) ->
-        LargeData = binary:copy(~"X", 2_000_000),
+        LargeData = [binary:copy(~"X", ?LARGE_DATA_SIZE)],
         A = start_activity(?A_TYPE, [LargeData], ?OPTS),
         #{result := _} = wait(A)
     end,

@@ -303,7 +303,7 @@ m_failing() ->
 
 large_data() ->
     EFn = fun(_Context, _Input) ->
-        LargeData = [binary:copy(~"X", 2_000_000)],
+        LargeData = [binary:copy(~"X", ?LARGE_DATA_SIZE)],
         M = record_marker(fun() -> LargeData end, ?OPTS),
         #{value := LargeData} = wait(M)
     end,

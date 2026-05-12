@@ -9,6 +9,7 @@
     upsert_ext/2,
     update_event_id/3,
     upsert_polled/3,
+    shift_event_id/3,
     upsert_cancelation/2,
     update_cancelation/3,
     fetch/2,
@@ -221,6 +222,18 @@ upsert_cancelation(IndexTable, CancelationIndexKey) ->
                     {error, #{reason => Reason, awaitable => CancelationIndexKey}}
             end
     end.
+
+-spec shift_event_id(IndexTable :: ets:table(), EventId :: pos_integer(), Shift :: pos_integer()) ->
+    ok.
+shift_event_id(IndexTable, EventId, Shift) ->
+    Rows = ets:select(IndexTable, [{{'$1', #{event_id => '$2'}}, [{'=<', EventId, '$2'}], ['$_']}]),
+    do_shift_event_id(Rows, Shift, IndexTable).
+
+do_shift_event_id([{IdxKey, #{event_id := EId} = IdxVal} | TRows], Shift, IndexTable) ->
+    ets:insert(IndexTable, {IdxKey, IdxVal#{event_id := EId + Shift}}),
+    do_shift_event_id(TRows, Shift, IndexTable);
+do_shift_event_id([], _Shift, _IndexTable) ->
+    ok.
 
 -spec update_cancelation(
     IndexTable :: ets:table(),
