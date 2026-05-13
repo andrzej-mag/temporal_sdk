@@ -244,6 +244,7 @@
     | {priority, ?TEMPORAL_SPEC:'temporal.api.common.v1.Priority'()}
     | {eager_worker_deployment_options,
         ?TEMPORAL_SPEC:'temporal.api.deployment.v1.WorkerDeploymentOptions'()}
+    | {time_skipping_config, ?TEMPORAL_SPEC:'temporal.api.workflow.v1.TimeSkippingConfig'()}
     %% SDK
     | {eager_worker_id, temporal_sdk_worker:id()}
     | {raw_request,
@@ -322,6 +323,7 @@
     | {next_page_token, binary()}
     | {wait_new_event, boolean()}
     | {history_event_filter_type, ?TEMPORAL_SPEC:'temporal.api.enums.v1.HistoryEventFilterType'()}
+    %% bool skip_archival = 7;
     %% SDK
     | {grpc_opts, temporal_sdk_client:grpc_opts()}
     | {raw_request,
@@ -575,8 +577,8 @@ start_workflow(Cluster, TaskQueue, WorkflowType, Opts) ->
             {MsgName, [search_attributes, indexed_fields]}},
         {header, header, '$_optional', {MsgName, header}},
         {request_eager_execution, [boolean, atom], '$_optional'},
-        %% temporal.api.failure.v1.Failure continued_failure = 18;
-        %% temporal.api.common.v1.Payloads last_completion_result = 19;
+        {continued_failure, failure, '$_optional'},
+        {last_completion_result, payloads, '$_optional', {MsgName, last_completion_result}},
         {workflow_start_delay, duration, '$_optional'},
         %% repeated temporal.api.common.v1.Callback completion_callbacks = 21;
         {user_metadata, user_metadata, '$_optional', {MsgName, user_metadata}},
@@ -585,6 +587,7 @@ start_workflow(Cluster, TaskQueue, WorkflowType, Opts) ->
         {on_conflict_options, map, '$_optional'},
         {priority, map, '$_optional'},
         {eager_worker_deployment_options, map, '$_optional'},
+        {time_skipping_config, map, '$_optional'},
         %% SDK
         {eager_worker_id, [atom, unicode], '$_optional'},
         {raw_request, map, #{}},
@@ -901,6 +904,7 @@ get_workflow_history(Cluster, WorkflowExecutionOrId, Opts) ->
         {next_page_token, binary, '$_optional'},
         {wait_new_event, boolean, '$_optional'},
         {history_event_filter_type, atom, '$_optional'},
+        %% bool skip_archival = 7;
         %% SDK
         {grpc_opts, map, DefaultGrpcOpts, merge},
         {raw_request, map, #{}},
