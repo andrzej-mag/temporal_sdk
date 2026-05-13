@@ -1,7 +1,7 @@
 %% Automatically generated, do not edit.
-%% gpb library version:          4.21.5
+%% gpb library version:          4.21.7
 %% temporal_sdk_proto version:   0.1.0
-%% Temporal API version tag:     v1.56.0-1-g831691d
+%% Temporal API version tag:     v1.62.11-9-gf5b514e
 
 -module(temporal_sdk_proto).
 
@@ -83,6 +83,7 @@ Temporal gRPC services module.
     | 'ListScheduleMatchingTimes'
     | 'DeleteSchedule'
     | 'ListSchedules'
+    | 'CountSchedules'
     | 'UpdateWorkerBuildIdCompatibility'
     | 'GetWorkerBuildIdCompatibility'
     | 'UpdateWorkerVersioningRules'
@@ -100,6 +101,10 @@ Temporal gRPC services module.
     | 'DeleteWorkerDeploymentVersion'
     | 'SetWorkerDeploymentRampingVersion'
     | 'ListWorkerDeployments'
+    | 'CreateWorkerDeployment'
+    | 'CreateWorkerDeploymentVersion'
+    | 'UpdateWorkerDeploymentVersionComputeConfig'
+    | 'ValidateWorkerDeploymentVersionComputeConfig'
     | 'UpdateWorkerDeploymentVersionMetadata'
     | 'SetWorkerDeploymentManager'
     | 'UpdateWorkflowExecution'
@@ -127,6 +132,28 @@ Temporal gRPC services module.
     | 'FetchWorkerConfig'
     | 'UpdateWorkerConfig'
     | 'DescribeWorker'
+    | 'PauseWorkflowExecution'
+    | 'UnpauseWorkflowExecution'
+    | 'StartActivityExecution'
+    | 'StartNexusOperationExecution'
+    | 'DescribeActivityExecution'
+    | 'DescribeNexusOperationExecution'
+    | 'PollActivityExecution'
+    | 'PollNexusOperationExecution'
+    | 'ListActivityExecutions'
+    | 'ListNexusOperationExecutions'
+    | 'CountActivityExecutions'
+    | 'CountNexusOperationExecutions'
+    | 'RequestCancelActivityExecution'
+    | 'RequestCancelNexusOperationExecution'
+    | 'TerminateActivityExecution'
+    | 'DeleteActivityExecution'
+    | 'PauseActivityExecution'
+    | 'ResetActivityExecution'
+    | 'UnpauseActivityExecution'
+    | 'UpdateActivityExecutionOptions'
+    | 'TerminateNexusOperationExecution'
+    | 'DeleteNexusOperationExecution'
     | 'AddSearchAttributes'
     | 'RemoveSearchAttributes'
     | 'ListSearchAttributes'
@@ -257,7 +284,10 @@ info('StartWorkflowExecution') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_id}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_id}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -277,9 +307,8 @@ info('ExecuteMultiOperation') ->
         name => 'ExecuteMultiOperation',
         output => 'temporal.api.workflowservice.v1.ExecuteMultiOperationResponse',
         opts => [
-            {'google...api...http',
-                {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workflows/execute-multi-operation\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/execute-multi-operation\" body : \"*\" } }"}}
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -301,7 +330,10 @@ info('GetWorkflowExecutionHistory') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ get : \"/namespaces/{namespace}/workflows/{execution.workflow_id}/history\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/workflows/{execution.workflow_id}/history\" } }"}}
+                    "{ get : \"/namespaces/{namespace}/workflows/{execution.workflow_id}/history\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/workflows/{execution.workflow_id}/history\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -323,7 +355,10 @@ info('GetWorkflowExecutionHistoryReverse') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ get : \"/namespaces/{namespace}/workflows/{execution.workflow_id}/history-reverse\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/workflows/{execution.workflow_id}/history-reverse\" } }"}}
+                    "{ get : \"/namespaces/{namespace}/workflows/{execution.workflow_id}/history-reverse\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/workflows/{execution.workflow_id}/history-reverse\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -343,7 +378,11 @@ info('PollWorkflowTaskQueue') ->
         input => 'temporal.api.workflowservice.v1.PollWorkflowTaskQueueRequest',
         name => 'PollWorkflowTaskQueue',
         output => 'temporal.api.workflowservice.v1.PollWorkflowTaskQueueResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"poller:{poller_group_id}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 80, 111, 108, 108,
@@ -361,7 +400,10 @@ info('RespondWorkflowTaskCompleted') ->
         input => 'temporal.api.workflowservice.v1.RespondWorkflowTaskCompletedRequest',
         name => 'RespondWorkflowTaskCompleted',
         output => 'temporal.api.workflowservice.v1.RespondWorkflowTaskCompletedResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 82, 101, 115, 112,
@@ -379,7 +421,10 @@ info('RespondWorkflowTaskFailed') ->
         input => 'temporal.api.workflowservice.v1.RespondWorkflowTaskFailedRequest',
         name => 'RespondWorkflowTaskFailed',
         output => 'temporal.api.workflowservice.v1.RespondWorkflowTaskFailedResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 82, 101, 115, 112,
@@ -397,7 +442,11 @@ info('PollActivityTaskQueue') ->
         input => 'temporal.api.workflowservice.v1.PollActivityTaskQueueRequest',
         name => 'PollActivityTaskQueue',
         output => 'temporal.api.workflowservice.v1.PollActivityTaskQueueResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"poller:{poller_group_id}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 80, 111, 108, 108,
@@ -418,7 +467,9 @@ info('RecordActivityTaskHeartbeat') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/heartbeat\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/heartbeat\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activity-heartbeat\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activity-heartbeat\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -440,7 +491,9 @@ info('RecordActivityTaskHeartbeatById') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/heartbeat-by-id\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/heartbeat-by-id\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activities/{activity_id}/heartbeat\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/{activity_id}/heartbeat\" body : \"*\" } additional_bindings { post : \"/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/heartbeat\" body : \"*\" } additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/heartbeat\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -462,7 +515,9 @@ info('RespondActivityTaskCompleted') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/complete\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/complete\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activity-complete\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activity-complete\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -484,7 +539,9 @@ info('RespondActivityTaskCompletedById') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/complete-by-id\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/complete-by-id\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activities/{activity_id}/complete\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/{activity_id}/complete\" body : \"*\" } additional_bindings { post : \"/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/complete\" body : \"*\" } additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/complete\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -506,7 +563,9 @@ info('RespondActivityTaskFailed') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/fail\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/fail\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activity-fail\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activity-fail\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -528,7 +587,9 @@ info('RespondActivityTaskFailedById') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/fail-by-id\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/fail-by-id\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activities/{activity_id}/fail\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/{activity_id}/fail\" body : \"*\" } additional_bindings { post : \"/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/fail\" body : \"*\" } additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/fail\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -550,7 +611,9 @@ info('RespondActivityTaskCanceled') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/cancel\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/cancel\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activity-resolve-as-canceled\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activity-resolve-as-canceled\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -572,7 +635,9 @@ info('RespondActivityTaskCanceledById') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/cancel-by-id\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/cancel-by-id\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activities/{activity_id}/resolve-as-canceled\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/{activity_id}/resolve-as-canceled\" body : \"*\" } additional_bindings { post : \"/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/resolve-as-canceled\" body : \"*\" } additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/resolve-as-canceled\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -594,7 +659,10 @@ info('RequestCancelWorkflowExecution') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/cancel\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/cancel\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/cancel\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/cancel\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{workflow_execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -616,7 +684,10 @@ info('SignalWorkflowExecution') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/signal/{signal_name}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/signal/{signal_name}\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/signal/{signal_name}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/signal/{signal_name}\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{workflow_execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -636,9 +707,13 @@ info('SignalWithStartWorkflowExecution') ->
         name => 'SignalWithStartWorkflowExecution',
         output => 'temporal.api.workflowservice.v1.SignalWithStartWorkflowExecutionResponse',
         opts => [
+            {'nexusannotations...v1...operation.tags', "exposed"},
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_id}/signal-with-start/{signal_name}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/signal-with-start/{signal_name}\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_id}/signal-with-start/{signal_name}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/signal-with-start/{signal_name}\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -660,7 +735,10 @@ info('ResetWorkflowExecution') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/reset\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/reset\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/reset\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/reset\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{workflow_execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -682,7 +760,10 @@ info('TerminateWorkflowExecution') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/terminate\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/terminate\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/terminate\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/terminate\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{workflow_execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -701,7 +782,11 @@ info('DeleteWorkflowExecution') ->
         input => 'temporal.api.workflowservice.v1.DeleteWorkflowExecutionRequest',
         name => 'DeleteWorkflowExecution',
         output => 'temporal.api.workflowservice.v1.DeleteWorkflowExecutionResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{workflow_execution.workflow_id}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 68, 101, 108, 101,
@@ -857,7 +942,11 @@ info('RespondQueryTaskCompleted') ->
         input => 'temporal.api.workflowservice.v1.RespondQueryTaskCompletedRequest',
         name => 'RespondQueryTaskCompleted',
         output => 'temporal.api.workflowservice.v1.RespondQueryTaskCompletedResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"poller:{poller_group_id}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 82, 101, 115, 112,
@@ -875,7 +964,11 @@ info('ResetStickyTaskQueue') ->
         input => 'temporal.api.workflowservice.v1.ResetStickyTaskQueueRequest',
         name => 'ResetStickyTaskQueue',
         output => 'temporal.api.workflowservice.v1.ResetStickyTaskQueueResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{execution.workflow_id}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 82, 101, 115, 101,
@@ -913,7 +1006,10 @@ info('QueryWorkflow') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workflows/{execution.workflow_id}/query/{query.query_type}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{execution.workflow_id}/query/{query.query_type}\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workflows/{execution.workflow_id}/query/{query.query_type}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{execution.workflow_id}/query/{query.query_type}\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -934,7 +1030,10 @@ info('DescribeWorkflowExecution') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ get : \"/namespaces/{namespace}/workflows/{execution.workflow_id}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/workflows/{execution.workflow_id}\" } }"}}
+                    "{ get : \"/namespaces/{namespace}/workflows/{execution.workflow_id}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/workflows/{execution.workflow_id}\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -956,7 +1055,10 @@ info('DescribeTaskQueue') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ get : \"/namespaces/{namespace}/task-queues/{task_queue.name}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/task-queues/{task_queue.name}\" } }"}}
+                    "{ get : \"/namespaces/{namespace}/task-queues/{task_queue.name}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/task-queues/{task_queue.name}\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"taskqueue:{task_queue.name}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1017,7 +1119,11 @@ info('ListTaskQueuePartitions') ->
         input => 'temporal.api.workflowservice.v1.ListTaskQueuePartitionsRequest',
         name => 'ListTaskQueuePartitions',
         output => 'temporal.api.workflowservice.v1.ListTaskQueuePartitionsResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"taskqueue:{task_queue.name}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 76, 105, 115, 116,
@@ -1038,7 +1144,10 @@ info('CreateSchedule') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/schedules/{schedule_id}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/schedules/{schedule_id}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"schedule:{schedule_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1059,7 +1168,10 @@ info('DescribeSchedule') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ get : \"/namespaces/{namespace}/schedules/{schedule_id}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}\" } }"}}
+                    "{ get : \"/namespaces/{namespace}/schedules/{schedule_id}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"schedule:{schedule_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1081,7 +1193,10 @@ info('UpdateSchedule') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/schedules/{schedule_id}/update\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}/update\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/schedules/{schedule_id}/update\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}/update\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"schedule:{schedule_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1102,7 +1217,10 @@ info('PatchSchedule') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/schedules/{schedule_id}/patch\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}/patch\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/schedules/{schedule_id}/patch\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}/patch\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"schedule:{schedule_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1123,7 +1241,10 @@ info('ListScheduleMatchingTimes') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ get : \"/namespaces/{namespace}/schedules/{schedule_id}/matching-times\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}/matching-times\" } }"}}
+                    "{ get : \"/namespaces/{namespace}/schedules/{schedule_id}/matching-times\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}/matching-times\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"schedule:{schedule_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1145,7 +1266,10 @@ info('DeleteSchedule') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ delete : \"/namespaces/{namespace}/schedules/{schedule_id}\" additional_bindings { delete : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}\" } }"}}
+                    "{ delete : \"/namespaces/{namespace}/schedules/{schedule_id}\" additional_bindings { delete : \"/api/v1/namespaces/{namespace}/schedules/{schedule_id}\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"schedule:{schedule_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1172,6 +1296,27 @@ info('ListSchedules') ->
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 76, 105, 115, 116,
                 83, 99, 104, 101, 100, 117, 108, 101, 115, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('CountSchedules') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.CountSchedulesRequest',
+        name => 'CountSchedules',
+        output => 'temporal.api.workflowservice.v1.CountSchedulesResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ get : \"/namespaces/{namespace}/schedule-count\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/schedule-count\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 67, 111, 117, 110,
+                116, 83, 99, 104, 101, 100, 117, 108, 101, 115, 82, 101, 113, 117, 101, 115, 116>>,
         input_stream => false,
         output_stream => false,
         service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
@@ -1312,7 +1457,10 @@ info('DescribeWorkerDeploymentVersion') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ get : \"/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}\" } }"}}
+                    "{ get : \"/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"deployment:{deployment_version.deployment_name}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1422,7 +1570,10 @@ info('SetWorkerDeploymentCurrentVersion') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/worker-deployments/{deployment_name}/set-current-version\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployments/{deployment_name}/set-current-version\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/worker-deployments/{deployment_name}/set-current-version\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployments/{deployment_name}/set-current-version\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"deployment:{deployment_name}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1445,7 +1596,10 @@ info('DescribeWorkerDeployment') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ get : \"/namespaces/{namespace}/worker-deployments/{deployment_name}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/worker-deployments/{deployment_name}\" } }"}}
+                    "{ get : \"/namespaces/{namespace}/worker-deployments/{deployment_name}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/worker-deployments/{deployment_name}\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"deployment:{deployment_name}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1467,7 +1621,10 @@ info('DeleteWorkerDeployment') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ delete : \"/namespaces/{namespace}/worker-deployments/{deployment_name}\" additional_bindings { delete : \"/api/v1/namespaces/{namespace}/worker-deployments/{deployment_name}\" } }"}}
+                    "{ delete : \"/namespaces/{namespace}/worker-deployments/{deployment_name}\" additional_bindings { delete : \"/api/v1/namespaces/{namespace}/worker-deployments/{deployment_name}\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"deployment:{deployment_name}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1489,7 +1646,10 @@ info('DeleteWorkerDeploymentVersion') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ delete : \"/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}\" additional_bindings { delete : \"/api/v1/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}\" } }"}}
+                    "{ delete : \"/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}\" additional_bindings { delete : \"/api/v1/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"deployment:{deployment_version.deployment_name}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1511,7 +1671,10 @@ info('SetWorkerDeploymentRampingVersion') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/worker-deployments/{deployment_name}/set-ramping-version\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployments/{deployment_name}/set-ramping-version\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/worker-deployments/{deployment_name}/set-ramping-version\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployments/{deployment_name}/set-ramping-version\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"deployment:{deployment_name}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1548,6 +1711,100 @@ info('ListWorkerDeployments') ->
             <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
                 114, 111, 116, 111>>
     };
+info('CreateWorkerDeployment') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.CreateWorkerDeploymentRequest',
+        name => 'CreateWorkerDeployment',
+        output => 'temporal.api.workflowservice.v1.CreateWorkerDeploymentResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/worker-deployments/{deployment_name}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployments/{deployment_name}\" body : \"*\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 67, 114, 101, 97,
+                116, 101, 87, 111, 114, 107, 101, 114, 68, 101, 112, 108, 111, 121, 109, 101, 110,
+                116, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('CreateWorkerDeploymentVersion') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.CreateWorkerDeploymentVersionRequest',
+        name => 'CreateWorkerDeploymentVersion',
+        output => 'temporal.api.workflowservice.v1.CreateWorkerDeploymentVersionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}\" body : \"*\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 67, 114, 101, 97,
+                116, 101, 87, 111, 114, 107, 101, 114, 68, 101, 112, 108, 111, 121, 109, 101, 110,
+                116, 86, 101, 114, 115, 105, 111, 110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('UpdateWorkerDeploymentVersionComputeConfig') ->
+    #{
+        input =>
+            'temporal.api.workflowservice.v1.UpdateWorkerDeploymentVersionComputeConfigRequest',
+        name => 'UpdateWorkerDeploymentVersionComputeConfig',
+        output =>
+            'temporal.api.workflowservice.v1.UpdateWorkerDeploymentVersionComputeConfigResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}/update-compute-config\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}/update-compute-config\" body : \"*\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 85, 112, 100, 97,
+                116, 101, 87, 111, 114, 107, 101, 114, 68, 101, 112, 108, 111, 121, 109, 101, 110,
+                116, 86, 101, 114, 115, 105, 111, 110, 67, 111, 109, 112, 117, 116, 101, 67, 111,
+                110, 102, 105, 103, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('ValidateWorkerDeploymentVersionComputeConfig') ->
+    #{
+        input =>
+            'temporal.api.workflowservice.v1.ValidateWorkerDeploymentVersionComputeConfigRequest',
+        name => 'ValidateWorkerDeploymentVersionComputeConfig',
+        output =>
+            'temporal.api.workflowservice.v1.ValidateWorkerDeploymentVersionComputeConfigResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}/validate-compute-config\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}/validate-compute-config\" body : \"*\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 86, 97, 108, 105,
+                100, 97, 116, 101, 87, 111, 114, 107, 101, 114, 68, 101, 112, 108, 111, 121, 109,
+                101, 110, 116, 86, 101, 114, 115, 105, 111, 110, 67, 111, 109, 112, 117, 116, 101,
+                67, 111, 110, 102, 105, 103, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
 info('UpdateWorkerDeploymentVersionMetadata') ->
     #{
         input => 'temporal.api.workflowservice.v1.UpdateWorkerDeploymentVersionMetadataRequest',
@@ -1556,7 +1813,10 @@ info('UpdateWorkerDeploymentVersionMetadata') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}/update-metadata\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}/update-metadata\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}/update-metadata\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployment-versions/{deployment_version.deployment_name}/{deployment_version.build_id}/update-metadata\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"deployment:{deployment_version.deployment_name}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1579,7 +1839,10 @@ info('SetWorkerDeploymentManager') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/worker-deployments/{deployment_name}/set-manager\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployments/{deployment_name}/set-manager\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/worker-deployments/{deployment_name}/set-manager\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/worker-deployments/{deployment_name}/set-manager\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"deployment:{deployment_name}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1601,7 +1864,10 @@ info('UpdateWorkflowExecution') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/update/{request.input.name}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/update/{request.input.name}\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/update/{request.input.name}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/update/{request.input.name}\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{workflow_execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1620,7 +1886,11 @@ info('PollWorkflowExecutionUpdate') ->
         input => 'temporal.api.workflowservice.v1.PollWorkflowExecutionUpdateRequest',
         name => 'PollWorkflowExecutionUpdate',
         output => 'temporal.api.workflowservice.v1.PollWorkflowExecutionUpdateResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{update_ref.workflow_execution.workflow_id}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 80, 111, 108, 108,
@@ -1641,7 +1911,9 @@ info('StartBatchOperation') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/batch-operations/{job_id}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/batch-operations/{job_id}\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/batch-operations/{job_id}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/batch-operations/{job_id}\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"batch:{job_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1663,7 +1935,9 @@ info('StopBatchOperation') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/batch-operations/{job_id}/stop\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/batch-operations/{job_id}/stop\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/batch-operations/{job_id}/stop\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/batch-operations/{job_id}/stop\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"batch:{job_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1685,7 +1959,9 @@ info('DescribeBatchOperation') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ get : \"/namespaces/{namespace}/batch-operations/{job_id}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/batch-operations/{job_id}\" } }"}}
+                    "{ get : \"/namespaces/{namespace}/batch-operations/{job_id}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/batch-operations/{job_id}\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"batch:{job_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1726,7 +2002,11 @@ info('PollNexusTaskQueue') ->
         input => 'temporal.api.workflowservice.v1.PollNexusTaskQueueRequest',
         name => 'PollNexusTaskQueue',
         output => 'temporal.api.workflowservice.v1.PollNexusTaskQueueResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"poller:{poller_group_id}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 80, 111, 108, 108,
@@ -1744,7 +2024,11 @@ info('RespondNexusTaskCompleted') ->
         input => 'temporal.api.workflowservice.v1.RespondNexusTaskCompletedRequest',
         name => 'RespondNexusTaskCompleted',
         output => 'temporal.api.workflowservice.v1.RespondNexusTaskCompletedResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"poller:{poller_group_id}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 82, 101, 115, 112,
@@ -1762,7 +2046,11 @@ info('RespondNexusTaskFailed') ->
         input => 'temporal.api.workflowservice.v1.RespondNexusTaskFailedRequest',
         name => 'RespondNexusTaskFailed',
         output => 'temporal.api.workflowservice.v1.RespondNexusTaskFailedResponse',
-        opts => [],
+        opts => [
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"poller:{poller_group_id}\" }"}}
+        ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 82, 101, 115, 112,
@@ -1783,7 +2071,10 @@ info('UpdateActivityOptions') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/update-options\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/update-options\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activities-deprecated/update-options\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities-deprecated/update-options\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1805,7 +2096,10 @@ info('UpdateWorkflowExecutionOptions') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/update-options\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/update-options\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/update-options\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_execution.workflow_id}/update-options\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{workflow_execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1827,7 +2121,10 @@ info('PauseActivity') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/pause\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/pause\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activities-deprecated/pause\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities-deprecated/pause\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1848,7 +2145,10 @@ info('UnpauseActivity') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/unpause\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/unpause\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activities-deprecated/unpause\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities-deprecated/unpause\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1870,7 +2170,10 @@ info('ResetActivity') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/activities/reset\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/reset\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/activities-deprecated/reset\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities-deprecated/reset\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -1979,7 +2282,10 @@ info('TriggerWorkflowRule') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workflows/{execution.workflow_id}/trigger-rule\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{execution.workflow_id}/trigger-rule\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workflows/{execution.workflow_id}/trigger-rule\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{execution.workflow_id}/trigger-rule\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{execution.workflow_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -2001,7 +2307,9 @@ info('RecordWorkerHeartbeat') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workers/heartbeat\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workers/heartbeat\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workers/heartbeat\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workers/heartbeat\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -2044,7 +2352,10 @@ info('UpdateTaskQueueConfig') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/task-queues/{task_queue}/update-config\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/task-queues/{task_queue}/update-config\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/task-queues/{task_queue}/update-config\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/task-queues/{task_queue}/update-config\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"taskqueue:{task_queue}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -2066,7 +2377,9 @@ info('FetchWorkerConfig') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workers/fetch-config\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workers/fetch-config\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workers/fetch-config\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workers/fetch-config\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -2088,7 +2401,9 @@ info('UpdateWorkerConfig') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ post : \"/namespaces/{namespace}/workers/update-config\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workers/update-config\" body : \"*\" } }"}}
+                    "{ post : \"/namespaces/{namespace}/workers/update-config\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workers/update-config\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
@@ -2110,12 +2425,522 @@ info('DescribeWorker') ->
         opts => [
             {'google...api...http',
                 {uninterpreted,
-                    "{ get : \"/namespaces/{namespace}/workers/describe/{worker_instance_key}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/workers/describe/{worker_instance_key}\" } }"}}
+                    "{ get : \"/namespaces/{namespace}/workers/describe/{worker_instance_key}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/workers/describe/{worker_instance_key}\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"worker:{worker_instance_key}\" }"}}
         ],
         msg_type =>
             <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
                 108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 68, 101, 115, 99,
                 114, 105, 98, 101, 87, 111, 114, 107, 101, 114, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('PauseWorkflowExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.PauseWorkflowExecutionRequest',
+        name => 'PauseWorkflowExecution',
+        output => 'temporal.api.workflowservice.v1.PauseWorkflowExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_id}/pause\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/pause\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{workflow_id}\" }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 80, 97, 117, 115,
+                101, 87, 111, 114, 107, 102, 108, 111, 119, 69, 120, 101, 99, 117, 116, 105, 111,
+                110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('UnpauseWorkflowExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.UnpauseWorkflowExecutionRequest',
+        name => 'UnpauseWorkflowExecution',
+        output => 'temporal.api.workflowservice.v1.UnpauseWorkflowExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/workflows/{workflow_id}/unpause\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/unpause\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"workflow:{workflow_id}\" }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 85, 110, 112, 97,
+                117, 115, 101, 87, 111, 114, 107, 102, 108, 111, 119, 69, 120, 101, 99, 117, 116,
+                105, 111, 110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('StartActivityExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.StartActivityExecutionRequest',
+        name => 'StartActivityExecution',
+        output => 'temporal.api.workflowservice.v1.StartActivityExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/activities/{activity_id}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/{activity_id}\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"activity:{activity_id}\" }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 83, 116, 97, 114,
+                116, 65, 99, 116, 105, 118, 105, 116, 121, 69, 120, 101, 99, 117, 116, 105, 111,
+                110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('StartNexusOperationExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.StartNexusOperationExecutionRequest',
+        name => 'StartNexusOperationExecution',
+        output => 'temporal.api.workflowservice.v1.StartNexusOperationExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/nexus-operations/{operation_id}\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/nexus-operations/{operation_id}\" body : \"*\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 83, 116, 97, 114,
+                116, 78, 101, 120, 117, 115, 79, 112, 101, 114, 97, 116, 105, 111, 110, 69, 120,
+                101, 99, 117, 116, 105, 111, 110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('DescribeActivityExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.DescribeActivityExecutionRequest',
+        name => 'DescribeActivityExecution',
+        output => 'temporal.api.workflowservice.v1.DescribeActivityExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ get : \"/namespaces/{namespace}/activities/{activity_id}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/activities/{activity_id}\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"activity:{activity_id}\" }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 68, 101, 115, 99,
+                114, 105, 98, 101, 65, 99, 116, 105, 118, 105, 116, 121, 69, 120, 101, 99, 117, 116,
+                105, 111, 110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('DescribeNexusOperationExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.DescribeNexusOperationExecutionRequest',
+        name => 'DescribeNexusOperationExecution',
+        output => 'temporal.api.workflowservice.v1.DescribeNexusOperationExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ get : \"/namespaces/{namespace}/nexus-operations/{operation_id}\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/nexus-operations/{operation_id}\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 68, 101, 115, 99,
+                114, 105, 98, 101, 78, 101, 120, 117, 115, 79, 112, 101, 114, 97, 116, 105, 111,
+                110, 69, 120, 101, 99, 117, 116, 105, 111, 110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('PollActivityExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.PollActivityExecutionRequest',
+        name => 'PollActivityExecution',
+        output => 'temporal.api.workflowservice.v1.PollActivityExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ get : \"/namespaces/{namespace}/activities/{activity_id}/outcome\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/activities/{activity_id}/outcome\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"activity:{activity_id}\" }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 80, 111, 108, 108,
+                65, 99, 116, 105, 118, 105, 116, 121, 69, 120, 101, 99, 117, 116, 105, 111, 110, 82,
+                101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('PollNexusOperationExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.PollNexusOperationExecutionRequest',
+        name => 'PollNexusOperationExecution',
+        output => 'temporal.api.workflowservice.v1.PollNexusOperationExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ get : \"/namespaces/{namespace}/nexus-operations/{operation_id}/poll\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/nexus-operations/{operation_id}/poll\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 80, 111, 108, 108,
+                78, 101, 120, 117, 115, 79, 112, 101, 114, 97, 116, 105, 111, 110, 69, 120, 101, 99,
+                117, 116, 105, 111, 110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('ListActivityExecutions') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.ListActivityExecutionsRequest',
+        name => 'ListActivityExecutions',
+        output => 'temporal.api.workflowservice.v1.ListActivityExecutionsResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ get : \"/namespaces/{namespace}/activities\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/activities\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 76, 105, 115, 116,
+                65, 99, 116, 105, 118, 105, 116, 121, 69, 120, 101, 99, 117, 116, 105, 111, 110,
+                115, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('ListNexusOperationExecutions') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.ListNexusOperationExecutionsRequest',
+        name => 'ListNexusOperationExecutions',
+        output => 'temporal.api.workflowservice.v1.ListNexusOperationExecutionsResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ get : \"/namespaces/{namespace}/nexus-operations\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/nexus-operations\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 76, 105, 115, 116,
+                78, 101, 120, 117, 115, 79, 112, 101, 114, 97, 116, 105, 111, 110, 69, 120, 101, 99,
+                117, 116, 105, 111, 110, 115, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('CountActivityExecutions') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.CountActivityExecutionsRequest',
+        name => 'CountActivityExecutions',
+        output => 'temporal.api.workflowservice.v1.CountActivityExecutionsResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ get : \"/namespaces/{namespace}/activity-count\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/activity-count\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 67, 111, 117, 110,
+                116, 65, 99, 116, 105, 118, 105, 116, 121, 69, 120, 101, 99, 117, 116, 105, 111,
+                110, 115, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('CountNexusOperationExecutions') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.CountNexusOperationExecutionsRequest',
+        name => 'CountNexusOperationExecutions',
+        output => 'temporal.api.workflowservice.v1.CountNexusOperationExecutionsResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ get : \"/namespaces/{namespace}/nexus-operation-count\" additional_bindings { get : \"/api/v1/namespaces/{namespace}/nexus-operation-count\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 67, 111, 117, 110,
+                116, 78, 101, 120, 117, 115, 79, 112, 101, 114, 97, 116, 105, 111, 110, 69, 120,
+                101, 99, 117, 116, 105, 111, 110, 115, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('RequestCancelActivityExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.RequestCancelActivityExecutionRequest',
+        name => 'RequestCancelActivityExecution',
+        output => 'temporal.api.workflowservice.v1.RequestCancelActivityExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/activities/{activity_id}/cancel\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/{activity_id}/cancel\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"activity:{activity_id}\" }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 82, 101, 113, 117,
+                101, 115, 116, 67, 97, 110, 99, 101, 108, 65, 99, 116, 105, 118, 105, 116, 121, 69,
+                120, 101, 99, 117, 116, 105, 111, 110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('RequestCancelNexusOperationExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.RequestCancelNexusOperationExecutionRequest',
+        name => 'RequestCancelNexusOperationExecution',
+        output => 'temporal.api.workflowservice.v1.RequestCancelNexusOperationExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/nexus-operations/{operation_id}/cancel\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/nexus-operations/{operation_id}/cancel\" body : \"*\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 82, 101, 113, 117,
+                101, 115, 116, 67, 97, 110, 99, 101, 108, 78, 101, 120, 117, 115, 79, 112, 101, 114,
+                97, 116, 105, 111, 110, 69, 120, 101, 99, 117, 116, 105, 111, 110, 82, 101, 113,
+                117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('TerminateActivityExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.TerminateActivityExecutionRequest',
+        name => 'TerminateActivityExecution',
+        output => 'temporal.api.workflowservice.v1.TerminateActivityExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/activities/{activity_id}/terminate\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/{activity_id}/terminate\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted,
+                    "{ header : \"temporal-resource-id\" value : \"activity:{activity_id}\" }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 84, 101, 114, 109,
+                105, 110, 97, 116, 101, 65, 99, 116, 105, 118, 105, 116, 121, 69, 120, 101, 99, 117,
+                116, 105, 111, 110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('DeleteActivityExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.DeleteActivityExecutionRequest',
+        name => 'DeleteActivityExecution',
+        output => 'temporal.api.workflowservice.v1.DeleteActivityExecutionResponse',
+        opts => [],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 68, 101, 108, 101,
+                116, 101, 65, 99, 116, 105, 118, 105, 116, 121, 69, 120, 101, 99, 117, 116, 105,
+                111, 110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('PauseActivityExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.PauseActivityExecutionRequest',
+        name => 'PauseActivityExecution',
+        output => 'temporal.api.workflowservice.v1.PauseActivityExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/activities/{activity_id}/pause\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/{activity_id}/pause\" body : \"*\" } additional_bindings { post : \"/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/pause\" body : \"*\" } additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/pause\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 80, 97, 117, 115,
+                101, 65, 99, 116, 105, 118, 105, 116, 121, 69, 120, 101, 99, 117, 116, 105, 111,
+                110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('ResetActivityExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.ResetActivityExecutionRequest',
+        name => 'ResetActivityExecution',
+        output => 'temporal.api.workflowservice.v1.ResetActivityExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/activities/{activity_id}/reset\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/{activity_id}/reset\" body : \"*\" } additional_bindings { post : \"/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/reset\" body : \"*\" } additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/reset\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 82, 101, 115, 101,
+                116, 65, 99, 116, 105, 118, 105, 116, 121, 69, 120, 101, 99, 117, 116, 105, 111,
+                110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('UnpauseActivityExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.UnpauseActivityExecutionRequest',
+        name => 'UnpauseActivityExecution',
+        output => 'temporal.api.workflowservice.v1.UnpauseActivityExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/activities/{activity_id}/unpause\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/{activity_id}/unpause\" body : \"*\" } additional_bindings { post : \"/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/unpause\" body : \"*\" } additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/unpause\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 85, 110, 112, 97,
+                117, 115, 101, 65, 99, 116, 105, 118, 105, 116, 121, 69, 120, 101, 99, 117, 116,
+                105, 111, 110, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('UpdateActivityExecutionOptions') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.UpdateActivityExecutionOptionsRequest',
+        name => 'UpdateActivityExecutionOptions',
+        output => 'temporal.api.workflowservice.v1.UpdateActivityExecutionOptionsResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/activities/{activity_id}/update-options\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/activities/{activity_id}/update-options\" body : \"*\" } additional_bindings { post : \"/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/update-options\" body : \"*\" } additional_bindings { post : \"/api/v1/namespaces/{namespace}/workflows/{workflow_id}/activities/{activity_id}/update-options\" body : \"*\" } }"}},
+            {'temporal...api...protometa...v1...request_header',
+                {uninterpreted, "{ header : \"temporal-resource-id\" value : \"{resource_id}\" }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 85, 112, 100, 97,
+                116, 101, 65, 99, 116, 105, 118, 105, 116, 121, 69, 120, 101, 99, 117, 116, 105,
+                111, 110, 79, 112, 116, 105, 111, 110, 115, 82, 101, 113, 117, 101, 115, 116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('TerminateNexusOperationExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.TerminateNexusOperationExecutionRequest',
+        name => 'TerminateNexusOperationExecution',
+        output => 'temporal.api.workflowservice.v1.TerminateNexusOperationExecutionResponse',
+        opts => [
+            {'google...api...http',
+                {uninterpreted,
+                    "{ post : \"/namespaces/{namespace}/nexus-operations/{operation_id}/terminate\" body : \"*\" additional_bindings { post : \"/api/v1/namespaces/{namespace}/nexus-operations/{operation_id}/terminate\" body : \"*\" } }"}}
+        ],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 84, 101, 114, 109,
+                105, 110, 97, 116, 101, 78, 101, 120, 117, 115, 79, 112, 101, 114, 97, 116, 105,
+                111, 110, 69, 120, 101, 99, 117, 116, 105, 111, 110, 82, 101, 113, 117, 101, 115,
+                116>>,
+        input_stream => false,
+        output_stream => false,
+        service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',
+        content_type =>
+            <<97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47, 103, 114, 112, 99, 43, 112,
+                114, 111, 116, 111>>
+    };
+info('DeleteNexusOperationExecution') ->
+    #{
+        input => 'temporal.api.workflowservice.v1.DeleteNexusOperationExecutionRequest',
+        name => 'DeleteNexusOperationExecution',
+        output => 'temporal.api.workflowservice.v1.DeleteNexusOperationExecutionResponse',
+        opts => [],
+        msg_type =>
+            <<116, 101, 109, 112, 111, 114, 97, 108, 46, 97, 112, 105, 46, 119, 111, 114, 107, 102,
+                108, 111, 119, 115, 101, 114, 118, 105, 99, 101, 46, 118, 49, 46, 68, 101, 108, 101,
+                116, 101, 78, 101, 120, 117, 115, 79, 112, 101, 114, 97, 116, 105, 111, 110, 69,
+                120, 101, 99, 117, 116, 105, 111, 110, 82, 101, 113, 117, 101, 115, 116>>,
         input_stream => false,
         output_stream => false,
         service_fqname => 'temporal.api.workflowservice.v1.WorkflowService',

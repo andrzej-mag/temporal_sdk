@@ -1720,20 +1720,6 @@ next_event_id(#state{commands = Cmds}) when Cmds =/= [] ->
 next_event_id(#state{history_events = HE}) when HE =/= [] ->
     {ok, do_next_eid(HE, 1)}.
 
-do_next_eid([{EId, T, _, _} | THE], _) when
-    T =:= 'EVENT_TYPE_WORKFLOW_EXECUTION_STARTED';
-    T =:= 'EVENT_TYPE_WORKFLOW_TASK_SCHEDULED';
-    T =:= 'EVENT_TYPE_WORKFLOW_TASK_STARTED';
-    T =:= 'EVENT_TYPE_WORKFLOW_TASK_COMPLETED';
-    T =:= 'EVENT_TYPE_WORKFLOW_TASK_TIMED_OUT';
-    T =:= 'EVENT_TYPE_WORKFLOW_TASK_FAILED'
-->
-    do_next_eid(THE, EId + 1);
-do_next_eid([{EId, _, _, _} | _THE], _) ->
-    EId;
-do_next_eid([], EId) ->
-    EId + 1.
-
 update_event_id(false, EId, [{{_IK, #{event_id := EId}}, _C} | _] = Cmds, SD) ->
     NEId = do_next_eid(SD#state.history_events, EId),
     ShEId = NEId - EId,
@@ -1750,6 +1736,20 @@ update_event_id(true, EId, [{{{complete_workflow_execution}, #{}} = Idx, C} | TI
     end;
 update_event_id(_IsCommanded, _EventId, Cmds, _StateData) ->
     {ok, Cmds}.
+
+do_next_eid([{EId, T, _, _} | THE], _) when
+    T =:= 'EVENT_TYPE_WORKFLOW_EXECUTION_STARTED';
+    T =:= 'EVENT_TYPE_WORKFLOW_TASK_SCHEDULED';
+    T =:= 'EVENT_TYPE_WORKFLOW_TASK_STARTED';
+    T =:= 'EVENT_TYPE_WORKFLOW_TASK_COMPLETED';
+    T =:= 'EVENT_TYPE_WORKFLOW_TASK_TIMED_OUT';
+    T =:= 'EVENT_TYPE_WORKFLOW_TASK_FAILED'
+->
+    do_next_eid(THE, EId + 1);
+do_next_eid([{EId, _, _, _} | _THE], _) ->
+    EId;
+do_next_eid([], EId) ->
+    EId + 1.
 
 update_event_id(#state{commands = []}) ->
     {ok, []};
