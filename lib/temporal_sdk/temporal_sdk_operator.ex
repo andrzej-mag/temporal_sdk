@@ -1,4 +1,4 @@
 defmodule TemporalSdk.Operator do
-  @external_resource "docs/temporal_sdk/operator/-module.md"
-  @moduledoc TemporalSdk.Utils.exdoc!("docs/temporal_sdk/operator/-module.md")
+  import TemporalSdk.Utils.Code
+  delegate_moduledoc(from: "src/temporal_sdk/temporal_sdk_operator.erl")
 end

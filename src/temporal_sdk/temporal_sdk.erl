@@ -477,6 +477,7 @@
     | {worker_opts, term()}
     | {task_overwrites, [{input, term_to_payloads()}]}
 ].
+-export_type([replay_workflow_opts/0]).
 
 -doc #{group => "Utility functions"}.
 -type replay_workflow_ret() ::
@@ -1669,6 +1670,11 @@ fin_replay_task(Err, _Cluster, _WorkflowMod, _ROpts, _State) ->
     Err.
 
 -doc #{group => "Utility functions"}.
+-spec format_response(
+    Cluster :: temporal_sdk_cluster:cluster_name(),
+    MessageName :: temporal_sdk_client:msg_name(),
+    Response :: {ok, temporal_sdk_client:msg()} | {error, term()}
+) -> response().
 format_response(Cluster, MessageName, Response) ->
     case temporal_sdk_api_context:build(Cluster) of
         {ok, ApiCtx} ->
@@ -1680,7 +1686,7 @@ format_response(Cluster, MessageName, Response) ->
 -doc #{group => "Utility functions"}.
 -spec evict_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecutionOrId :: workflow_execution_or_id()
+    WorkflowExecutionOrId :: temporal_sdk:workflow_execution_or_id()
 ) -> ok | temporal_sdk_client:call_result_error().
 evict_workflow(Cluster, WorkflowExecutionOrId) ->
     evict_workflow(Cluster, WorkflowExecutionOrId, []).
@@ -1689,8 +1695,8 @@ evict_workflow(Cluster, WorkflowExecutionOrId) ->
 -doc #{group => "Utility functions"}.
 -spec evict_workflow(
     Cluster :: temporal_sdk_cluster:cluster_name(),
-    WorkflowExecutionOrId :: workflow_execution_or_id(),
-    Opts :: evict_workflow_opts()
+    WorkflowExecutionOrId :: temporal_sdk:workflow_execution_or_id(),
+    Opts :: temporal_sdk:evict_workflow_opts()
 ) -> ok | temporal_sdk_client:call_result_error().
 evict_workflow(Cluster, WorkflowExecutionOrId, Opts) ->
     DefaultOpts = [

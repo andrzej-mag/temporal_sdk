@@ -1,8 +1,8 @@
-defmodule TemporalSdk.UtilsTest do
+defmodule TemporalSdk.Utils.CodeTest do
   use ExUnit.Case
-  doctest TemporalSdk.Utils
+  doctest TemporalSdk.Utils.Code
 
-  import TemporalSdk.Utils
+  import TemporalSdk.Utils.Code
 
   test "translate_doc" do
     assert translate_doc("`atom`") == "`:atom`"

@@ -235,6 +235,7 @@
     fun((-1 | non_neg_integer()) -> temporal_sdk:term_to_payloads() | term())
     | {module(), atom()}
     | {module(), atom(), term()}.
+-export_type([record_marker_value_fun/0]).
 
 -doc #{group => "Temporal commands opts"}.
 -type start_timer_opts() :: [
@@ -289,6 +290,7 @@
     | {wait, boolean()}
     | wait
 ].
+-export_type([start_nexus_opts/0]).
 
 -doc #{group => "Temporal commands opts"}.
 -type continue_as_new_workflow_opts() :: [
@@ -366,6 +368,8 @@
 -doc #{group => "Awaitables types"}.
 -type history_event_table_pattern_match_spec() ::
     [{EtsMatchHead :: history_event_table_pattern(), EtsMatchGuard :: [_], EtsMatchResult :: [_]}].
+-export_type([history_event_table_pattern_match_spec/0]).
+
 -doc #{group => "Awaitables types"}.
 -type event_data() :: #{
     event_id := event_id(),
@@ -1474,6 +1478,7 @@
     '$end_of_table'
     | {ets:table(), integer(), integer(), ets:compiled_match_spec(), list(), integer()}
     | {ets:table(), _, _, integer(), ets:compiled_match_spec(), list(), integer(), integer()}.
+-export_type([ets_continuation/0]).
 
 %% -------------------------------------------------------------------------------------------------
 %% Workflow behaviour

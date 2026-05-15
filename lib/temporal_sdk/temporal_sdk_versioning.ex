@@ -1,4 +1,4 @@
 defmodule TemporalSdk.Versioning do
-  @external_resource "docs/temporal_sdk/versioning/-module.md"
-  @moduledoc TemporalSdk.Utils.exdoc!("docs/temporal_sdk/versioning/-module.md")
+  import TemporalSdk.Utils.Code
+  delegate_all(from: "src/temporal_sdk/temporal_sdk_versioning.erl")
 end
