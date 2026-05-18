@@ -15,20 +15,6 @@
     nowarn_opportunistic,
     nowarn_ignored
 ]).
--dialyzer([
-    no_contracts,
-    no_fun_app,
-    no_improper_lists,
-    no_match,
-    no_missing_calls,
-    no_opaque,
-    no_return,
-    no_unused,
-    no_unknown,
-    no_underspecs,
-    no_extra_return,
-    no_missing_return
-]).
 -eqwalizer(ignore).
 
 -export([encode_msg/2, encode_msg/3]).

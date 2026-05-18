@@ -1,0 +1,22 @@
+[
+  {"src/proto/temporal_sdk_proto_service_operator_binaries.erl", :fun_app_no_fun},
+  {"src/proto/temporal_sdk_proto_service_operator_binaries.erl", :call},
+  {"src/proto/temporal_sdk_proto_service_operator_binaries.erl", :no_return},
+  {"src/proto/temporal_sdk_proto_service_operator_binaries.erl", :guard_fail},
+  {"src/proto/temporal_sdk_proto_service_operator_binaries.erl", :pattern_match},
+  {"src/proto/temporal_sdk_proto_service_operator_strings.erl", :fun_app_no_fun},
+  {"src/proto/temporal_sdk_proto_service_operator_strings.erl", :call},
+  {"src/proto/temporal_sdk_proto_service_operator_strings.erl", :no_return},
+  {"src/proto/temporal_sdk_proto_service_operator_strings.erl", :guard_fail},
+  {"src/proto/temporal_sdk_proto_service_operator_strings.erl", :pattern_match},
+  {"src/proto/temporal_sdk_proto_service_workflow_binaries.erl", :fun_app_no_fun},
+  {"src/proto/temporal_sdk_proto_service_workflow_binaries.erl", :call},
+  {"src/proto/temporal_sdk_proto_service_workflow_binaries.erl", :no_return},
+  {"src/proto/temporal_sdk_proto_service_workflow_binaries.erl", :guard_fail},
+  {"src/proto/temporal_sdk_proto_service_workflow_binaries.erl", :pattern_match},
+  {"src/proto/temporal_sdk_proto_service_workflow_strings.erl", :fun_app_no_fun},
+  {"src/proto/temporal_sdk_proto_service_workflow_strings.erl", :call},
+  {"src/proto/temporal_sdk_proto_service_workflow_strings.erl", :no_return},
+  {"src/proto/temporal_sdk_proto_service_workflow_strings.erl", :guard_fail},
+  {"src/proto/temporal_sdk_proto_service_workflow_strings.erl", :pattern_match}
+]

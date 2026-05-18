@@ -23,6 +23,7 @@ defmodule TemporalSdk.MixProject do
       erlc_options: rebar_key!(:erl_opts),
       test_paths: ["test_ex"],
       deps_path: "_deps",
+      dialyzer: [ignore_warnings: ".dialyzer_ignore.exs", list_unused_filters: true],
       # hex.pm package metadata
       description: app_key!(:description) |> to_string,
       name: app_name!(),
