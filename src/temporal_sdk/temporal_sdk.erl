@@ -140,7 +140,7 @@
 -type user_metadata() :: #{summary => term_to_payload(), details => term_to_payload()}.
 -export_type([user_metadata/0]).
 
--type workflow_execution() :: ?TEMPORAL_SPEC:'temporal.api.common.v1.WorkflowExecution'().
+-type workflow_execution() :: #{workflow_id := unicode:chardata(), run_id => unicode:chardata()}.
 -export_type([workflow_execution/0]).
 
 -type workflow_execution_or_id() :: workflow_execution() | WorkflowId :: unicode:chardata().
