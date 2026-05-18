@@ -2371,11 +2371,8 @@ record_app_env(Par) when is_atom(Par) ->
     % eqwalizer:ignore
     record_app_env(Par, []).
 
--doc """
-Retrieves the application configuration parameter via `application:get_env/1` and records its value
-as a marker.
-""".
 -doc #{group => "Temporal marker commands"}.
+-doc {file, "../../docs/temporal_sdk/workflow/record_app_env-2.md"}.
 -spec record_app_env(Par :: atom(), Opts :: record_marker_opts()) ->
     marker() | marker_data() | no_return().
 record_app_env(Par, Opts) when is_atom(Par) ->
@@ -2395,10 +2392,8 @@ record_os_env(VarName) ->
     % eqwalizer:ignore
     record_os_env(VarName, []).
 
--doc """
-Retrieves the OS environment variable via `os:getenv/1` and records its value as a marker.
-""".
 -doc #{group => "Temporal marker commands"}.
+-doc {file, "../../docs/temporal_sdk/workflow/record_os_env-2.md"}.
 -spec record_os_env(VarName :: os:env_var_name(), Opts :: record_marker_opts()) ->
     marker() | marker_data() | no_return().
 record_os_env(VarName, Opts) ->

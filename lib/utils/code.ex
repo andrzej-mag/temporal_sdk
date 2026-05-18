@@ -5,7 +5,7 @@ defmodule TemporalSdk.Utils.Code do
   defmacro delegate_moduledoc(opts) do
     {opts, _binding} = Code.eval_quoted(opts, [], __CALLER__)
     from = opts |> Keyword.fetch!(:from) |> String.to_charlist()
-    {:ok, forms} = :epp.parse_file(from, [~c"include"], [])
+    {:ok, forms} = :epp.parse_file(from, [~c"include", ~c"."], [])
     moduledoc_path = fetch_moduledoc_path(forms)
     moduledoc_text = if moduledoc_path, do: exdoc!(moduledoc_path), else: nil
 
@@ -19,7 +19,7 @@ defmodule TemporalSdk.Utils.Code do
   defmacro delegate_all(opts) do
     {opts, _binding} = Code.eval_quoted(opts, [], __CALLER__)
     from = opts |> Keyword.fetch!(:from) |> String.to_charlist()
-    {:ok, forms} = :epp.parse_file(from, [~c"include"], [])
+    {:ok, forms} = :epp.parse_file(from, [~c"include", ~c"."], [])
     exported_types = fetch_exported_types(forms, [])
     exported_functions = fetch_exported_functions(forms, [])
     {module_path, module_name} = fetch_module(forms)
@@ -37,13 +37,14 @@ defmodule TemporalSdk.Utils.Code do
     funtions_ast =
       for {fun_name, args, spec, doc_path, group} <- functions do
         doc = exdoc!(doc_path)
-        spec = translate_spec(fun_name, spec, exported_types, module_name)
+        specs = translate_spec(fun_name, spec, exported_types, module_name)
 
         quote do
           if unquote(doc_path), do: @external_resource(unquote(doc_path))
           if unquote(group), do: @doc(group: unquote(group))
           if unquote(doc), do: @doc(unquote(doc))
-          @spec unquote(spec)
+          unquote_splicing(for s <- specs, do: quote(do: @spec(unquote(s))))
+
           def unquote(fun_name)(unquote_splicing(args)) do
             unquote(module_name).unquote(fun_name)(unquote_splicing(args))
           end
@@ -94,7 +95,7 @@ defmodule TemporalSdk.Utils.Code do
            {:attribute, _, :file, _},
            {:attribute, _, :doc, %{group: group}},
            {:attribute, _, :spec, spec},
-           {:function, _, fun, _arity, [{:clause, _, vars, _, _}]} | tforms
+           {:function, _, fun, _arity, clauses} | tforms
          ],
          exported_functions,
          acc
@@ -102,7 +103,7 @@ defmodule TemporalSdk.Utils.Code do
     case Enum.member?(exported_functions, fun) do
       true ->
         fetch_functions(tforms, exported_functions, [
-          {fun, do_vars(vars), spec, do_file_path(doc_path), List.to_string(group)} | acc
+          {fun, do_vars(clauses, spec), spec, do_file_path(doc_path), List.to_string(group)} | acc
         ])
 
       false ->
@@ -117,7 +118,7 @@ defmodule TemporalSdk.Utils.Code do
            {:attribute, _, :doc, _},
            {:attribute, _, :file, _},
            {:attribute, _, :spec, spec},
-           {:function, _, fun, _arity, [{:clause, _, vars, _, _}]} | tforms
+           {:function, _, fun, _arity, clauses} | tforms
          ],
          exported_functions,
          acc
@@ -125,7 +126,7 @@ defmodule TemporalSdk.Utils.Code do
     case Enum.member?(exported_functions, fun) do
       true ->
         fetch_functions(tforms, exported_functions, [
-          {fun, do_vars(vars), spec, do_file_path(doc_path), List.to_string(group)} | acc
+          {fun, do_vars(clauses, spec), spec, do_file_path(doc_path), List.to_string(group)} | acc
         ])
 
       false ->
@@ -139,7 +140,7 @@ defmodule TemporalSdk.Utils.Code do
            {:attribute, _, :doc, _},
            {:attribute, _, :file, _},
            {:attribute, _, :spec, spec},
-           {:function, _, fun, _arity, [{:clause, _, vars, _, _}]} | tforms
+           {:function, _, fun, _arity, clauses} | tforms
          ],
          exported_functions,
          acc
@@ -147,7 +148,7 @@ defmodule TemporalSdk.Utils.Code do
     case Enum.member?(exported_functions, fun) do
       true ->
         fetch_functions(tforms, exported_functions, [
-          {fun, do_vars(vars), spec, do_file_path(doc_path), nil} | acc
+          {fun, do_vars(clauses, spec), spec, do_file_path(doc_path), nil} | acc
         ])
 
       false ->
@@ -159,7 +160,7 @@ defmodule TemporalSdk.Utils.Code do
          [
            {:attribute, _, :doc, %{group: group}},
            {:attribute, _, :spec, spec},
-           {:function, _, fun, _arity, [{:clause, _, vars, _, _}]} | tforms
+           {:function, _, fun, _arity, clauses} | tforms
          ],
          exported_functions,
          acc
@@ -167,7 +168,7 @@ defmodule TemporalSdk.Utils.Code do
     case Enum.member?(exported_functions, fun) do
       true ->
         fetch_functions(tforms, exported_functions, [
-          {fun, do_vars(vars), spec, nil, List.to_string(group)} | acc
+          {fun, do_vars(clauses, spec), spec, nil, List.to_string(group)} | acc
         ])
 
       false ->
@@ -179,7 +180,7 @@ defmodule TemporalSdk.Utils.Code do
          [
            {:attribute, _, :doc, false},
            {:attribute, _, :spec, _spec},
-           {:function, _, _fun, _arity, [{:clause, _, _vars, _, _}]} | tforms
+           {:function, _, _fun, _arity, _clauses} | tforms
          ],
          exported_functions,
          acc
@@ -190,14 +191,16 @@ defmodule TemporalSdk.Utils.Code do
   defp fetch_functions(
          [
            {:attribute, _, :spec, spec},
-           {:function, _, fun, _arity, [{:clause, _, vars, _, _}]} | tforms
+           {:function, _, fun, _arity, clauses} | tforms
          ],
          exported_functions,
          acc
        ) do
     case Enum.member?(exported_functions, fun) do
       true ->
-        fetch_functions(tforms, exported_functions, [{fun, do_vars(vars), spec, nil, nil} | acc])
+        fetch_functions(tforms, exported_functions, [
+          {fun, do_vars(clauses, spec), spec, nil, nil} | acc
+        ])
 
       false ->
         fetch_functions(tforms, exported_functions, acc)
@@ -207,7 +210,7 @@ defmodule TemporalSdk.Utils.Code do
   defp fetch_functions(
          [
            {:attribute, _, :doc, false},
-           {:function, _, _fun, _arity, [{:clause, _, _vars, _, _}]} | tforms
+           {:function, _, _fun, _arity, _clauses} | tforms
          ],
          exported_functions,
          acc
@@ -216,13 +219,15 @@ defmodule TemporalSdk.Utils.Code do
   end
 
   defp fetch_functions(
-         [{:function, _, fun, _arity, [{:clause, _, vars, _, _}]} | tforms],
+         [{:function, _, fun, _arity, clauses} | tforms],
          exported_functions,
          acc
        ) do
     case Enum.member?(exported_functions, fun) do
       true ->
-        fetch_functions(tforms, exported_functions, [{fun, do_vars(vars), nil, nil, nil} | acc])
+        fetch_functions(tforms, exported_functions, [
+          {fun, do_vars(clauses, nil), nil, nil, nil} | acc
+        ])
 
       false ->
         fetch_functions(tforms, exported_functions, acc)
@@ -234,17 +239,98 @@ defmodule TemporalSdk.Utils.Code do
 
   defp fetch_functions([], _exported_functions, acc), do: Enum.sort(acc)
 
-  defp do_vars(vars),
-    do:
-      Enum.map(vars, fn {:var, _, v} ->
-        {v |> Atom.to_string() |> Macro.underscore() |> String.to_atom(), [], nil}
-      end)
+  defp do_vars(clauses, spec) do
+    names_from_spec =
+      case spec do
+        {_name_arity, fun_types} ->
+          fun_types
+          |> Enum.map(&extract_names_from_fun_type/1)
+          |> Enum.reduce(nil, &merge_names/2)
 
-  defp translate_spec(_fun_name, {{name, _arity}, [fun_type]}, exported_types, module_name) do
-    {:type, _line, :fun, [{:type, _, :product, args_ast}, return_type_ast]} = fun_type
-    elixir_args = Enum.map(args_ast, fn t -> do_type(t, exported_types, module_name) end)
-    elixir_return = do_type(return_type_ast, exported_types, module_name)
-    {:"::", [], [{name, [], elixir_args}, elixir_return]}
+        _ ->
+          nil
+      end
+
+    names_from_clauses =
+      clauses
+      |> Enum.map(fn {:clause, _, vars, _, _} -> extract_names_from_vars(vars) end)
+      |> Enum.reduce(nil, &merge_names/2)
+
+    merged_names = merge_names(names_from_spec, names_from_clauses)
+
+    arity =
+      case clauses do
+        [{:clause, _, vars, _, _} | _] -> length(vars)
+        _ -> 0
+      end
+
+    if arity > 0 do
+      0..(arity - 1)
+      |> Enum.map(fn i ->
+        name = (merged_names && Enum.at(merged_names, i)) || "arg#{i + 1}"
+        {name |> Macro.underscore() |> String.to_atom(), [], nil}
+      end)
+    else
+      []
+    end
+  end
+
+  defp extract_names_from_fun_type({:type, _, :fun, [{:type, _, :product, args}, _]}) do
+    Enum.map(args, &extract_name_from_type/1)
+  end
+
+  defp extract_names_from_fun_type({:type, _, :bounded_fun, [fun_type, constraints]}) do
+    names = extract_names_from_fun_type(fun_type)
+
+    Enum.reduce(constraints, names, fn
+      {:type, _, :constraint, [{:atom, _, :is_subtype}, [{:var, _, var}, _]]}, acc ->
+        case Enum.find_index(names, &(&1 == Atom.to_string(var))) do
+          nil -> acc
+          _index -> acc
+        end
+
+      _, acc ->
+        acc
+    end)
+  end
+
+  defp extract_names_from_fun_type(_), do: nil
+
+  defp extract_name_from_type({:ann_type, _, [{:var, _, var}, _]}), do: Atom.to_string(var)
+  defp extract_name_from_type({:var, _, var}) when var != :_, do: Atom.to_string(var)
+  defp extract_name_from_type(_), do: nil
+
+  defp extract_names_from_vars(vars) do
+    Enum.map(vars, &extract_name_from_var/1)
+  end
+
+  defp extract_name_from_var({:var, _, var}) when var != :_, do: Atom.to_string(var)
+
+  defp extract_name_from_var({:match, _, left, right}) do
+    extract_name_from_var(left) || extract_name_from_var(right)
+  end
+
+  defp extract_name_from_var(_), do: nil
+
+  defp merge_names(nil, names2), do: names2
+  defp merge_names(names1, nil), do: names1
+
+  defp merge_names(names1, names2) do
+    Enum.zip(names1, names2)
+    |> Enum.map(fn
+      {nil, n2} -> n2
+      {n1, _} -> n1
+    end)
+  end
+
+  defp translate_spec(_fun_name, {{name, _arity}, fun_types}, exported_types, module_name) do
+    fun_types
+    |> Enum.map(fn fun_type ->
+      {:type, _line, :fun, [{:type, _, :product, args_ast}, return_type_ast]} = fun_type
+      elixir_args = Enum.map(args_ast, fn t -> do_type(t, exported_types, module_name) end)
+      elixir_return = do_type(return_type_ast, exported_types, module_name)
+      {:"::", [], [{name, [], elixir_args}, elixir_return]}
+    end)
   end
 
   defp translate_spec(fun_name, nil, _exported_types, _module_name),
