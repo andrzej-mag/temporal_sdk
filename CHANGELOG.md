@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.11](https://github.com/andrzej-mag/temporal_sdk/compare/v0.2.1..v0.2.11) - 2026-05-18
+
+### 🐛 Bug Fixes
+
+- Fix TemporalSdk.Activity __using__ macro - ([fdd4057](https://github.com/andrzej-mag/temporal_sdk/commit/fdd4057b89b74c1b165c7c225841ff197a72db52))
+
 ## [0.2.1](https://github.com/andrzej-mag/temporal_sdk/compare/v0.2.0..v0.2.1) - 2026-05-18
 
 ### 🐛 Bug Fixes
