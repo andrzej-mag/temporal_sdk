@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.1](https://github.com/andrzej-mag/temporal_sdk/compare/v0.2.0..v0.2.1) - 2026-05-18
+
+### 🐛 Bug Fixes
+
+- Fix TemporalSdk.Utils.Code Elixir code generation macros - ([a28ef2a](https://github.com/andrzej-mag/temporal_sdk/commit/a28ef2a776b945fe151074e5b0ea2ab746d343a3))
+
 ## [0.2.0](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.18..v0.2.0) - 2026-05-18
 
 ### 🚀 Features
