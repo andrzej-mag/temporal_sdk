@@ -9,6 +9,12 @@ defmodule TemporalSdk.Utils.CodeTest do
     assert translate_doc("```atom```") == "```atom```"
     assert translate_doc("Text `atom` text.") == "Text `:atom` text."
     assert translate_doc("Text ```atom``` text.") == "Text ```atom``` text."
+
+    assert translate_doc("(https://hexdocs.pm/temporal_sdk_samples/hello_world.html)") ==
+             "(https://hexdocs.pm/temporal_sdk_samples/HelloWorld.html)"
+
+    assert translate_doc("(https://hexdocs.pm/temporal_sdk_samples/simple.html)") ==
+             "(https://hexdocs.pm/temporal_sdk_samples/Simple.html)"
   end
 
   test "atom" do

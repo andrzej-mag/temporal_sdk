@@ -68,5 +68,5 @@ EvictionTimeSec = round(1390 * 1.04) = 1446
 Workflow will be evicted if `PollIdleTime` exceeds approximately 24 minutes.
 
 [SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples)
-[Workflow Eviction](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/docs/workflow_eviction.md)
+[Workflow Eviction](https://hexdocs.pm/temporal_sdk_samples/workflow_eviction.html)
 sample demonstrates callback usage.

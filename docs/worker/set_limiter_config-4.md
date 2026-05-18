@@ -10,7 +10,7 @@ the new rate limiter configuration, new tasks will not be started until the over
 are drained to meet the new limits.
 
 [SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples)
-[Rate Limiter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/docs/rate_limiter.md)
+[Rate Limiter](https://hexdocs.pm/temporal_sdk_samples/rate_limiter.html)
 example demonstrates function use.
 
 Example:

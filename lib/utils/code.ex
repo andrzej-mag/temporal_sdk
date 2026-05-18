@@ -338,9 +338,21 @@ defmodule TemporalSdk.Utils.Code do
   def exdoc!(nil), do: nil
   def exdoc!(erlang_docs_path), do: erlang_docs_path |> File.read!() |> translate_doc()
 
-  def translate_doc(doc_string),
-    do:
-      Regex.replace(~r/(?<!`)`([^`]+)`(?!`)/, doc_string, fn _, snippet -> "`#{ts(snippet)}`" end)
+  def translate_doc(doc_string) do
+    doc_string
+    |> then(fn doc ->
+      Regex.replace(~r/(?<!`)`([^`]+)`(?!`)/, doc, fn _, snippet -> "`#{ts(snippet)}`" end)
+    end)
+    |> then(fn doc ->
+      Regex.replace(
+        ~r/\(https:\/\/hexdocs\.pm\/temporal_sdk_samples\/([a-z0-9_]+)\.html\)/,
+        doc,
+        fn _, segment ->
+          "(https://hexdocs.pm/temporal_sdk_samples/#{Macro.camelize(segment)}.html)"
+        end
+      )
+    end)
+  end
 
   def ts(erl_code) do
     cond do

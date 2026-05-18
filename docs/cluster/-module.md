@@ -85,7 +85,7 @@ Multiple *virtual* SDK clusters can be configured, each with its own cluster-spe
 connecting to the same Temporal server.
 
 [SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples)
-[Payload Converter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/docs/payload_converter.md)
+[Payload Converter](https://hexdocs.pm/temporal_sdk_samples/payload_converter.html)
 example demonstrates virtual clusters usage.
 
 ## Cluster-Specific Configuration

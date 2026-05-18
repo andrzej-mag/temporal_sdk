@@ -59,7 +59,7 @@ Tuple second element is a payload converter codecs configuration, see `t:convert
 SDK provides a built-in Temporal payload converter: `temporal_sdk_proto_converter`.
 
 [SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples)
-[Payload Converter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/docs/payload_converter.md)
+[Payload Converter](https://hexdocs.pm/temporal_sdk_samples/payload_converter.html)
 sample provides example payload converter codec implementation.
 """.
 -type converter() :: {ConverterModule :: module(), ConverterCodecs :: converter_codecs()}.

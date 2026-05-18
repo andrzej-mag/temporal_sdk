@@ -24,7 +24,7 @@ See also:
 
 - [SDK Architecture - Rate Limiting](architecture.md#rate-limiting).
 - [SDK Samples](https://github.com/andrzej-mag/temporal_sdk_samples)
-  [Rate Limiter](https://github.com/andrzej-mag/temporal_sdk_samples/tree/main/docs/rate_limiter.md)
+  [Rate Limiter](https://hexdocs.pm/temporal_sdk_samples/rate_limiter.html)
   example.
 
 ## OS Rate Limiter
