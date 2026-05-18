@@ -1,5 +1,53 @@
 # Changelog
 
+## [0.2.0](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.18..v0.2.0) - 2026-05-18
+
+### 🚀 Features
+
+- Update temporal_sdk:start_workflow_opts - ([c8b8d64](https://github.com/andrzej-mag/temporal_sdk/commit/c8b8d64a16bde9cb5d4bb45ea7d0b88a8dd9c902))
+- Add workflow_execution_or_id in commands - ([30a1ac3](https://github.com/andrzej-mag/temporal_sdk/commit/30a1ac36983e1cb71dcf255975152beb7031c74c))
+- Add temporal_sdk:evict_workflow - ([7c55953](https://github.com/andrzej-mag/temporal_sdk/commit/7c55953a2cf58229c30b3e875333a5a515f3208b))
+- Add grpc_opts to temporal_sdk and temporal_sdk_service commands - ([3433ac6](https://github.com/andrzej-mag/temporal_sdk/commit/3433ac605569e7bd39589956977421e089421cea))
+- Web ui human readable record_uuid4 value - ([8e16736](https://github.com/andrzej-mag/temporal_sdk/commit/8e167360738cb5794280722ddcb9a3f3cc797efd))
+- Add TemporalSdk.delete_workflow - ([2273c2f](https://github.com/andrzej-mag/temporal_sdk/commit/2273c2fc3a0bb55547af690009c3634c3d9f3d8d))
+- Add temporal_sdk:delete_workflow - ([407046d](https://github.com/andrzej-mag/temporal_sdk/commit/407046d2528d5757494b82b9bdb4479b8545e988))
+- Add temporal_sdk:terminate_workflow - ([ef3a77c](https://github.com/andrzej-mag/temporal_sdk/commit/ef3a77c6a005d05c19d7c12837b4e3e38418a1a7))
+
+### 🐛 Bug Fixes
+
+- Fix NDE on not-commanded history events - ([57660a6](https://github.com/andrzej-mag/temporal_sdk/commit/57660a65e146aba7a90b917a01520cc3cd9bf681))
+- Fix telemetry [temporal_sdk,workflow,executor,stop] closing_state for external_evict - ([ada4807](https://github.com/andrzej-mag/temporal_sdk/commit/ada4807c9353fbf1b078dbbbfd22fc2be257e1b9))
+
+### 🚜 Refactor
+
+- [**breaking**] Return grpc_response_headers as map - ([4d28972](https://github.com/andrzej-mag/temporal_sdk/commit/4d28972cbe4053d81a0018812dd32534a61535b3))
+- [**breaking**] Rename await operator `one` to `any` - ([d556616](https://github.com/andrzej-mag/temporal_sdk/commit/d556616418b3ddcd23cd8cc010fc496723aaf9ea))
+- [**breaking**] Move WF execution commands from temporal_sdk_service to temporal_sdk - ([23d9718](https://github.com/andrzej-mag/temporal_sdk/commit/23d97182ec90ebd0d2f126e7d0baee68c5856d7b))
+- [**breaking**] Rename typespecs user_* to *_as_list - ([84c6002](https://github.com/andrzej-mag/temporal_sdk/commit/84c6002ecc412da41ef5e5b1b1750cde0b70333f))
+
+### 📚 Documentation
+
+- Improve SDK Samples refs translation - ([e7bfaa7](https://github.com/andrzej-mag/temporal_sdk/commit/e7bfaa7a5208fdfb986e69d799688c523df14e0b))
+- Add lib/README.md for Elixir wrapper - ([f22fe8a](https://github.com/andrzej-mag/temporal_sdk/commit/f22fe8a4ecbb54404e6985be9574a4361b41ae72))
+- Add AST external with anchor translation - ([6ec9b4e](https://github.com/andrzej-mag/temporal_sdk/commit/6ec9b4effd1bc6cbd76f004db5d58d1fc69faff9))
+- Add AST binary translation - ([31e7f00](https://github.com/andrzej-mag/temporal_sdk/commit/31e7f00ba07bdc3836654be2124f7381534365f1))
+- Add AST based docs translation - ([baa857c](https://github.com/andrzej-mag/temporal_sdk/commit/baa857c138d6d8afb4c3d63a4818efee778b8342))
+
+### ⚙️ Miscellaneous
+
+- Improve temporal_sdk:workflow_execution_or_id() typespec - ([89ba6e7](https://github.com/andrzej-mag/temporal_sdk/commit/89ba6e711448c48e3178965f193ded647d27803f))
+- Update AGENTS.md - ([9a5378e](https://github.com/andrzej-mag/temporal_sdk/commit/9a5378ee7d0e7145ee164ed05c587c7f0bbb19d1))
+- Handle dialyzer with mix and ignore_warnings - ([87d307d](https://github.com/andrzej-mag/temporal_sdk/commit/87d307df187b53caf01b70d21a848f1c0bc4650b))
+- Add Elixir delegate_all - ([f3aa643](https://github.com/andrzej-mag/temporal_sdk/commit/f3aa64374d4e40d55d7d2b78eb0d6f5f68676891))
+- Bump Temporal API to v1.62.11 - ([bfdeb7a](https://github.com/andrzej-mag/temporal_sdk/commit/bfdeb7aee71368dcadf1b013631689a8724156b1))
+- Fix temporal_sdk_workflow ets:select typespecs - ([422717a](https://github.com/andrzej-mag/temporal_sdk/commit/422717a65c0dcc41b5965b32ee0736b2826fc6bf))
+- Optimize docs AST external translation - ([be4c795](https://github.com/andrzej-mag/temporal_sdk/commit/be4c7953776cbbcdb9194be7c323254c6a7819ad))
+- Fix AST external with anchor translation - ([4d65c6a](https://github.com/andrzej-mag/temporal_sdk/commit/4d65c6aa7853bdacf58eeaf5331eb0bda45ffabf))
+- Optimize external eviction - ([bafdcd9](https://github.com/andrzej-mag/temporal_sdk/commit/bafdcd9f6835a4d50b7929abc3f398af7ba303ee))
+- Fix temporal_sdk:response_type refs - ([65ed56a](https://github.com/andrzej-mag/temporal_sdk/commit/65ed56ade8f3fd580c0cdf4d364030558168ecad))
+- Fix temporal_sdk_api_header:put_marker_sdk typespecs - ([533f084](https://github.com/andrzej-mag/temporal_sdk/commit/533f0842f540e52822504e9155154a061f5dd34d))
+- Bump gun to v2.2.0 - ([0c5b207](https://github.com/andrzej-mag/temporal_sdk/commit/0c5b207010b03717aef6790ece3c908a048bec0b))
+
 ## [0.1.18](https://github.com/andrzej-mag/temporal_sdk/compare/v0.1.17..v0.1.18) - 2026-04-27
 
 ### 🚀 Features
