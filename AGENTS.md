@@ -1,36 +1,49 @@
 # AGENTS
 
-This file provides guidance to AI Agents when working with code in this project.
+This document provides specialized guidance for AI agents contributing to the Temporal Erlang/Elixir SDK.
+
+## Table of Contents
+
+1. [Required Expertise](#required-expertise)
+2. [Project Overview](#project-overview)
+3. [Project Structure](#project-structure)
+4. [Core Architecture](#core-architecture)
+5. [Development Guidelines](#development-guidelines)
+6. [Documentation Standards](#documentation-standards)
+7. [Testing Strategy](#testing-strategy)
+8. [Code Quality & Tooling](#code-quality--tooling)
+9. [Project Status](#project-status)
+
+---
 
 ## REQUIRED EXPERTISE
 
-- Erlang programming language
-- OTP (Open Telecom Platform) design patterns
-- Elixir programming language
-- Temporal server concepts and gRPC API
-- Protocol Buffers (protobuf) and gRPC
-- Concurrent programming and distributed systems
+- **Erlang & OTP**: Advanced knowledge of Erlang and OTP design patterns.
+- **Elixir**: Proficiency in Elixir, including macros and interoperability with Erlang.
+- **Temporal**: Deep understanding of Temporal server concepts (Workflows, Activities, Signals, Queries).
+- **gRPC & Protobuf**: Experience with gRPC communication and Protocol Buffers.
+- **Distributed Systems**: Familiarity with concurrency, consistency, and distributed state.
 
 ## PROJECT OVERVIEW
 
-The Temporal SDK is a framework for authoring workflows and activities using Erlang and Elixir programming languages. SDK faithfully implements the Temporal server's behavior and APIs.
+The Temporal SDK is a framework for authoring workflows and activities in Erlang and Elixir. It faithfully implements the Temporal server's behavior and APIs, providing a robust platform for long-running, fault-tolerant processes.
 
 ## PROJECT STRUCTURE
 
-```
+```text
 .
 ├── _*/                     # Directories with ephemeral files which should be ignored
-├── docs/                   # SDK documentation files
-├── guides/                 # SDK user guides files
+├── docs/                   # Markdown documentation (shared between Erlang/Elixir)
+├── guides/                 # User guides and quick-start materials
 ├── include/                # Erlang include files
-├── lib/                    # Elixir syntactic wrapper SDK implementation
-├── proto/                  # Temporal API Github repository as a submodule
-├── src/                    # Erlang core SDK implementation
+├── lib/                    # Elixir syntactic wrapper (delegates to Erlang)
+├── proto/                  # Temporal API protocol buffers (git submodule)
+├── src/                    # Core Erlang implementation
 │   ├── api/                # API definitions and interfaces
 │   ├── client/             # gRPC client implementation
 │   ├── cluster/            # SDK cluster management
 │   ├── codec/              # Temporal payload codec
-│   ├── executor/           # Temporal activity, nexus and workflow task executors
+│   ├── executor/           # Workflow, Activity, and Nexus task executors
 │   ├── grpc/               # gRPC communication layer
 │   ├── limiter/            # concurency, fixed window and OS rate limiters
 │   ├── node/               # SDK node implementation
@@ -38,12 +51,12 @@ The Temporal SDK is a framework for authoring workflows and activities using Erl
 │   ├── proto/              # Temporal API protocol buffer definitions
 │   ├── scope/              # SDK scoping mechanisms
 │   ├── telemetry/          # Telemetry collection and reporting
-│   ├── temporal_sdk/       # SDK user interface
+│   ├── temporal_sdk/       # Primary user-facing Erlang interface
 │   ├── utils/              # Utilities
-│   └── worker/             # Temporal workers management
-├── test/                   # Erlang eunit tests
-├── test_ex/                # Elixir wrapper ExUnit tests
-├── test_replay/            # Temporal replay Erlang eunit tests
+│   └── worker/             # Temporal task workers management
+├── test/                   # General Erlang eunit tests
+├── test_ex/                # Elixir ExUnit tests
+├── test_replay/            # Specialized replay tests for workflow determinism
 ├── mix.exs                 # Mix project configuration
 ├── rebar.config            # Rebar3 project configuration
 ├── README.md               # Project README documentation
@@ -51,92 +64,61 @@ The Temporal SDK is a framework for authoring workflows and activities using Erl
 └── .gitignore              # Files and directories to git-ignore
 ```
 
-## CORE COMPONENTS
+## CORE ARCHITECTURE
 
-- **Elixir Wrapper**: Elixir syntactic sugar in `lib/` directory
-- **Core Implementation**: Erlang-based implementation in `src/` directory
-- **Temporal API Layer**: Contains the core Temporal API definitions in `src/api/`
-- **Execution Engine**: Temporal workflow, activity and nexus execution logic in `src/executor/`
-- **Communication**: gRPC layer in `src/grpc/` for interacting with Temporal server
-- **Workers**: Temporal task workers management in `src/worker/`
-- **SDK Node Management**: SDK node management in `src/node/`
-- **SDK Cluster Management**: SDK cluster management in `src/cluster/`
-- **Polling**: Task queue polling mechanisms in `src/poller/`
-- **Protocol Buffers**: Temporal API protocol buffer definitions in `src/proto/`
-- **Telemetry**: Telemetry in `src/telemetry/`
+### Dual-Language Synergy
 
-## TEMPORAL CONCEPTS TO UNDERSTAND
+- **Erlang (Core)**: The engine is built in Erlang for maximum stability and performance.
+- **Elixir (Wrapper)**: The `lib/` directory contains an idiomatic Elixir layer. Most Elixir modules are automatically generated using the `TemporalSdk.Utils.Code.delegate_all` macro to ensure perfect parity with the Erlang source.
 
-- **Workflows**: Long-running processes that orchestrate activities
-- **Activities**: Short-running tasks executed within workflows
-- **Task Queues**: Mechanism for distributing tasks to workers
-- **Signals**: Mechanism for sending data into running workflows
-- **Queries**: Mechanism for querying the state of running workflows
-- **Child Workflows**: Workflows that are started by other workflows
-- **Nexus**: Service integration points for external systems
-- **Workflow Updates**: Mechanism for modifying running workflows
-- **Worker Versioning**: Capability to manage different versions of workers
+### Execution Model
 
-## GENERAL GUIDANCE
+- **Executors**: The `src/executor/` modules handle the lifecycle of Temporal tasks.
+- **Process Dictionary**: The `temporal_sdk_executor` utilizes the process dictionary to store execution-local context (e.g., execution ID, API context, OTel context). Use the provided getters/setters in `temporal_sdk_executor.erl` rather than accessing the dictionary directly.
 
-- **Understand the dual-language architecture**: Erlang (core) and Elixir (syntactic wrapper)
-- **Familiarize yourself with the Temporal server concepts and API**
-- **Pay attention to the separation between API definitions and implementation**
-- **Respect the Erlang/OTP design patterns**: Use supervisors, gen_servers, and proper process management
-- **Understand the gRPC communication layer**: The SDK communicates with Temporal server via gRPC
-- **Comprehend the modular architecture**: Each component has a specific role in the overall system
+## DEVELOPMENT GUIDELINES
 
-## TEMPORAL SPECIFIC GUIDANCE
+- **Maintain Parity**: Ensure that any change to the Erlang core is reflected or appropriately exposed in the Elixir wrapper.
+- **Deterministic Workflows**: Workflows must be deterministic. Avoid using functions that introduce side effects (e.g., `erlang:now/0`, random numbers) directly within workflow logic.
+- **Separation of Concerns**: Keep API definitions (`src/api/`) distinct from the underlying execution logic (`src/executor/`).
+- **OTP Compliance**: Adhere strictly to OTP patterns. Use supervisors for process trees and `gen_server` for stateful components.
 
-- **Workflow Execution**: Understand how workflows are scheduled, executed, and managed
-- **Activity Execution**: Know how activities are scheduled, executed, and their lifecycle
-- **Task Queues**: Understand how task queues work in Temporal and how they're managed
-- **Error Handling**: Be aware of how failures and retries are handled in Temporal
-- **State Management**: Understand how state is persisted and managed in workflows
-- **Workflow Updates**: Understand how workflow updates are implemented
-- **Worker Versioning**: Know how worker versioning works in the SDK
-- **Nexus Integration**: Understand how external services are integrated via Nexus
+## DOCUMENTATION STANDARDS
 
-## DOCUMENTATION GUIDANCE
+- **Shared Documentation**: Documentation is stored in `docs/` and shared between Erlang and Elixir.
+- **File Naming**:
+  - Modules: `docs/<path>/-module.md`
+  - Functions: `docs/<path>/<function>-<arity>.md`
+- **Importing**:
+  - Erlang: Use `-moduledoc {file, Path}` and `-doc {file, Path}`.
+  - Elixir: Handled automatically via `delegate_all`.
+- **Formatting**:
+  - Hard-wrap at 100 characters.
+  - Start with a concise one-paragraph summary.
+  - Use `-moduledoc false` or `-doc false` for internal/private components.
 
-- Documentation is stored in external files located in the `docs/` directory
-- Documentation files are shared between the corresponding Elixir and Erlang modules. For example, the Erlang module `temporal_sdk_node` has the same documentation as the Elixir module `TemporalSdk.Node`
-- Documentation directory layout corresponds to the Erlang `src` directory layout. For example, `temporal_sdk_node` documentation is stored in the `docs/node` directory
-- By convention, module documentation is stored in the `-module.md` file
-- Erlang module documentation is imported with `-moduledoc {file, FilePath}`, for example: `-moduledoc {file, "../../docs/node/-module.md"}.`
-- Elixir module documentation is imported with `@moduledoc TemporalSdk.Utils.exdoc!(file_path)`, for example: `@moduledoc TemporalSdk.Utils.exdoc!("docs/node/-module.md")`
-- By convention, function documentation is stored in separate markdown files, where the file name is a combination of the function name and function arity separated by a dash. For example: `docs/node/list-0.md` contains documentation for `temporal_sdk_node:list/0`
-- Erlang function documentation is imported with `-doc {file, FilePath}`, for example: `-doc {file, "../../docs/node/list-0.md"}.`
-- Elixir function documentation is imported with `@doc TemporalSdk.Utils.exdoc!(file_path)`, for example: `@doc TemporalSdk.Utils.exdoc!("docs/node/list-0.md")`
-- The module documentation file should start with a short paragraph describing the module and then go into greater details
-- The function documentation file should start with a short paragraph describing the function and then go into greater details
-- Exclude documentation generation for modules containing the `-moduledoc false` attribute
-- Exclude documentation generation for functions marked with the `-doc false` attribute
-- Documentation text in markdown files must be hard wrapped to maintain a line length of 100 characters.
+## TESTING STRATEGY
 
-## CONTRIBUTION GUIDELINES
+### Replay Testing
 
-- Follow the existing code style and patterns
-- Ensure both Erlang and Elixir implementations are kept in sync
-- Add comprehensive tests for new functionality
-- Update documentation appropriately
-- Follow the [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) style for commit messages
-- Keep dependencies updated
-- Monitor for breaking changes in Temporal server API
-- Maintain code quality through the use of code quality checking tools
+Replay tests (`test_replay/`) are critical. They verify that workflows remain deterministic by replaying history against current code.
 
-## TESTING
+- Use `?assertReplayEqual` and `?assertReplayMatch` for verification.
+- Use `?THROW_ON_REPLAY` to test failure handling during execution without breaking replay.
 
-- Don't run full set of project tests as it would require substantial amount of time
-- Run only required tests by leveraging '-m' option for `rebar3 eunit`
+### Execution
 
-## CODE QUALITY
+- **Unit Tests**: Use `rebar3 eunit -m <module>` to run specific test suites. Avoid running the full suite unless necessary, as it is time-consuming.
+- **ExUnit**: Use `mix test` for Elixir-specific tests in `test_ex/`.
 
-- Run `rebar3 dialyzer` and `mix dialyzer` for static analysis
-- Run `elp eqwalize-all` for type checking
-- Run `elp lint` for linting
+## CODE QUALITY & TOOLING
+
+- **Static Analysis**: Run `rebar3 dialyzer` and `mix dialyzer`.
+- **Type Checking**: Use `elp eqwalize-all` for comprehensive type validation.
+- **Linting**: Use `elp lint` to maintain code style consistency.
+- **Versioning**: Follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## PROJECT STATUS
 
-- Project is under active development
-- The `TODO.md` file can be considered as a project progress tracker
+- **Active Development**: The SDK is evolving rapidly. Refer to `TODO.md` for the current roadmap.
+- **Test Coverage**: Significant effort is underway to recover and modernize unit tests. Be cautious with existing "offline" tests.
