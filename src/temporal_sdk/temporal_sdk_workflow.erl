@@ -2730,7 +2730,7 @@ start_execution(Function, Input) ->
     Function :: atom(),
     Input :: term(),
     Opts :: start_execution_opts()
-) -> execution() | no_return().
+) -> execution() | execution_data() | no_return().
 start_execution(Function, Input, Opts) ->
     #{execution_module := EM} = ?API_CTX,
     Opts1 =
@@ -2740,7 +2740,6 @@ start_execution(Function, Input, Opts) ->
             true -> Opts;
             false -> [{execution_id, Function} | Opts]
         end,
-    % eqwalizer:ignore
     start_execution(EM, Function, Input, Opts1).
 
 -doc #{group => "SDK functions"}.
