@@ -59,10 +59,12 @@ setup_test() ->
 
     ?assertMatch(
         {error, _},
+        % eqwalizer:ignore
         setup(test_name, #{invalid_k => invalid_v})
     ),
     ?assertMatch(
         {error, _},
+        % eqwalizer:ignore
         setup(test_name, #{limiter_time_windows => #{invalid_task => 1_000}})
     ).
 

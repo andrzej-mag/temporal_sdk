@@ -41,9 +41,13 @@
 -define(P, #{data => ?DATA}).
 -define(P_ERL, #{data => erlang:term_to_binary(?DATA), metadata => ?META_ERL}).
 -define(CP_ERL, #{data => ?DATA, metadata => ?META_ERL}).
--define(P_JSON, #{data => unicode:characters_to_binary(json:encode(?DATA)), metadata => ?META_JSON}).
+-define(P_JSON, #{
+    data => temporal_sdk_utils_unicode:characters_to_binary1(json:encode(?DATA)),
+    metadata => ?META_JSON
+}).
 -define(CP_JSON, #{
-    data => json:decode(unicode:characters_to_binary(json:encode(?DATA))), metadata => ?META_JSON
+    data => json:decode(temporal_sdk_utils_unicode:characters_to_binary1(json:encode(?DATA))),
+    metadata => ?META_JSON
 }).
 
 -define(PNAME, 'temporal.api.common.v1.Payload').

@@ -311,6 +311,7 @@ build_test() ->
     ?assertMatch(
         {error, {invalid_opts, #{invalid_value := invalid, expected_value_type := _}}},
         build(
+            % eqwalizer:ignore
             [{ka, any, va}, {ki, 123, invalid}, {km, map, #{a => b}}],
             [{ka, va}, {ki, invalid}, {km, invalid}]
         )
