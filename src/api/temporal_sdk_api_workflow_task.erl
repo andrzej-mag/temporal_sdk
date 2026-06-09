@@ -6,9 +6,11 @@
 -export([
     input/2,
     task_type/1,
+    header/2,
+    otel_start_time/1,
     task_from_history/1,
     is_history_closed/1,
-    build_context_workflow_info/2,
+    build_context_workflow_info/3,
     task_token/1,
     workflow_execution/1,
     workflow_execution_workflow_id/1,
@@ -56,6 +58,23 @@ task_type(#{
     regular;
 task_type(_Task) ->
     sticky.
+
+-spec header(ApiCtx :: temporal_sdk_api:context(), Task :: temporal_sdk_workflow:task()) ->
+    temporal_sdk:term_from_mapstring_payload().
+header(ApiCtx, Task) ->
+    temporal_sdk_api_header:fetch(
+        workflow_execution_started_event_attributes(Task),
+        'temporal.api.history.v1.WorkflowExecutionStartedEventAttributes',
+        ApiCtx
+    ).
+
+otel_start_time(Task) ->
+    #{event_time := ET} = lists:last(history_events(Task)),
+    Nanos = temporal_sdk_utils_time:protobuf_to_nanos(ET),
+    {
+        erlang:convert_time_unit(Nanos, nanosecond, native) - erlang:time_offset(),
+        opentelemetry:timestamp()
+    }.
 
 -spec task_from_history(History :: ?TEMPORAL_SPEC:'temporal.api.history.v1.History'()) ->
     {ok, temporal_sdk_workflow:task()}
@@ -112,9 +131,13 @@ do_is_history_closed(#{}) ->
     {error, unclosed_history}.
 
 -doc false.
--spec build_context_workflow_info(temporal_sdk_api:context(), temporal_sdk_workflow:task()) ->
+-spec build_context_workflow_info(
+    temporal_sdk_api:context(),
+    temporal_sdk_workflow:task(),
+    temporal_sdk:term_from_mapstring_payload()
+) ->
     temporal_sdk_workflow:context_workflow_info().
-build_context_workflow_info(ApiContext, Task) ->
+build_context_workflow_info(ApiContext, Task, UserHeaderData) ->
     #{
         workflow_execution := WorkflowExecution,
         workflow_execution_task_queue := #{name := WorkflowExecutionTaskQueue}
@@ -171,7 +194,8 @@ build_context_workflow_info(ApiContext, Task) ->
         workflow_execution_timeout_msec => WorkflowExecutionTimeoutMsec,
         workflow_run_timeout_msec => WorkflowRunTimeoutMsec,
         workflow_task_timeout_msec => WorkflowTaskTimeoutMsec,
-        attempt => Attempt
+        attempt => Attempt,
+        header => UserHeaderData
     }.
 
 -doc false.

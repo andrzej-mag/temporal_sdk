@@ -358,7 +358,7 @@ spawn_execution(StateData) ->
     T = ?EV(StateData, [execution, start]),
     spawn_link(fun() ->
         proc_lib:set_label(ExecutionProcLabel),
-        temporal_sdk_executor:set_executor_dict(ExecutorPid),
+        % temporal_sdk_executor:set_executor_dict(ExecutorPid),
         otel_ctx:attach(OtelCtx),
         % TODO start new otel span
         try

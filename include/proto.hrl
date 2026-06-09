@@ -8,6 +8,9 @@
 %% Temporal API Erlang SDK extensions
 
 -define(TASK_HEADER_KEY_SDK_DATA, "sdk_data").
+-define(TASK_HEADER_KEY_SDK_DATA_BIN, ~"sdk_data").
+-define(TASK_HEADER_KEY_OTEL_TRACE, "_tracer-data").
+-define(TASK_HEADER_KEY_OTEL_TRACE_BIN, ~"_tracer-data").
 -define(MUTATION_RESET_PREFIX, "sdk_mutation").
 -define(AWAIT_TIMEOUT_ID, "sdk_timeout").
 -define(DEFAULT_MARKER_TYPE, none).

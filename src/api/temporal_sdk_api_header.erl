@@ -4,12 +4,52 @@
 -moduledoc false.
 
 -export([
+    put_key/5,
+    fetch/3,
+    take_otel_ctx/1,
     put_sdk/4,
     get_sdk/4,
     put_marker_sdk/5
 ]).
 
 -include("proto.hrl").
+
+-spec put_key(
+    RequestWithMaybeUserHeader :: temporal_sdk_client:msg(),
+    Data :: temporal_sdk:term_to_payload(),
+    Key :: unicode:chardata(),
+    MsgName :: temporal_sdk_client:msg_name(),
+    ApiCtx :: temporal_sdk_api:context()
+) -> RequestWithSDKData :: map().
+put_key(#{header := #{fields := #{} = RHF}} = R, Data, Key, MsgName, ApiCtx) ->
+    R#{header := #{fields => maps:merge(RHF, do_map_to(Data, Key, MsgName, ApiCtx))}};
+put_key(#{} = R, Data, Key, MsgName, ApiCtx) ->
+    R#{header => #{fields => do_map_to(Data, Key, MsgName, ApiCtx)}}.
+
+do_map_to(Data, Key, MsgName, ApiCtx) ->
+    temporal_sdk_api:map_to_mapstring_payload(ApiCtx, MsgName, [header, fields], #{Key => Data}).
+
+-spec fetch(
+    Task :: temporal_sdk_client:msg(),
+    MsgName :: temporal_sdk_client:msg_name(),
+    ApiCtx :: temporal_sdk_api:context()
+) -> HeaderFields :: temporal_sdk:term_from_mapstring_payload().
+fetch(Task, MsgName, ApiCtx) ->
+    case Task of
+        #{header := #{fields := HF}} ->
+            temporal_sdk_api:map_from_mapstring_payload(ApiCtx, MsgName, [header, fields], HF);
+        #{} ->
+            #{}
+    end.
+
+-spec take_otel_ctx(Header :: temporal_sdk:term_from_mapstring_payload() | list()) ->
+    {TraceParent :: undefined | list(), HeaderNoOtel :: temporal_sdk:term_from_mapstring_payload()}.
+take_otel_ctx(#{?TASK_HEADER_KEY_OTEL_TRACE := #{} = TraceParent} = Header) ->
+    {proplists:from_map(TraceParent), maps:remove(?TASK_HEADER_KEY_OTEL_TRACE, Header)};
+take_otel_ctx(#{?TASK_HEADER_KEY_OTEL_TRACE_BIN := #{} = TraceParent} = Header) ->
+    {proplists:from_map(TraceParent), maps:remove(?TASK_HEADER_KEY_OTEL_TRACE_BIN, Header)};
+take_otel_ctx(#{} = Header) ->
+    {undefined, Header}.
 
 -spec put_sdk(
     RequestWithMaybeUserHeader :: temporal_sdk_client:msg(),

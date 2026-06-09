@@ -17,7 +17,6 @@
     workflow_execution,
     activity_type,
     activity_id,
-    header,
     scheduled_time,
     started_time,
     attempt

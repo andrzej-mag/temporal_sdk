@@ -169,7 +169,12 @@ isv(payloads, V) when is_list(V) -> true;
 isv(mapstring_payload, V) when is_map(V) -> true;
 isv(mapstring_payloads, V) when is_map(V) -> true;
 isv(memo, V) when is_map(V) -> true;
-isv(header, V) when is_map(V), not is_map_key(?TASK_HEADER_KEY_SDK_DATA, V) -> true;
+isv(header, V) when
+    is_map(V),
+    not is_map_key(?TASK_HEADER_KEY_SDK_DATA, V),
+    not is_map_key(?TASK_HEADER_KEY_OTEL_TRACE, V)
+->
+    true;
 isv(search_attributes, V) when is_map(V) -> true;
 isv(retry_policy, V) when is_map(V) -> true;
 isv(user_metadata, V) when is_map(V) ->

@@ -4,19 +4,19 @@
 -moduledoc false.
 
 -export([
-    set_executor_dict/1,
-    set_executor_dict/8,
-    set_handler_dict/4,
+    set_executor_dict/2,
+    set_executor_dict/7,
+    set_handler_dict/3,
     get_executor/0,
     get_execution_id/0,
     get_execution_idx/0,
     get_api_context/0,
     get_api_context_activity/0,
-    get_otel_context/0,
     get_history_table/0,
     get_index_table/0,
     get_await_counter/0,
     get_commands/0,
+    get_otel_delta_time/0,
     set_commands/1,
     inc_await_counter/0
 ]).
@@ -30,8 +30,10 @@
 
 -include("temporal_sdk_executor.hrl").
 
--spec set_executor_dict(ExecutorPid :: pid()) -> term().
-set_executor_dict(ExecutorPid) -> put(?PID_KEY, ExecutorPid).
+-spec set_executor_dict(ExecutorPid :: pid(), OtelDeltaTime :: pos_integer()) -> term().
+set_executor_dict(ExecutorPid, OtelDeltaTime) ->
+    put(?PID_KEY, ExecutorPid),
+    put(?OTEL_DELTA_TIME, OtelDeltaTime).
 
 -spec set_executor_dict(
     ExecutorPid :: pid(),
@@ -39,7 +41,6 @@ set_executor_dict(ExecutorPid) -> put(?PID_KEY, ExecutorPid).
     ExecutionIdx :: pos_integer(),
     ApiContext :: temporal_sdk_api:context(),
     ApiCtxActivity :: temporal_sdk_api:context(),
-    OtelContext :: otel_ctx:t(),
     HistoryTable :: ets:table(),
     IndexTable :: ets:table()
 ) -> term().
@@ -49,7 +50,6 @@ set_executor_dict(
     ExecutionIdx,
     ApiContext,
     ApiCtxActivity,
-    OtelContext,
     HistoryTable,
     IndexTable
 ) ->
@@ -58,7 +58,6 @@ set_executor_dict(
     put(?IDX_KEY, ExecutionIdx),
     put(?API_CTX_KEY, ApiContext),
     put(?API_CTX_ACTIVITY_KEY, ApiCtxActivity),
-    put(?OTEL_CTX_ID_KEY, OtelContext),
     put(?HISTORY_TABLE_KEY, HistoryTable),
     put(?INDEX_TABLE_KEY, IndexTable),
     put(?COMMANDS_KEY, []),
@@ -66,13 +65,11 @@ set_executor_dict(
 
 -spec set_handler_dict(
     ApiContext :: temporal_sdk_api:context(),
-    OtelContext :: otel_ctx:t(),
     HistoryTable :: ets:table(),
     IndexTable :: ets:table()
 ) -> term().
-set_handler_dict(ApiContext, OtelContext, HistoryTable, IndexTable) ->
+set_handler_dict(ApiContext, HistoryTable, IndexTable) ->
     put(?API_CTX_KEY, ApiContext),
-    put(?OTEL_CTX_ID_KEY, OtelContext),
     put(?HISTORY_TABLE_KEY, HistoryTable),
     put(?INDEX_TABLE_KEY, IndexTable).
 
@@ -91,9 +88,6 @@ get_api_context() -> get_dictkey(?API_CTX_KEY).
 -spec get_api_context_activity() -> ApiContext :: temporal_sdk_api:context() | no_return().
 get_api_context_activity() -> get_dictkey(?API_CTX_ACTIVITY_KEY).
 
--spec get_otel_context() -> OtelContext :: otel_ctx:t() | no_return().
-get_otel_context() -> get_dictkey(?OTEL_CTX_ID_KEY).
-
 -spec get_history_table() -> ets:table() | no_return().
 get_history_table() -> get_dictkey(?HISTORY_TABLE_KEY).
 
@@ -105,6 +99,9 @@ get_await_counter() -> get_dictkey(?AWAIT_COUNTER_KEY).
 
 -spec get_commands() -> [temporal_sdk_workflow:index_command()].
 get_commands() -> get_dictkey(?COMMANDS_KEY).
+
+-spec get_otel_delta_time() -> undefined | pos_integer().
+get_otel_delta_time() -> get_dictkey(?OTEL_DELTA_TIME).
 
 -spec set_commands(Commands :: [temporal_sdk_workflow:index_command()]) ->
     [temporal_sdk_workflow:index_command()].

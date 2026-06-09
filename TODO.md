@@ -24,8 +24,6 @@ Asynchronous activity completion by heartbeat.
 
 Add heartbeat throttle to activity executor.
 
-Implement workflow flow opentelemetry tracing.
-
 Add temporal_sdk_prometheus/otel metrics repository.
 
 Add GitHub CI/CD (including ICLA signing automation?).
@@ -45,3 +43,6 @@ Unit testing:
 * add endpoint load balancing tests
 
 Move pricing info from repository README to an external project website.
+
+Migrate protobuf typespecs from current maps to native records. Requires native records support in gpb
+and elixir.

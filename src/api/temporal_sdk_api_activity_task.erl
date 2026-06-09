@@ -5,6 +5,7 @@
 
 -export([
     input/2,
+    header/2,
     task_token/1,
     workflow_namespace/1,
     workflow_type_name/1,
@@ -29,6 +30,15 @@ input(ApiCtx, Task) ->
         'temporal.api.workflowservice.v1.PollActivityTaskQueueResponse',
         input,
         maps:get(input, Task, #{payloads => []})
+    ).
+
+-spec header(ApiCtx :: temporal_sdk_api:context(), Task :: temporal_sdk_activity:task()) ->
+    temporal_sdk:term_from_mapstring_payload().
+header(ApiCtx, Task) ->
+    temporal_sdk_api_header:fetch(
+        Task,
+        'temporal.api.workflowservice.v1.PollActivityTaskQueueResponse',
+        ApiCtx
     ).
 
 -spec task_token(temporal_sdk_activity:task()) -> iodata().

@@ -28,6 +28,7 @@
 -include("sdk.hrl").
 -include("proto.hrl").
 -include("telemetry.hrl").
+-include_lib("opentelemetry_api/include/opentelemetry.hrl").
 
 -define(EVENT_ORIGIN, workflow).
 
@@ -158,7 +159,21 @@
         | {complete_task, reference()},
     %% --------------- telemetry
     started_at = 0 :: integer(),
-    otel_ctx :: otel_ctx:t(),
+    otel_tracer :: opentelemetry:tracer(),
+    otel_parent_ctx :: undefined | map(),
+    otel_time :: undefined | DeltaTime :: pos_integer(),
+    otel_attr :: map(),
+    otel_executor_ctx :: undefined | {opentelemetry:span_ctx(), otel_ctx:t()},
+    otel_executions = #{} :: #{
+        temporal_sdk_workflow:execution_id() =>
+            {
+                undefined | opentelemetry:span_ctx(),
+                ParentExecutionId :: temporal_sdk_workflow:execution_id() | otel_ctx:t(),
+                open | closed
+            }
+    },
+    otel_pending_commands = [] :: [temporal_sdk_workflow:otel_command()],
+    otel_started_cmds_spans = [] :: [opentelemetry:span_ctx()],
     ev_metadata :: map()
 }).
 -type state() :: #state{}.
@@ -201,11 +216,23 @@ terminate(Reason, _State, #state{} = StateData) ->
         ev_metadata = EvMetadata,
         started_at = StartedAt,
         execution_state = ExecutionState,
-        stop_reason = StopReason
+        stop_reason = StopReason,
+        otel_executions = OE,
+        otel_time = OTi
     } =
         StateData,
     temporal_sdk_limiter:dec(WorkflowLC),
 
+    %% End stale started parallel executions otel spans
+    Fn = fun
+        (_ExecutionId, {OES, _OEC, _OESt}) when OES =/= undefined ->
+            otel_span:end_span(OES, temporal_sdk_telemetry:otel_timestamp(OTi));
+        (_ExecutionId, {_OES, _OEC, _OESt}) ->
+            ok
+    end,
+    maps:foreach(Fn, OE),
+
+    %% Shutdown local sticky queue worker
     case CallerPid of
         undefined ->
             case StickyAttributes of
@@ -216,6 +243,7 @@ terminate(Reason, _State, #state{} = StateData) ->
             ok
     end,
 
+    %% Close telemetry task event
     CState =
         case ExecutionState of
             {external_evict, _} = ES -> ES;
@@ -237,9 +265,15 @@ terminate(Reason, _State, #state{} = StateData) ->
         _ ->
             ?EV(SD, [task, exception], StartedAt, StopReason)
     end,
+
+    %% Close telemetry executor event
     case Reason of
-        normal -> ?EV(SD, [executor, stop], StartedAt);
-        R -> ?EV(SD, [executor, exception], StartedAt, {error, R, ?EVST})
+        normal ->
+            ?EV(SD, [executor, stop], StartedAt),
+            end_executor_otel_span(ok, SD);
+        R ->
+            ?EV(SD, [executor, exception], StartedAt, {error, R, ?EVST}),
+            end_executor_otel_span(R, SD)
     end.
 
 callback_mode() -> [state_functions, state_enter].
@@ -288,11 +322,14 @@ replay(EventType, EventContent, StateData) ->
     handle_common(?FUNCTION_NAME, EventType, EventContent, StateData).
 
 complete_task(enter, State, StateData) when State =:= replay; State =:= complete_task ->
-    handle_complete_task_enter(StateData);
+    SD = otel_run_otel_commands(StateData),
+    handle_complete_task_enter(SD);
 complete_task(
     info, {?TEMPORAL_SDK_GRPC_TAG, Ref, Response}, #state{grpc_req_ref = {complete_task, Ref}} = SD
 ) ->
-    handle_complete_task(Response, SD);
+    otel_end_commands_spans(Response, SD#state.otel_started_cmds_spans),
+    SD1 = otel_end_executions_spans(SD#state{otel_started_cmds_spans = []}),
+    handle_complete_task(Response, SD1);
 complete_task(EventType, EventContent, StateData) ->
     handle_common(?FUNCTION_NAME, EventType, EventContent, StateData).
 
@@ -529,20 +566,48 @@ set_evicted(#state{is_replaying = true}) -> keep_state_and_data;
 set_evicted(#state{is_evicted = false} = SD) -> {keep_state, SD#state{is_evicted = true}};
 set_evicted(_StateData) -> keep_state_and_data.
 
-handle_execute_result(completed, ExecutionIdx, Commands, StateData) ->
+handle_execute_result(completed, {ExecutionId, ExecutionIdx}, Commands, StateData) ->
     #state{open_executions_count = OEC} = StateData,
     case spawn_local(Commands, ExecutionIdx, StateData#state{open_executions_count = OEC - 1}) of
-        {ok, SD} -> handle_execute_maybe_replay(SD);
-        {error, Err, SD} -> {next_state, fail_task, SD#state{stop_reason = {error, Err, ?EVST}}}
+        {ok, SD0} ->
+            SD = close_execution_otel_span(ok, ExecutionId, SD0),
+            handle_execute_maybe_replay(SD);
+        {error, Err, SD0} ->
+            SD = close_execution_otel_span(Err, ExecutionId, SD0),
+            {next_state, fail_task, SD#state{stop_reason = {error, Err, ?EVST}}}
     end;
 handle_execute_result(failed, ExecutionId, {Class, Reason, Stacktrace}, StateData) ->
-    {next_state, fail_task, StateData#state{
+    SD = close_execution_otel_span({Class, Reason, Stacktrace}, ExecutionId, StateData),
+    {next_state, fail_task, SD#state{
         stop_reason = {Class, #{reason => Reason, execution_id => ExecutionId}, Stacktrace}
     }};
 handle_execute_result(failed, ExecutionId, Err, StateData) ->
-    {next_state, fail_task, StateData#state{
+    SD = close_execution_otel_span(Err, ExecutionId, StateData),
+    {next_state, fail_task, SD#state{
         stop_reason = {error, #{reason => Err, execution_id => ExecutionId}, ?EVST}
     }}.
+
+close_execution_otel_span(_, _ExecutionId, #state{otel_parent_ctx = undefined} = StateData) ->
+    StateData;
+close_execution_otel_span(ok, ExecutionId, StateData) ->
+    #state{otel_executions = OE} = StateData,
+    case OE of
+        #{ExecutionId := {OES, OEC, open}} ->
+            StateData#state{otel_executions = OE#{ExecutionId := {OES, OEC, closed}}};
+        #{} ->
+            StateData
+    end;
+close_execution_otel_span(Err, ExecutionId, #state{otel_executions = OE} = StateData) ->
+    case OE of
+        #{ExecutionId := {OES, OEC, open}} when OES =/= undefined, OEC =/= undefined ->
+            temporal_sdk_telemetry:otel_set_error(OES, run_execution_error, Err),
+            StateData#state{otel_executions = OE#{ExecutionId := {OES, OEC, closed}}};
+        #{ExecutionId := {OES, OEC, open}} ->
+            %% Span is not restarted intentionally to avoid flooding APM on WF execution error retries
+            StateData#state{otel_executions = OE#{ExecutionId => {OES, OEC, closed}}};
+        #{} ->
+            StateData
+    end.
 
 handle_execute_maybe_replay(StateData) ->
     #state{executions_awaits = EA, open_executions_count = OEC} = StateData,
@@ -559,24 +624,20 @@ handle_await_or_replay(StateData) ->
     {_ExecutionIdxs, NCmds0, NRCmds0} = lists:unzip3(lists:keysort(1, lists:reverse(EC))),
     NCmds = lists:flatten(NCmds0),
     NRCmds = lists:flatten(NRCmds0),
-    case next_event_id(StateData) of
-        {ok, NEId} ->
-            case do_cmds(NCmds, ES, StateData, [], NEId) of
-                {ok, #state{execution_state = State} = SD, FCmds} ->
-                    SD1 = SD#state{
-                        commands = Cmds ++ FCmds,
-                        replayed_commands = RCmds ++ NRCmds,
-                        executions_commands = []
-                    },
-                    case State =:= started andalso NCmds =/= [] of
-                        false -> {next_state, replay, SD1, {next_event, internal, handle_replay}};
-                        true -> reply_and_keep_state(complete_await, SD1)
-                    end;
-                {error, SD} ->
-                    {next_state, fail_task, SD}
+    NEId = next_event_id(StateData),
+    case do_cmds(NCmds, ES, StateData, [], NEId) of
+        {ok, #state{execution_state = State} = SD, FCmds} ->
+            SD1 = SD#state{
+                commands = Cmds ++ FCmds,
+                replayed_commands = RCmds ++ NRCmds,
+                executions_commands = []
+            },
+            case State =:= started andalso NCmds =/= [] of
+                false -> {next_state, replay, SD1, {next_event, internal, handle_replay}};
+                true -> reply_and_keep_state(complete_await, SD1)
             end;
-        Err ->
-            {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
+        {error, SD} ->
+            {next_state, fail_task, SD}
     end.
 
 handle_replay(#state{open_locals_count = OLC} = StateData) when OLC > 0 ->
@@ -646,12 +707,22 @@ replay_event(
     true, [], #state{has_upserted_events = HUE, has_replayed_events = HRE} = StateData
 ) when HUE; HRE ->
     reply(complete_await, StateData);
+replay_event(
+    IsCommanded, [{_, otel_command} | TIndexCommand], #state{is_replaying = true} = StateData
+) ->
+    replay_event(IsCommanded, TIndexCommand, StateData);
+replay_event(IsCommanded, [{_, otel_command} = OtelCmd | TIndexCommand], StateData) ->
+    #state{otel_pending_commands = OPC} = StateData,
+    replay_event(IsCommanded, TIndexCommand, StateData#state{
+        otel_pending_commands = [OtelCmd | OPC]
+    });
 replay_event(IsCommanded, IndexCommand, StateData) ->
     #state{
         api_ctx = ApiCtx,
         event_id = EventId,
         task_previous_started_event_id = TaskPreviousStartedEventId,
         task_started_event_id = TaskStartedEventId,
+        is_replaying = IsReplaying0,
         history_events = [{_, EType, _, _} = Event | TEvents],
         open_tasks_count = OpenTasksCount,
         history_table = HistoryTable,
@@ -679,17 +750,21 @@ replay_event(IsCommanded, IndexCommand, StateData) ->
         ignore ?= handle_mutation(CallerPid, IsReplaying, IC, EventIndex, HistoryTable),
         WInfo = temporal_sdk_api_awaitable_history:update_workflow_info(Event, WorkflowInfo),
         ok ?= upsert_suggest_continue_as_new(WorkflowInfo, WInfo, IndexTable, EventId),
-        SD = StateData#state{
-            event_id = EventId + 1,
-            commands = TIndexCommand,
-            history_events = TEvents,
-            is_replaying = IsReplaying,
-            workflow_info = WInfo,
-            open_tasks_count = OpenTasksCount - ClosedTaskCount,
-            otp_messages_count = update_otp_msg_count(IsReplaying, EventIndex, OtpMessagesCount),
-            has_replayed_events = true,
-            replayed_commands = update_rcmds(EType, ReplayedCommands, IndexCommand)
-        },
+        SD1 = maybe_start_executor_span(IsReplaying0, IsReplaying, Event, StateData),
+        SD =
+            SD1#state{
+                event_id = EventId + 1,
+                commands = TIndexCommand,
+                history_events = TEvents,
+                is_replaying = IsReplaying,
+                workflow_info = WInfo,
+                open_tasks_count = OpenTasksCount - ClosedTaskCount,
+                otp_messages_count = update_otp_msg_count(
+                    IsReplaying, EventIndex, OtpMessagesCount
+                ),
+                has_replayed_events = true,
+                replayed_commands = update_rcmds(EType, ReplayedCommands, IndexCommand)
+            },
         handle_replay(update_blocking_awaitable(EType, EventIndex, IC, SD))
     else
         {mutation_reset, ResetEventId, Reason} ->
@@ -714,6 +789,21 @@ replay_event(IsCommanded, IndexCommand, StateData) ->
         Err ->
             {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end.
+
+maybe_start_executor_span(_IsR0, _IsR, _Event, #state{otel_parent_ctx = undefined} = StateData) ->
+    StateData;
+maybe_start_executor_span(true, false, {_, _, _, #{event_time := ETime}}, StateData) ->
+    #state{otel_tracer = OT, otel_parent_ctx = OPC, otel_attr = OA} = StateData,
+    ServerStartTime = temporal_sdk_telemetry:otel_native_to_timestamp(ETime),
+    DeltaTime = ServerStartTime - opentelemetry:timestamp(),
+    #{~"temporal.workflow.type" := WorkflowType} = OA,
+    SpanOpts = #{kind => ?SPAN_KIND_SERVER, start_time => ServerStartTime, attributes => OA},
+    SpanName = temporal_sdk_telemetry:otel_name(?TEMPORAL_SDK_OTEL_RUN_WORKFLOW, WorkflowType),
+    Span = otel_tracer:start_span(OPC, OT, SpanName, SpanOpts),
+    Ctx = otel_tracer:set_current_span(OPC, Span),
+    StateData#state{otel_time = DeltaTime, otel_executor_ctx = {Span, Ctx}};
+maybe_start_executor_span(_IsR0, _IsR, _Event, StateData) ->
+    StateData.
 
 upsert_suggest_continue_as_new(
     #{suggest_continue_as_new := false}, #{suggest_continue_as_new := true}, IndexTable, EventId
@@ -954,46 +1044,50 @@ handle_complete_task_enter(StateData) ->
         messages = Messages,
         is_evicted = IsEvicted
     } = StateData,
-    maybe
-        {ok, Commands0} ?= update_event_id(StateData),
-        {Commands, CommandsRest} = split_before_complete(Commands0, StateData),
-        {_Awaitables, TemporalCommands} = lists:unzip(Commands),
-        FN =
-            (OpenTasksCount =:= 0 andalso ExecutionState =:= started) orelse PendingCommands =/= [],
-        Req1 =
-            case FN of
-                true -> #{force_create_new_workflow_task => true};
-                false -> #{}
-            end,
-        Req2 =
-            case map_size(Queries) of
-                0 -> Req1;
-                _ -> Req1#{query_results => Queries}
-            end,
-        Req =
-            case Messages of
-                [] -> Req2;
-                _ -> Req2#{messages => Messages}
-            end,
-        RefOrErr = temporal_sdk_api_workflow:respond_workflow_task_completed(
-            ApiContext,
-            TemporalCommands,
-            IsEvicted,
-            Req
-        ),
-        case is_reference(RefOrErr) of
-            true ->
-                {keep_state,
-                    StateData#state{
-                        commands = Commands ++ CommandsRest,
-                        grpc_req_ref = {complete_task, RefOrErr}
-                    },
-                    {{timeout, task_timeout}, cancel}};
-            false ->
-                gen_statem:cast(self(), fail_task),
-                {keep_state, StateData#state{stop_reason = {error, RefOrErr, ?EVST}}}
-        end
-    else
+    case update_event_id(StateData) of
+        {ok, Commands0} ->
+            {Commands, CommandsRest} = split_before_complete(Commands0, StateData),
+            {SD, CommandsSpans, CommandsWithSpans} = otel_inject_commands_spans(
+                Commands, StateData, [], []
+            ),
+            FN =
+                (OpenTasksCount =:= 0 andalso ExecutionState =:= started) orelse
+                    PendingCommands =/= [],
+            Req1 =
+                case FN of
+                    true -> #{force_create_new_workflow_task => true};
+                    false -> #{}
+                end,
+            Req2 =
+                case map_size(Queries) of
+                    0 -> Req1;
+                    _ -> Req1#{query_results => Queries}
+                end,
+            Req =
+                case Messages of
+                    [] -> Req2;
+                    _ -> Req2#{messages => Messages}
+                end,
+            RefOrErr = temporal_sdk_api_workflow:respond_workflow_task_completed(
+                ApiContext,
+                CommandsWithSpans,
+                IsEvicted,
+                Req
+            ),
+            case is_reference(RefOrErr) of
+                true ->
+                    {keep_state,
+                        SD#state{
+                            commands = Commands ++ CommandsRest,
+                            grpc_req_ref = {complete_task, RefOrErr},
+                            otel_started_cmds_spans = CommandsSpans
+                        },
+                        {{timeout, task_timeout}, cancel}};
+                false ->
+                    otel_end_commands_spans(RefOrErr, CommandsSpans),
+                    gen_statem:cast(self(), fail_task),
+                    {keep_state, StateData#state{stop_reason = {error, RefOrErr, ?EVST}}}
+            end;
         Err ->
             gen_statem:cast(self(), fail_task),
             {current_stacktrace, CS} = process_info(self(), current_stacktrace),
@@ -1502,23 +1596,19 @@ handle_common(
     Attr1 = #{marker_name => Name, details => Details},
     Attr = temporal_sdk_api_header:put_marker_sdk(Attr1, Opts, Type, none, ApiCtx),
     Cmd = temporal_sdk_api_command:record_marker_command(Attr),
-    case next_event_id(StateData) of
-        {ok, NEId} ->
-            IdxCmd = {
-                {IdxKey, #{
-                    state => cmd,
-                    execution_id => undefined,
-                    details => Details,
-                    value => Value,
-                    event_id => NEId
-                }},
-                Cmd
-            },
-            SD = StateData#state{commands = Commands ++ [IdxCmd], has_upserted_events = true},
-            {keep_state, SD};
-        Err ->
-            {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
-    end;
+    NEId = next_event_id(StateData),
+    IdxCmd = {
+        {IdxKey, #{
+            state => cmd,
+            execution_id => undefined,
+            details => Details,
+            value => Value,
+            event_id => NEId
+        }},
+        Cmd
+    },
+    SD = StateData#state{commands = Commands ++ [IdxCmd], has_upserted_events = true},
+    {keep_state, SD};
 handle_common(replay, cast, {?MSG_PRV, marker, record, Name, Value}, #state{} = StateData) ->
     {next_state, fail_task, StateData#state{
         stop_reason =
@@ -1704,21 +1794,22 @@ check_message_limit(Action, StateData) ->
 %% event_id helpers
 
 next_event_id(#state{history_events = [], commands = [], event_id = EId}) ->
-    {ok, EId + 1};
-next_event_id(#state{commands = Cmds}) when Cmds =/= [] ->
-    case lists:last(Cmds) of
-        {{_IKey, #{event_id := EId}}, _Cmd} when is_integer(EId) ->
-            {ok, EId + 1};
-        {_Pid, {{_IKey, #{event_id := EId}}, _Cmd}} when is_integer(EId) ->
-            {ok, EId + 1};
-        Invalid ->
-            {error, #{
-                reason => "Expected awaitable with event_id key, received invalid.",
-                invalid_awaitable => Invalid
-            }}
-    end;
+    EId + 1;
+next_event_id(#state{commands = Cmds, event_id = SEId}) when Cmds =/= [] ->
+    do_next_event_id_cmd(lists:reverse(Cmds), SEId);
 next_event_id(#state{history_events = HE}) when HE =/= [] ->
-    {ok, do_next_eid(HE, 1)}.
+    do_next_eid(HE, 1).
+
+do_next_event_id_cmd([{{_IKey, #{event_id := EId}}, _Cmd} | _TCmds], _SEId) when is_integer(EId) ->
+    EId + 1;
+do_next_event_id_cmd([{_Pid, {{_IKey, #{event_id := EId}}, _Cmd}} | _TCmds], _SEId) when
+    is_integer(EId)
+->
+    EId + 1;
+do_next_event_id_cmd([_ | TCmds], SEId) ->
+    do_next_event_id_cmd(TCmds, SEId);
+do_next_event_id_cmd([], SEId) ->
+    SEId + 1.
 
 update_event_id(false, EId, [{{_IK, #{event_id := EId}}, _C} | _] = Cmds, SD) ->
     NEId = do_next_eid(SD#state.history_events, EId),
@@ -1791,7 +1882,7 @@ do_upeid([], _EId, _SD, NC) ->
 
 %% do_cmds: spawn execution
 do_cmds(
-    [{{{execution, ExeId}, #{state := cmd, mfa := {M, F, A}}} = I, sdk_command} | CT],
+    [{{{execution, ExeId}, #{state := cmd} = IV} = I, sdk_command} | CT],
     started,
     SD,
     FC,
@@ -1799,7 +1890,7 @@ do_cmds(
 ) ->
     maybe
         ok ?= temporal_sdk_api_awaitable_index_table:upsert_cmd(SD#state.index_table, I),
-        {ok, SD1} ?= spawn_execution(M, F, A, ExeId, SD),
+        {ok, SD1} ?= spawn_execution(ExeId, IV, SD),
         do_cmds(CT, started, SD1, FC, EId)
     else
         Err -> {error, SD#state{stop_reason = {error, Err, ?EVST}}}
@@ -1938,6 +2029,9 @@ do_cmds([{{{query, QT} = IK, IV}, sdk_command} | CT], started, SD, FC, EId) ->
                         ?EVST}
             }}
     end;
+%% do_cmds: otel commands
+do_cmds([{_I, otel_command} = IC | CT], started, SD, FC, EId) ->
+    do_cmds(CT, started, SD, [IC | FC], EId);
 %% do_cmds: remaining SDK commands
 do_cmds([{I, sdk_command} | CT], started, SD, FC, EId) ->
     case temporal_sdk_api_awaitable_index_table:upsert_cmd(SD#state.index_table, I) of
@@ -2031,13 +2125,16 @@ spawn_main_execution(StateData) ->
         index_table = IndexTable
     } = StateData,
     IndexKey = {execution, ExecutionId},
-    IndexValue = #{state => cmd, mfa => {ExecutionModule, execute, TaskInput}},
+    IndexValue = #{
+        state => cmd, execution_id => ExecutionId, mfa => {ExecutionModule, execute, TaskInput}
+    },
     case temporal_sdk_api_awaitable_index_table:upsert_cmd(IndexTable, {IndexKey, IndexValue}) of
-        ok -> spawn_execution(ExecutionModule, execute, TaskInput, ExecutionId, StateData);
+        ok -> spawn_execution(ExecutionId, IndexValue, StateData);
         Err -> Err
     end.
 
-spawn_execution(Module, Function, Args, ExecutionId, StateData) ->
+spawn_execution(ExecutionId, #{state := cmd} = IndexValue, StateData) ->
+    #{execution_id := ParentExecutionId, mfa := {Module, Function, Args}} = IndexValue,
     #state{
         api_ctx = ApiCtx,
         api_ctx_activity = ApiCtxActivity,
@@ -2045,7 +2142,6 @@ spawn_execution(Module, Function, Args, ExecutionId, StateData) ->
         open_executions_count = OpenExecutionsCount,
         total_executions_count = TotalExecutionsCount,
         linked_pids = LinkedPids,
-        otel_ctx = OtelCtx,
         history_table = HistoryTable,
         index_table = IndexTable,
         proc_label = ProcLabel,
@@ -2058,6 +2154,7 @@ spawn_execution(Module, Function, Args, ExecutionId, StateData) ->
     SD_EV = StateData#state{ev_metadata = EvMetadata#{execution_id => ExecutionId}},
     ExecutionProcLabel = temporal_sdk_utils_path:string_path([ProcLabel, execution, ExecutionId]),
     T = ?EV(SD_EV, [execution, start]),
+    StartedAt = temporal_sdk_telemetry:otel_native_to_timestamp(T),
 
     IndexKey = {execution, ExecutionId},
     Index = {IndexKey, #{state => started}},
@@ -2073,12 +2170,9 @@ spawn_execution(Module, Function, Args, ExecutionId, StateData) ->
                         ExecutionIdx,
                         ApiCtx,
                         ApiCtxActivity,
-                        OtelCtx,
                         HistoryTable,
                         IndexTable
                     ),
-                    otel_ctx:attach(OtelCtx),
-                    % TODO start new otel span
                     try
                         Result = Module:Function(Ctx, Args),
                         ?EV(SD_EV, [execution, stop], T),
@@ -2089,7 +2183,8 @@ spawn_execution(Module, Function, Args, ExecutionId, StateData) ->
                             },
                         Cmds = temporal_sdk_executor:get_commands() ++ [IdxCmd],
                         gen_statem:cast(
-                            ExecutorPid, {?MSG_PRV, {execution, completed, ExecutionIdx, Cmds}}
+                            ExecutorPid,
+                            {?MSG_PRV, {execution, completed, {ExecutionId, ExecutionIdx}, Cmds}}
                         )
                     catch
                         Class:Reason:Stacktrace ->
@@ -2109,7 +2204,10 @@ spawn_execution(Module, Function, Args, ExecutionId, StateData) ->
                     {P, _MonitorRef} -> P;
                     P -> P
                 end,
-            {ok, StateData#state{
+            SD = maybe_start_execution_span(
+                ExecutionId, ParentExecutionId, StartedAt, StateData
+            ),
+            {ok, SD#state{
                 open_executions_count = OpenExecutionsCount + 1,
                 total_executions_count = TotalExecutionsCount + 1,
                 linked_pids = [Pid | LinkedPids]
@@ -2117,6 +2215,29 @@ spawn_execution(Module, Function, Args, ExecutionId, StateData) ->
         Err ->
             Err
     end.
+
+maybe_start_execution_span(
+    _ExecutionId, _ParentExecutionId, _StartedAt, #state{otel_parent_ctx = undefined} = StateData
+) ->
+    StateData;
+maybe_start_execution_span(
+    ExecutionId, ParentExecutionId, StartedAt, #state{otel_time = OTi} = StateData
+) when is_integer(OTi) ->
+    #state{
+        otel_tracer = OTr, otel_executor_ctx = {_, OEC}, otel_attr = OA, otel_executions = OE
+    } = StateData,
+    ParentCtx =
+        case OE of
+            #{ParentExecutionId := {OES, OECtx, _}} when OES =/= undefined -> OECtx;
+            #{} -> OEC
+        end,
+    {_Span, _Ctx, OE1} = start_execution_span(
+        ExecutionId, OE, ParentCtx, OTr, OTi, OA, StartedAt, open
+    ),
+    StateData#state{otel_executions = OE1};
+maybe_start_execution_span(ExecutionId, ParentExecutionId, _StartedAt, StateData) ->
+    #state{otel_executions = OE} = StateData,
+    StateData#state{otel_executions = OE#{ExecutionId => {undefined, ParentExecutionId, open}}}.
 
 spawn_handle_failure(StateData) ->
     #state{
@@ -2126,8 +2247,7 @@ spawn_handle_failure(StateData) ->
         history_table = HT,
         index_table = IT,
         local_handlers = LocalHandlers,
-        proc_label = ProcLabel,
-        otel_ctx = OtelCtx
+        proc_label = ProcLabel
     } = StateData,
     HC = build_handler_context(StateData),
     ExecutorPid = self(),
@@ -2140,8 +2260,7 @@ spawn_handle_failure(StateData) ->
             spawn_link(
                 fun() ->
                     proc_lib:set_label(HandlerProcLabel),
-                    temporal_sdk_executor:set_handler_dict(ApiCtx, OtelCtx, HT, IT),
-                    otel_ctx:attach(OtelCtx),
+                    temporal_sdk_executor:set_handler_dict(ApiCtx, HT, IT),
                     try
                         case EMod:handle_failure(HC, C, R, S) of
                             default ->
@@ -2168,7 +2287,6 @@ spawn_handle_eviction(StateData) ->
         index_table = IT,
         local_handlers = LocalHandlers,
         proc_label = ProcLabel,
-        otel_ctx = OtelCtx,
         poll_start_time = PollStartTime
     } = StateData,
     HC = build_handler_context(StateData),
@@ -2186,8 +2304,7 @@ spawn_handle_eviction(StateData) ->
                 spawn_link(
                     fun() ->
                         proc_lib:set_label(HandlerProcLabel),
-                        temporal_sdk_executor:set_handler_dict(ApiCtx, OtelCtx, HT, IT),
-                        otel_ctx:attach(OtelCtx),
+                        temporal_sdk_executor:set_handler_dict(ApiCtx, HT, IT),
                         try
                             case EMod:handle_eviction(HC, PollIdleTime) of
                                 default ->
@@ -2213,7 +2330,7 @@ spawn_handle_eviction(StateData) ->
 
 build_handler_context(StateData) ->
     #state{workflow_context = WC, workflow_info = WI} = StateData,
-    HC = maps:with([cluster, otel_ctx, history_table, index_table, attempt], WC),
+    HC = maps:with([cluster, history_table, index_table, attempt], WC),
     HC#{workflow_info => WI}.
 
 spawn_local([], _ExecutionIdx, StateData) ->
@@ -2320,8 +2437,7 @@ spawn_message_marker(Name, Value, StateData) ->
         history_table = HT,
         index_table = IT,
         local_handlers = LocalHandlers,
-        proc_label = ProcLabel,
-        otel_ctx = OtelCtx
+        proc_label = ProcLabel
     } = StateData,
     HC = build_handler_context(StateData),
     ExecutorPid = self(),
@@ -2334,8 +2450,7 @@ spawn_message_marker(Name, Value, StateData) ->
                     gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, record, Name, V});
                 false ->
                     proc_lib:set_label(HandlerProcLabel),
-                    temporal_sdk_executor:set_handler_dict(ApiCtx, OtelCtx, HT, IT),
-                    otel_ctx:attach(OtelCtx),
+                    temporal_sdk_executor:set_handler_dict(ApiCtx, HT, IT),
                     try
                         case EMod:handle_message(HC, Name, Value) of
                             {record, V} ->
@@ -2614,23 +2729,45 @@ init_state_data(TaskType, ApiContext, Task, CallerPid) ->
             #{started_time := StTi} -> temporal_sdk_utils_time:protobuf_to_nanos(StTi);
             #{} -> 0
         end,
-    {UserHeaderData, OtelCtx} = get_header_data(TaskType, Task, ApiContext),
+    RunTimeout = fetch_run_timeout(TaskType, WorkerOpts, Task),
+    TaskTimeout = fetch_task_timeout(TaskType, WorkerOpts, Task),
+    EvictTimeout =
+        case TaskTimeout of
+            infinity -> ?DEFAULT_EVICT_TIMEOUT;
+            I when is_integer(I) -> round(?EVICT_TIMEOUT_RATIO * TaskTimeout)
+        end,
+    TaskInput =
+        case TaskType of
+            sticky -> [];
+            _ -> temporal_sdk_api_workflow_task:input(ApiContext, Task)
+        end,
     IsReplaying = PreviousStartedEventId > 0 orelse StartedEventId > 3,
+    OtelTracer = opentelemetry:get_application_tracer(?MODULE),
+    {OtelParentCtx, UserHeaderData} = fetch_header_data(TaskType, Task, ApiContext),
+    OtelStartTime0 = fetch_otel_start_time(OtelParentCtx, IsReplaying, TaskType, Task),
+    OtelAttr = temporal_sdk_telemetry:otel_attributes(#{
+        namespace => Namespace,
+        task_queue => TaskQueue,
+        workflow_type => WorkflowType,
+        workflow_id => WorkflowId,
+        workflow_run_id => RunId
+    }),
+    {OtelExecutorCtx, OtelStartTime} =
+        start_executor_otel_span(OtelParentCtx, OtelStartTime0, OtelTracer, OtelAttr),
     #{attempt := ExecutionStartedEventAttempt} =
         WorkflowContextWorkflowInfo =
         case TaskType of
             sticky ->
                 #{attempt => 1};
             _ ->
-                maps:merge(
-                    temporal_sdk_api_workflow_task:build_context_workflow_info(ApiContext, Task),
-                    UserHeaderData
+                temporal_sdk_api_workflow_task:build_context_workflow_info(
+                    ApiContext, Task, UserHeaderData
                 )
         end,
+
     WorkflowContext = #{
         cluster => Cluster,
         executor_pid => self(),
-        otel_ctx => OtelCtx,
         execution_id => undefined,
         worker_opts => WorkerOpts,
         history_table => undefined,
@@ -2640,18 +2777,9 @@ init_state_data(TaskType, ApiContext, Task, CallerPid) ->
         attempt => Attempt,
         is_replaying => IsReplaying
     },
-
     WorkflowInfo = maps:merge(?INITIAL_WORKFLOW_INFO, #{
         attempt => ExecutionStartedEventAttempt, is_replaying => IsReplaying
     }),
-    RunTimeout = fetch_run_timeout(TaskType, WorkerOpts, Task),
-    TaskTimeout = fetch_task_timeout(TaskType, WorkerOpts, Task),
-    EvictTimeout =
-        case TaskTimeout of
-            infinity -> ?DEFAULT_EVICT_TIMEOUT;
-            I when is_integer(I) -> round(?EVICT_TIMEOUT_RATIO * TaskTimeout)
-        end,
-
     EvMetadata =
         case WorkerOpts of
             #{disable_telemetry := true} ->
@@ -2675,11 +2803,6 @@ init_state_data(TaskType, ApiContext, Task, CallerPid) ->
 
                     executor_pid => self()
                 }
-        end,
-    TaskInput =
-        case TaskType of
-            sticky -> [];
-            _ -> temporal_sdk_api_workflow_task:input(ApiContext, Task)
         end,
 
     SD1 = #state{
@@ -2738,7 +2861,14 @@ init_state_data(TaskType, ApiContext, Task, CallerPid) ->
         %% grpc_req_ref = undefined
         %% --------------- telemetry
         %% started_at = 0
-        otel_ctx = OtelCtx,
+        otel_tracer = OtelTracer,
+        otel_parent_ctx = OtelParentCtx,
+        otel_time = OtelStartTime,
+        otel_attr = OtelAttr,
+        otel_executor_ctx = OtelExecutorCtx,
+        %% otel_executions = #{}
+        %% otel_pending_commands = []
+        %% otel_started_cmds_spans = []
         ev_metadata = EvMetadata
     },
     T = ?EV(SD1, [executor, start]),
@@ -2758,20 +2888,50 @@ init_state_data(TaskType, ApiContext, Task, CallerPid) ->
             end
     end.
 
-get_header_data(sticky, _Task, _ApiContext) ->
-    {#{}, #{}};
-get_header_data(_TaskType, Task, ApiContext) ->
-    STask = temporal_sdk_api_workflow_task:workflow_execution_started_event_attributes(Task),
-    {UserHeaderData, SDKHeader} =
-        temporal_sdk_api_header:get_sdk(
-            #{}, STask, 'temporal.api.workflowservice.v1.PollWorkflowTaskQueueResponse', ApiContext
-        ),
-    OtelCtx =
-        case SDKHeader of
-            #{otel_context := OC} -> OC;
-            #{} -> otel_ctx:new()
-        end,
-    {UserHeaderData, OtelCtx}.
+start_executor_otel_span(ParentCtx, StartTime, _Tracer, _OtelAttr) when
+    ParentCtx =:= undefined; StartTime =:= undefined
+->
+    {undefined, undefined};
+start_executor_otel_span(ParentCtx, {ServerStartTime, LocalStartTime}, Tracer, OtelAttr) ->
+    #{~"temporal.workflow.type" := WorkflowType} = OtelAttr,
+    SpanOpts = #{kind => ?SPAN_KIND_SERVER, start_time => ServerStartTime, attributes => OtelAttr},
+    SpanName = temporal_sdk_telemetry:otel_name(?TEMPORAL_SDK_OTEL_RUN_WORKFLOW, WorkflowType),
+    Span = otel_tracer:start_span(ParentCtx, Tracer, SpanName, SpanOpts),
+    Ctx = otel_tracer:set_current_span(ParentCtx, Span),
+    {{Span, Ctx}, ServerStartTime - LocalStartTime}.
+
+end_executor_otel_span(_, #state{otel_executor_ctx = undefined}) ->
+    ok;
+end_executor_otel_span(ok, #state{stop_reason = normal} = StateData) ->
+    #state{otel_executor_ctx = {SpanCtx, _}, otel_time = T} = StateData,
+    otel_span:end_span(SpanCtx, temporal_sdk_telemetry:otel_timestamp(T));
+end_executor_otel_span(ok, StateData) ->
+    #state{otel_executor_ctx = {SpanCtx, _}, otel_time = T} = StateData,
+    otel_span:set_status(SpanCtx, ?OTEL_STATUS_ERROR),
+    otel_span:end_span(SpanCtx, temporal_sdk_telemetry:otel_timestamp(T));
+end_executor_otel_span(Err, StateData) ->
+    #state{otel_executor_ctx = {SpanCtx, _}, otel_time = T} = StateData,
+    temporal_sdk_telemetry:otel_set_error(SpanCtx, run_workflow_error, Err),
+    otel_span:end_span(SpanCtx, temporal_sdk_telemetry:otel_timestamp(T)).
+
+fetch_header_data(regular, Task, ApiContext) ->
+    Header = temporal_sdk_api_workflow_task:header(ApiContext, Task),
+    case temporal_sdk_api_header:take_otel_ctx(Header) of
+        {undefined, UserHeaderData} ->
+            {undefined, UserHeaderData};
+        {TraceParent, UserHeaderData} ->
+            ParentCtx = otel_propagator_text_map:extract_to(otel_ctx:new(), TraceParent),
+            {ParentCtx, UserHeaderData}
+    end;
+fetch_header_data(_TaskType, _Task, _ApiContext) ->
+    {undefined, #{}}.
+
+fetch_otel_start_time(undefined, _IsReplaying, _TaskType, _Task) ->
+    undefined;
+fetch_otel_start_time(_OtelParentCtx, false, regular, Task) ->
+    temporal_sdk_api_workflow_task:otel_start_time(Task);
+fetch_otel_start_time(_OtelParentCtx, _IsReplaying, _TaskType, _Task) ->
+    undefined.
 
 init_local_handlers(EMod) ->
     Fn = fun({HF, Ar}, Acc) ->
@@ -2783,7 +2943,7 @@ init_local_handlers(EMod) ->
     lists:foldl(Fn, [], ?CALLBACK_HANDLERS).
 
 %% -------------------------------------------------------------------------------------------------
-%% telemetry
+%% EV telemetry
 
 ev_origin() -> ?EVENT_ORIGIN.
 
@@ -2794,3 +2954,206 @@ ev_metadata(StateData) ->
         #{closing_state := _} -> Metadata#{workflow_info => get_workflow_info(StateData)};
         #{} -> Metadata
     end.
+
+%% -------------------------------------------------------------------------------------------------
+%% opentelemetry helpers
+
+start_execution_span(ExecutionId, OE, PCtx, OTr, OTi, OA, StartedAt, ExecutionState) ->
+    #{~"temporal.workflow.type" := WT} = OA,
+    Attr = temporal_sdk_telemetry:otel_attributes(#{
+        execution_id => temporal_sdk_telemetry:otel_serialize(ExecutionId)
+    }),
+    SpanOpts = #{
+        kind => ?SPAN_KIND_CLIENT,
+        start_time => temporal_sdk_telemetry:otel_timestamp(StartedAt, OTi),
+        attributes => maps:merge(OA, Attr)
+    },
+    Span = otel_tracer:start_span(
+        PCtx,
+        OTr,
+        temporal_sdk_telemetry:otel_name(?TEMPORAL_SDK_OTEL_RUN_EXECUTION, WT),
+        SpanOpts
+    ),
+    Ctx = otel_tracer:set_current_span(PCtx, Span),
+    OE1 = OE#{ExecutionId => {Span, Ctx, ExecutionState}},
+    {Span, Ctx, OE1}.
+
+otel_run_otel_commands(#state{otel_parent_ctx = undefined, commands = Cmds} = StateData) ->
+    Fn = fun
+        ({_, otel_command}) -> false;
+        (_) -> true
+    end,
+    StateData#state{commands = lists:filter(Fn, Cmds), otel_pending_commands = []};
+otel_run_otel_commands(StateData) ->
+    #state{
+        commands = Cmds,
+        otel_pending_commands = OPCmds,
+        otel_tracer = OTr,
+        otel_executor_ctx = {_, OEC},
+        otel_attr = OA,
+        otel_executions = OE,
+        otel_time = OTi
+    } = StateData,
+    Fn = fun
+        ({_, otel_command}) -> true;
+        (_) -> false
+    end,
+    {NOPCmds, FCmds} = lists:partition(Fn, Cmds),
+    OE1 = do_otel_run_commands(OPCmds, OE, OEC, OTi, OTr, OA),
+    OE2 = do_otel_run_commands(NOPCmds, OE1, OEC, OTi, OTr, OA),
+    StateData#state{commands = FCmds, otel_pending_commands = [], otel_executions = OE2}.
+
+do_otel_run_commands([{{{add_event}, Data}, otel_command} | TCmds], OE, OEC, OTi, OTr, OA) ->
+    #{name := Name, attributes := Attributes, started_at := Timestamp, execution_id := EId} = Data,
+    Event = opentelemetry:event(
+        temporal_sdk_telemetry:otel_timestamp(Timestamp, OTi), Name, Attributes
+    ),
+    OE2 =
+        case Event of
+            undefined ->
+                OE;
+            E ->
+                {Span, _Ctx, OE1} = fetch_execution_span(EId, OE, OEC, OTr, OTi, OA),
+                true = otel_span:add_events(Span, [E]),
+                OE1
+        end,
+    do_otel_run_commands(TCmds, OE2, OEC, OTi, OTr, OA);
+do_otel_run_commands([], OE, _OPC, _OTi, _OTr, _OA) ->
+    OE.
+
+fetch_execution_span(ExecutionId, OE, OEC, OTr, OTi, OA) ->
+    case OE of
+        #{ExecutionId := {undefined, ParentExecutionId, _EState}} ->
+            restart_executions_spans(ExecutionId, ParentExecutionId, OE, OEC, OTr, OTi, OA, []);
+        #{ExecutionId := {Span, Ctx, _}} ->
+            {Span, Ctx, OE}
+    end.
+
+restart_executions_spans(ExecutionId, ExecutionId, OE, OEC, OTr, OTi, OA, Acc) ->
+    StartedAt = temporal_sdk_telemetry:otel_timestamp(),
+    {Span, Ctx, OE1} = start_execution_span(ExecutionId, OE, OEC, OTr, OTi, OA, StartedAt, closed),
+    case Acc of
+        [] -> {Span, Ctx, OE1};
+        [{E, EP} | TE] -> restart_executions_spans(E, EP, OE1, OEC, OTr, OTi, OA, TE)
+    end;
+restart_executions_spans(ExecutionId, ParentExecutionId, OE, OEC, OTr, OTi, OA, Acc) ->
+    case OE of
+        #{ParentExecutionId := {undefined, PPEId, _}} ->
+            restart_executions_spans(ParentExecutionId, PPEId, OE, OEC, OTr, OTi, OA, [
+                {ExecutionId, ParentExecutionId} | Acc
+            ]);
+        #{ParentExecutionId := {_PSpan, PCtx, _EState}} ->
+            StartedAt = temporal_sdk_telemetry:otel_timestamp(),
+            {Span, Ctx, OE1} = start_execution_span(
+                ExecutionId, OE, PCtx, OTr, OTi, OA, StartedAt, closed
+            ),
+            case Acc of
+                [] -> {Span, Ctx, OE1};
+                [{E, EP} | TE] -> restart_executions_spans(E, EP, OE1, OEC, OTr, OTi, OA, TE)
+            end
+    end.
+
+otel_end_executions_spans(#state{pending_commands = PC} = StateData) when PC =/= [] ->
+    StateData;
+otel_end_executions_spans(#state{otel_parent_ctx = undefined} = StateData) ->
+    StateData;
+otel_end_executions_spans(StateData) ->
+    #state{commands = Cmds, otel_executions = OE} = StateData,
+    Fn = fun
+        (ExecutionId, {OES, _OEC, closed}) when OES =/= undefined ->
+            FnC = fun
+                ({{_IdxKey, #{execution_id := EId}}, _Cmd}) when EId =:= ExecutionId -> true;
+                (_) -> false
+            end,
+            case lists:any(FnC, Cmds) of
+                true ->
+                    true;
+                false ->
+                    #state{otel_time = OTi} = StateData,
+                    otel_span:end_span(OES, temporal_sdk_telemetry:otel_timestamp(OTi)),
+                    false
+            end;
+        (_ExecutionId, {_OES, _OEC, closed}) ->
+            false;
+        (_ExecutionId, {_OES, _OEC, open}) ->
+            true
+    end,
+    StateData#state{otel_executions = maps:filtermap(Fn, OE)}.
+
+otel_end_commands_spans({ok, _Response}, Spans) ->
+    [otel_span:end_span(S) || S <- Spans],
+    ok;
+otel_end_commands_spans(Err, Spans) ->
+    Fn = fun(S) ->
+        temporal_sdk_telemetry:otel_set_error(S, complete_task_error, Err),
+        otel_span:end_span(S)
+    end,
+    [Fn(S) || S <- Spans],
+    ok.
+
+otel_inject_commands_spans(IdxCmd, #state{otel_parent_ctx = undefined} = StateData, [], []) ->
+    {_Awaitables, CommandsWithoutSpans} = lists:unzip(IdxCmd),
+    {StateData, [], CommandsWithoutSpans};
+otel_inject_commands_spans(
+    [
+        {
+            {{activity, AId}, #{execution_id := EId, activity_type := AT, task_queue := TQ}} = _Idx,
+            Cmd
+        }
+        | TCmd
+    ],
+    StateData,
+    SAcc,
+    CAcc
+) ->
+    MsgName = 'temporal.api.command.v1.ScheduleActivityTaskCommandAttributes',
+    #state{otel_attr = WAttr, otel_time = OTi} = StateData,
+    #{attributes := {schedule_activity_task_command_attributes, CmdAttr}} = Cmd,
+    Attr1 = #{
+        activity_id => AId,
+        activity_type => AT,
+        task_queue => TQ,
+        execution_id => temporal_sdk_telemetry:otel_serialize(EId)
+    },
+    Attr2 = temporal_sdk_telemetry:otel_attributes(Attr1),
+    Attr = maps:merge(WAttr, Attr2),
+    SpanName = temporal_sdk_telemetry:otel_name(?TEMPORAL_SDK_OTEL_START_ACTIVITY, AT),
+    SpanOpts = #{
+        kind => ?SPAN_KIND_CLIENT,
+        start_time => temporal_sdk_telemetry:otel_timestamp(OTi),
+        attributes => Attr
+    },
+    {Span, CmdAttrWithSpan, SD} =
+        do_inject_cmd_span(EId, CmdAttr, SpanOpts, SpanName, MsgName, StateData),
+    CmdWithSpan =
+        Cmd#{attributes => {schedule_activity_task_command_attributes, CmdAttrWithSpan}},
+    otel_inject_commands_spans(TCmd, SD, [Span | SAcc], [CmdWithSpan | CAcc]);
+otel_inject_commands_spans([{_Idx, Cmd} | TCmd], StateData, SAcc, CAcc) ->
+    otel_inject_commands_spans(TCmd, StateData, SAcc, [Cmd | CAcc]);
+otel_inject_commands_spans([], StateData, SAcc, CAcc) ->
+    {StateData, lists:reverse(SAcc), lists:reverse(CAcc)}.
+
+do_inject_cmd_span(ExecutionId, CmdAttr, SpanOpts, SpanName, MsgName, StateData) ->
+    #state{
+        api_ctx = ApiCtx,
+        otel_tracer = OTr,
+        otel_executions = OE,
+        otel_executor_ctx = {_, OEC},
+        otel_attr = OA,
+        otel_time = OTi
+    } = StateData,
+    {_ESpan, ECtx, OE1} = fetch_execution_span(ExecutionId, OE, OEC, OTr, OTi, OA),
+    Span = otel_tracer:start_span(
+        ECtx,
+        OTr,
+        SpanName,
+        SpanOpts
+    ),
+    Ctx = otel_tracer:set_current_span(ECtx, Span),
+    TraceParent = otel_propagator_text_map:inject_from(Ctx, []),
+    % eqwalizer:ignore
+    TP = maps:from_list(TraceParent),
+    CmdAttrWithSpan = temporal_sdk_api_header:put_key(
+        CmdAttr, TP, ?TASK_HEADER_KEY_OTEL_TRACE, MsgName, ApiCtx
+    ),
+    {Span, CmdAttrWithSpan, StateData#state{otel_executions = OE1}}.

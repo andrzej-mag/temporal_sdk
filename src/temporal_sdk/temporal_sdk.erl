@@ -66,12 +66,19 @@
 -include("proto.hrl").
 -include("sdk.hrl").
 -include("src/executor/temporal_sdk_executor.hrl").
+-include_lib("opentelemetry_api/include/opentelemetry.hrl").
 
 -define(DEFAULT_REPLAY_WORKER_OPTS, [
     disable_telemetry, {task_settings, [{sticky_execution, [{type, disabled}]}]}
 ]).
 
 -define(DEFAULT_GRPC_OPTS, #{disable_telemetry => true}).
+
+-ifdef(TEST).
+-define(OPENTELEMETRY_ENABLED, false).
+-else.
+-define(OPENTELEMETRY_ENABLED, true).
+-endif.
 
 %% -------------------------------------------------------------------------------------------------
 %% Common typespecs
@@ -253,6 +260,11 @@
     | await
     | {wait, true | time() | infinity}
     | wait
+    %% false - opentelemetry tracing is disabled.
+    %% true - starts new opentelemetry span.
+    %% SpanCtx - user provided span context, must be set in process dictionary.
+    %%           User span will be ended with otel_span:end_span/1.
+    | {opentelemetry, boolean() | SpanCtx :: opentelemetry:span_ctx()}
 ].
 -export_type([start_workflow_opts/0]).
 
@@ -593,39 +605,94 @@ start_workflow(Cluster, TaskQueue, WorkflowType, Opts) ->
         {eager_worker_id, [atom, unicode], '$_optional'},
         {raw_request, map, #{}},
         {await, [time, infinity, boolean], '$_optional'},
-        {wait, [time, infinity, boolean], '$_optional'}
+        {wait, [time, infinity, boolean], '$_optional'},
+        {opentelemetry, [boolean, tuple], ?OPENTELEMETRY_ENABLED}
     ],
-    maybe
-        {ok, #{client_opts := #{grpc_opts := #{codec := {Codec, _, _}}}} = ApiCtx1} ?=
-            temporal_sdk_api_context:build(Cluster),
-        {ok, FullOpts} ?= temporal_sdk_utils_opts:build(DefaultOpts, Opts, ApiCtx1),
-        ok ?= check_opts(start_workflow, FullOpts),
-        {RawRequest, ReqFromOpts1} = maps:take(raw_request, FullOpts),
-        ReqFromOpts2 = maps:without([await, wait], ReqFromOpts1),
-        {ok, ReqFromOpts3, ApiCtx} ?= is_allowed_eager_wf(ReqFromOpts2, ApiCtx1, Cluster),
-        ReqFromOpts = maps:remove(eager_worker_id, ReqFromOpts3),
-        Req1 = ReqFromOpts#{
-            workflow_type => #{name => WorkflowType},
-            task_queue => #{name => TaskQueue}
-        },
-        Req2 = temporal_sdk_api:put_identity(ApiCtx, MsgName, Req1),
-        Req3 = temporal_sdk_api:put_id(ApiCtx, MsgName, request_id, Req2),
-        Req = maps:merge(Req3, RawRequest),
-        #{workflow_id := WorkflowId, request_id := RequestId} = Req,
-        {ok, #{run_id := RunId, started := Started}} ?= do_start_workflow_start(ApiCtx, Req),
-        Response = #{
-            request_id => RequestId,
-            started => Started,
-            workflow_execution => #{run_id => RunId, workflow_id => Codec:cast(WorkflowId)}
-        },
-        do_start_workflow_fin(Cluster, FullOpts, Response)
-    else
-        MErr ->
+    OtelAttr = #{task_queue => TaskQueue, workflow_type => WorkflowType},
+    case do_start_workflow_init(Cluster, Opts, DefaultOpts, OtelAttr) of
+        {ok, ApiCtx0, FullOpts, SpanCtx, OtelHdr} ->
+            #{client_opts := #{grpc_opts := #{codec := {Codec, _, _}}}} = ApiCtx0,
+            {RawRequest, ReqFromOpts1} = maps:take(raw_request, FullOpts),
+            ReqFromOpts2 = maps:without([await, wait], ReqFromOpts1),
+            maybe
+                {ok, ReqFromOpts3, ApiCtx} ?= is_allowed_eager_wf(ReqFromOpts2, ApiCtx0, Cluster),
+                ReqFromOpts = maps:remove(eager_worker_id, ReqFromOpts3),
+                Req1 = ReqFromOpts#{
+                    workflow_type => #{name => WorkflowType}, task_queue => #{name => TaskQueue}
+                },
+                Req2 = temporal_sdk_api:put_identity(ApiCtx, MsgName, Req1),
+                Req3 = temporal_sdk_api:put_id(ApiCtx, MsgName, request_id, Req2),
+                Req4 = do_start_workflow_add_otel_hdr(OtelHdr, Req3, MsgName, ApiCtx),
+                Req = maps:merge(Req4, RawRequest),
+                #{request_id := RequestId, workflow_id := WorkflowId} = Req,
+                {ok, #{run_id := RunId, started := Started}} ?=
+                    do_start_workflow_start(ApiCtx, Req),
+                do_start_workflow_otel_end(SpanCtx, ok),
+                Response = #{
+                    request_id => RequestId,
+                    started => Started,
+                    workflow_execution => #{run_id => RunId, workflow_id => Codec:cast(WorkflowId)}
+                },
+                do_start_workflow_fin(Cluster, FullOpts, Response)
+            else
+                MErr ->
+                    do_start_workflow_otel_end(SpanCtx, MErr),
+                    case proplists:get_value(wait, Opts, false) of
+                        false -> MErr;
+                        _ -> erlang:error(MErr, [Cluster, TaskQueue, WorkflowType, Opts])
+                    end
+            end;
+        Err ->
             case proplists:get_value(wait, Opts, false) of
-                false -> MErr;
-                _ -> erlang:error(MErr, [Cluster, TaskQueue, WorkflowType, Opts])
+                false -> Err;
+                _ -> erlang:error(Err, [Cluster, TaskQueue, WorkflowType, Opts])
             end
     end.
+
+do_start_workflow_init(Cluster, Opts, DefaultOpts, OtelAttr) ->
+    maybe
+        {ok, ApiCtx} ?= temporal_sdk_api_context:build(Cluster),
+        {ok, FullOpts} ?= temporal_sdk_utils_opts:build(DefaultOpts, Opts, ApiCtx),
+        ok ?= check_opts(start_workflow, FullOpts),
+        {OtelCtx, OtelHdr} = do_start_workflow_otel_start(FullOpts, OtelAttr),
+        {ok, ApiCtx, maps:remove(opentelemetry, FullOpts), OtelCtx, OtelHdr}
+    end.
+
+do_start_workflow_otel_start(#{opentelemetry := false}, _OtelAttr) ->
+    {undefined, undefined};
+do_start_workflow_otel_start(#{opentelemetry := true} = Opts, OtelAttr) ->
+    #{workflow_type := WorkflowType} = OtelAttr,
+    OA0 = maps:merge(OtelAttr, maps:with([namespace, workflow_id], Opts)),
+    OA = temporal_sdk_telemetry:otel_attributes(OA0),
+    Tracer = opentelemetry:get_application_tracer(?MODULE),
+    CurrentCtx = otel_ctx:get_current(),
+    SpanOpts = #{kind => ?SPAN_KIND_CLIENT, attributes => OA},
+    SpanName = temporal_sdk_telemetry:otel_name(?TEMPORAL_SDK_OTEL_START_WORKFLOW, WorkflowType),
+    SpanCtx = otel_tracer:start_span(CurrentCtx, Tracer, SpanName, SpanOpts),
+    NewCtx = otel_tracer:set_current_span(CurrentCtx, SpanCtx),
+    TraceParent = otel_propagator_text_map:inject_from(NewCtx, []),
+    % eqwalizer:ignore
+    {SpanCtx, maps:from_list(TraceParent)};
+do_start_workflow_otel_start(#{opentelemetry := SpanCtx}, _OtelAttr) when is_tuple(SpanCtx) ->
+    TraceParent = otel_propagator_text_map:inject([]),
+    % eqwalizer:ignore
+    {SpanCtx, maps:from_list(TraceParent)}.
+
+do_start_workflow_otel_end(undefined, _Status) ->
+    ok;
+do_start_workflow_otel_end(SpanCtx, ok) ->
+    otel_span:end_span(SpanCtx);
+do_start_workflow_otel_end(SpanCtx, {error, #{reason := rate_limited, limited_by := LimitedBy}}) ->
+    temporal_sdk_telemetry:otel_set_error(SpanCtx, start_workflow_capacity_error, LimitedBy),
+    otel_span:end_span(SpanCtx);
+do_start_workflow_otel_end(SpanCtx, Err) ->
+    temporal_sdk_telemetry:otel_set_error(SpanCtx, start_workflow_error, Err),
+    otel_span:end_span(SpanCtx).
+
+do_start_workflow_add_otel_hdr(undefined, Req, _MsgName, _ApiCtx) ->
+    Req;
+do_start_workflow_add_otel_hdr(OtelHdr, Req, MsgName, ApiCtx) ->
+    temporal_sdk_api_header:put_key(Req, OtelHdr, ?TASK_HEADER_KEY_OTEL_TRACE, MsgName, ApiCtx).
 
 do_start_workflow_start(ApiCtx, Req) ->
     case do_start_workflow_req(ApiCtx, Req) of

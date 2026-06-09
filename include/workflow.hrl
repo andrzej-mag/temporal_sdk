@@ -113,3 +113,8 @@
     select_history/1,
     select_history/2
 ]).
+
+%% OpenTelemetry commands
+-import(temporal_sdk_workflow, [
+    otel_add_event/2
+]).

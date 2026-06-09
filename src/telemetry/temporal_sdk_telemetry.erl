@@ -22,8 +22,19 @@
 -export([
     do_execute/4
 ]).
+-export([
+    otel_name/2,
+    otel_attributes/1,
+    otel_timestamp/0,
+    otel_timestamp/1,
+    otel_timestamp/2,
+    otel_native_to_timestamp/1,
+    otel_set_error/3,
+    otel_serialize/1
+]).
 
 -include_lib("kernel/include/logger.hrl").
+-include_lib("opentelemetry_api/include/opentelemetry.hrl").
 
 -doc """
 Erlang exception.
@@ -289,3 +300,86 @@ spawn_execute(EventName, Metadata, Measurements, Timeout) ->
 do_execute(EventName, Metadata, Measurements, OtelCtx) ->
     otel_ctx:attach(OtelCtx),
     telemetry:execute(EventName, Measurements, Metadata).
+
+-doc false.
+-spec otel_name(Action :: unicode:chardata() | atom(), Id :: unicode:chardata() | atom()) ->
+    binary().
+otel_name(Action, Id) when is_binary(Action), is_binary(Id) ->
+    <<Action/binary, ~":"/binary, Id/binary>>;
+otel_name(Action, Id) when is_atom(Action) ->
+    otel_name(atom_to_binary(Action), Id);
+otel_name(Action, Id) when is_atom(Id) ->
+    otel_name(Action, atom_to_binary(Id));
+otel_name(Action, Id) ->
+    otel_name(
+        temporal_sdk_utils_unicode:characters_to_binary1(Action),
+        temporal_sdk_utils_unicode:characters_to_binary1(Id)
+    ).
+
+-doc false.
+-spec otel_attributes(RawOtelAttr :: map()) -> OtelAttr :: map().
+otel_attributes(RawOtelAttr) ->
+    BFn = fun
+        (V) when is_atom(V) -> atom_to_binary(V);
+        (V) -> temporal_sdk_utils_unicode:characters_to_binary1(V)
+    end,
+    Fn = fun
+        % common
+        (namespace, V, Acc) -> [{~"temporal.namespace", BFn(V)} | Acc];
+        (task_queue, V, Acc) -> [{~"temporal.task_queue", BFn(V)} | Acc];
+        % workflow
+        (workflow_id, V, Acc) -> [{~"temporal.workflow.id", BFn(V)} | Acc];
+        (workflow_type, V, Acc) -> [{~"temporal.workflow.type", BFn(V)} | Acc];
+        (workflow_run_id, V, Acc) -> [{~"temporal.workflow.run_id", BFn(V)} | Acc];
+        (execution_id, V, Acc) -> [{~"temporal.workflow.execution_id", BFn(V)} | Acc];
+        % activity
+        (activity_id, V, Acc) -> [{~"temporal.activity.id", BFn(V)} | Acc];
+        (activity_type, V, Acc) -> [{~"temporal.activity.type", BFn(V)} | Acc];
+        (A, V, Acc) when is_atom(A) -> [{atom_to_binary(A), BFn(V)} | Acc];
+        (A, V, Acc) -> [{BFn(A), BFn(V)} | Acc]
+    end,
+    maps:from_list(maps:fold(Fn, [], RawOtelAttr)).
+
+-doc false.
+-spec otel_timestamp() -> integer().
+otel_timestamp() -> opentelemetry:timestamp().
+
+-doc false.
+-spec otel_timestamp(DeltaTime :: undefined | integer()) -> undefined | integer().
+otel_timestamp(undefined) -> undefined;
+otel_timestamp(DeltaTime) -> opentelemetry:timestamp() + DeltaTime.
+
+-doc false.
+-spec otel_timestamp(TimeStamp :: integer(), DeltaTime :: integer()) -> integer().
+otel_timestamp(TimeStamp, DeltaTime) -> TimeStamp + DeltaTime.
+
+-doc false.
+-spec otel_native_to_timestamp(NativeTime :: integer()) -> integer().
+otel_native_to_timestamp(NativeTime) ->
+    erlang:convert_time_unit(NativeTime, nanosecond, native) - erlang:time_offset().
+
+-doc false.
+-spec otel_set_error(
+    SpanCtx :: opentelemetry:span_ctx(), ErrorType :: term(), ErrorMessage :: term()
+) ->
+    boolean().
+otel_set_error(SpanCtx, ErrorType, ErrorMessage) ->
+    maybe
+        {ok, ET} ?= otel_utils:format_binary_string("~0tkP", [ErrorType, 10], [{chars_limit, 50}]),
+        {ok, EM} ?=
+            otel_utils:format_binary_string("~0tkP", [ErrorMessage, 10], [{chars_limit, 50}]),
+        otel_span:set_attributes(SpanCtx, [
+            {~"error", true}, {~"error.type", ET}, {~"error.message", EM}
+        ]),
+        otel_span:set_status(SpanCtx, opentelemetry:status(?OTEL_STATUS_ERROR))
+    else
+        _ -> otel_span:set_status(SpanCtx, opentelemetry:status(?OTEL_STATUS_ERROR))
+    end.
+
+-doc false.
+-spec otel_serialize(Term :: term()) -> binary().
+otel_serialize(Term) ->
+    case otel_utils:format_binary_string("~0tkP", [Term, 10], [{chars_limit, 50}]) of
+        {ok, Bin} -> Bin;
+        _ -> ~"bad_binary_conversion"
+    end.

@@ -115,6 +115,11 @@
     select_history/2
 ]).
 
+%% OpenTelemetry commands
+-export([
+    otel_add_event/2
+]).
+
 -import(temporal_sdk_executor, [
     call_id/1,
     cast_id/1
@@ -136,7 +141,6 @@
 -define(EXECUTION_IDX, temporal_sdk_executor:get_execution_idx()).
 -define(HISTORY_TABLE, temporal_sdk_executor:get_history_table()).
 -define(INDEX_TABLE, temporal_sdk_executor:get_index_table()).
--define(OTEL_CONTEXT, temporal_sdk_executor:get_otel_context()).
 -define(AWAIT_COUNTER, temporal_sdk_executor:get_await_counter()).
 -define(COMMANDS, temporal_sdk_executor:get_commands()).
 
@@ -492,14 +496,17 @@
 -type execution_data() ::
     #{
         state := cmd,
+        execution_id := execution_id(),
         mfa := {Module :: module(), Function :: atom(), Args :: term()}
     }
     | #{
         state := started,
+        execution_id := execution_id(),
         mfa := {Module :: module(), Function :: atom(), Args :: term()}
     }
     | #{
         state := completed,
+        execution_id := execution_id(),
         mfa := {Module :: module(), Function :: atom(), Args :: term()},
         result => execution_result()
     }.
@@ -1320,7 +1327,11 @@
 -export_type([command/0]).
 
 -doc false.
--type index_command() :: {awaitable_index(), command()}.
+-type otel_command() :: {{{add_event}, map()}, otel_command}.
+-export_type([otel_command/0]).
+
+-doc false.
+-type index_command() :: {awaitable_index(), command()} | otel_command().
 -export_type([index_command/0]).
 
 %% -------------------------------------------------------------------------------------------------
@@ -1492,7 +1503,6 @@
     #{
         cluster := temporal_sdk_cluster:cluster_name(),
         executor_pid := pid(),
-        otel_ctx := otel_ctx:t(),
         execution_id := execution_id(),
         worker_opts := temporal_sdk_worker:opts(),
         history_table := ets:table(),
@@ -1521,7 +1531,7 @@
         attempt := pos_integer(),
         memo => temporal_sdk:term_from_mapstring_payload(),
         search_attributes => temporal_sdk:term_from_mapstring_payload(),
-        header => temporal_sdk:term_from_mapstring_payload()
+        header := temporal_sdk:term_from_mapstring_payload()
     }
     %% Provisional context workflow info for tasks polled from sticky queue
     | #{attempt := pos_integer()}.
@@ -1530,7 +1540,6 @@
 -doc #{group => "Workflow behaviour"}.
 -type handler_context() :: #{
     cluster := temporal_sdk_cluster:cluster_name(),
-    otel_ctx := otel_ctx:t(),
     history_table := ets:table(),
     index_table := ets:table(),
     workflow_info := workflow_info(),
@@ -1752,10 +1761,8 @@ start_activity(ActivityType, Input, Opts) ->
     ),
     HeaderSDKData =
         case OptsAttr of
-            #{node_execution_fun := NEF} ->
-                #{otel_context => ?OTEL_CONTEXT, node_execution_fun => NEF};
-            #{} ->
-                #{otel_context => ?OTEL_CONTEXT}
+            #{node_execution_fun := NEF} -> #{node_execution_fun => NEF};
+            #{} -> #{}
         end,
     % eqwalizer:ignore
     Attr1 = temporal_sdk_api_header:put_sdk(AttrOpts, HeaderSDKData, MsgName, ApiCtx),
@@ -2101,7 +2108,7 @@ start_nexus(Endpoint, Service, Operation, Input, Opts) ->
     DefaultOpts = [{schedule_to_close_timeout, duration, '$_optional'}],
     case temporal_sdk_utils_opts:build(DefaultOpts, Opts) of
         {ok, O} ->
-            H = #{otel_context => ?OTEL_CONTEXT},
+            H = #{},
             Header = #{?TASK_HEADER_KEY_SDK_DATA => base64:encode(erlang:term_to_binary(H))},
             Attr = O#{
                 input => temporal_sdk_api:map_to_payload(?API_CTX, MsgName, input, Input),
@@ -2713,19 +2720,19 @@ wait_info(InfoId, InfoTimeout, AwaitableTimeout) ->
 %% -------------------------------------------------------------------------------------------------
 %% SDK functions
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec start_execution(Function :: atom()) -> execution() | no_return().
 start_execution(Function) ->
     start_execution(Function, []).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec start_execution(Function :: atom(), Input :: term()) -> execution() | no_return().
 start_execution(Function, Input) ->
     #{execution_module := EM} = ?API_CTX,
     % eqwalizer:ignore
     start_execution(EM, Function, Input, [{execution_id, Function}]).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec start_execution(
     Function :: atom(),
     Input :: term(),
@@ -2742,7 +2749,7 @@ start_execution(Function, Input, Opts) ->
         end,
     start_execution(EM, Function, Input, Opts1).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec start_execution(
     Module :: module(),
     Function :: atom(),
@@ -2773,18 +2780,18 @@ start_execution(Module, Function, Input, Opts) ->
             ?API_CTX,
             ?FUNCTION_NAME
         ),
-        IdxValue = #{state => cmd, mfa => {Module, Function, Input}},
+        IdxValue = #{state => cmd, execution_id => ?EXECUTION_ID, mfa => {Module, Function, Input}},
         do_command(IdxKey, IdxKeyCasted, IdxValue, sdk_command, OptsAttr)
     else
         Err ->
             erlang:error(Err, [Module, Function, Input, Opts])
     end.
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec set_info(InfoValue :: term()) -> info() | no_return().
 set_info(InfoValue) -> set_info(InfoValue, []).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec set_info(
     InfoValue :: term(),
     Opts :: [{info_id, execution_id()} | {awaitable_id, awaitable_id()}]
@@ -2809,38 +2816,38 @@ set_info(InfoValue, Opts) ->
             erlang:error(Err, [InfoValue, Opts])
     end.
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec workflow_info() -> workflow_info() | no_return().
 workflow_info() -> call_id(workflow_info).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec get_workflow_result() -> temporal_sdk:term_to_payloads() | no_return().
 get_workflow_result() -> call_id(get_workflow_result).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec set_workflow_result(WorkflowResult :: temporal_sdk:term_to_payloads()) -> ok.
 set_workflow_result(WorkflowResult) -> cast_id({set_workflow_result, WorkflowResult}).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec await_open_before_close(IsEnabled :: boolean()) -> ok.
 await_open_before_close(IsEnabled) -> cast_id({await_open_before_close, IsEnabled}).
 
 -doc {file, "../../docs/temporal_sdk/workflow/evict_workflow-0.md"}.
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec evict_workflow() -> ok | no_return().
 evict_workflow() -> cast_id(evict_workflow).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec terminate_executor() -> ok.
 terminate_executor() -> cast_id(terminate).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec terminate_executor(Reason :: term()) -> ok.
 terminate_executor(Reason) -> cast_id({terminate, Reason}).
 
 %% history and index tables commands
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec select_index
     (AwaitableIndexPattern :: awaitable_index_pattern()) -> [ets_match()];
     (IndexPatternSpec :: awaitable_index_pattern_match_spec()) -> [ets_match()];
@@ -2857,7 +2864,7 @@ select_index(Continuation) when is_tuple(Continuation), tuple_size(Continuation)
     % eqwalizer:ignore
     ets:select(Continuation).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec select_index(
     IndexPatternSpec :: awaitable_index_pattern_match_spec(),
     Limit :: pos_integer()
@@ -2866,7 +2873,7 @@ select_index(Continuation) when is_tuple(Continuation), tuple_size(Continuation)
 select_index(IndexPatternSpec, Limit) when is_integer(Limit) ->
     ets:select(?INDEX_TABLE, IndexPatternSpec, Limit).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec select_history
     (EventId :: pos_integer()) -> history_event() | noevent;
     (HistoryEventPattern :: history_event_table_pattern()) -> [ets_match()];
@@ -2889,7 +2896,7 @@ select_history(Continuation) when is_tuple(Continuation), tuple_size(Continuatio
     % eqwalizer:ignore
     ets:select(Continuation).
 
--doc #{group => "SDK functions"}.
+-doc #{group => "SDK commands"}.
 -spec select_history(
     HistoryPatternSpec :: history_event_table_pattern_match_spec(),
     Limit :: pos_integer()
@@ -2897,6 +2904,23 @@ select_history(Continuation) when is_tuple(Continuation), tuple_size(Continuatio
     {[ets_match()], Continuation :: ets_continuation()} | '$end_of_table'.
 select_history(HistoryPatternSpec, Limit) when is_integer(Limit) ->
     ets:select(?HISTORY_TABLE, HistoryPatternSpec, Limit).
+
+%% -------------------------------------------------------------------------------------------------
+%% OpenTelemetry commands
+
+-doc #{group => "OpenTelemetry commands"}.
+-spec otel_add_event(
+    Name :: opentelemetry:event_name(), Attributes :: opentelemetry:attributes_map()
+) -> ok.
+otel_add_event(Name, Attributes) ->
+    IdxVal = #{
+        execution_id => ?EXECUTION_ID,
+        name => Name,
+        attributes => Attributes,
+        started_at => temporal_sdk_telemetry:otel_timestamp()
+    },
+    {add_event} = do_command({add_event}, {add_event}, IdxVal, otel_command, #{}),
+    ok.
 
 %% -------------------------------------------------------------------------------------------------
 %% private
