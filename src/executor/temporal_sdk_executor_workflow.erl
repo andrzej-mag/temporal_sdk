@@ -266,7 +266,7 @@ terminate(Reason, _State, #state{} = StateData) ->
             ?EV(SD, [task, exception], StartedAt, StopReason)
     end,
 
-    %% Close telemetry executor event
+    %% Close telemetry executor event and end otel span
     case Reason of
         normal ->
             ?EV(SD, [executor, stop], StartedAt),
@@ -3127,6 +3127,41 @@ otel_inject_commands_spans(
         do_inject_cmd_span(EId, CmdAttr, SpanOpts, SpanName, MsgName, StateData),
     CmdWithSpan =
         Cmd#{attributes => {schedule_activity_task_command_attributes, CmdAttrWithSpan}},
+    otel_inject_commands_spans(TCmd, SD, [Span | SAcc], [CmdWithSpan | CAcc]);
+otel_inject_commands_spans(
+    [
+        {
+            {{child_workflow, WId}, #{execution_id := EId, workflow_type := WT, task_queue := TQ}} =
+                _Idx,
+            Cmd
+        }
+        | TCmd
+    ],
+    StateData,
+    SAcc,
+    CAcc
+) ->
+    MsgName = 'temporal.api.command.v1.StartChildWorkflowExecutionCommandAttributes',
+    #state{otel_attr = WAttr, otel_time = OTi} = StateData,
+    #{attributes := {start_child_workflow_execution_command_attributes, CmdAttr}} = Cmd,
+    Attr1 = #{
+        workflow_id => WId,
+        workflow_type => WT,
+        task_queue => TQ,
+        execution_id => temporal_sdk_telemetry:otel_serialize(EId)
+    },
+    Attr2 = temporal_sdk_telemetry:otel_attributes(Attr1),
+    Attr = maps:merge(WAttr, Attr2),
+    SpanName = temporal_sdk_telemetry:otel_name(?TEMPORAL_SDK_OTEL_START_CHILD_WORKFLOW, WT),
+    SpanOpts = #{
+        kind => ?SPAN_KIND_CLIENT,
+        start_time => temporal_sdk_telemetry:otel_timestamp(OTi),
+        attributes => Attr
+    },
+    {Span, CmdAttrWithSpan, SD} =
+        do_inject_cmd_span(EId, CmdAttr, SpanOpts, SpanName, MsgName, StateData),
+    CmdWithSpan =
+        Cmd#{attributes => {start_child_workflow_execution_command_attributes, CmdAttrWithSpan}},
     otel_inject_commands_spans(TCmd, SD, [Span | SAcc], [CmdWithSpan | CAcc]);
 otel_inject_commands_spans([{_Idx, Cmd} | TCmd], StateData, SAcc, CAcc) ->
     otel_inject_commands_spans(TCmd, StateData, SAcc, [Cmd | CAcc]);
