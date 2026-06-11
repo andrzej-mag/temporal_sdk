@@ -132,6 +132,9 @@ events() ->
         [temporal_sdk, workflow, execution, start],
         [temporal_sdk, workflow, execution, stop],
         [temporal_sdk, workflow, execution, exception],
+        [temporal_sdk, workflow, marker, start],
+        [temporal_sdk, workflow, marker, stop],
+        [temporal_sdk, workflow, marker, exception],
         %% temporal_sdk_client
         [temporal_sdk, client, init],
         [temporal_sdk, client, start],
@@ -234,7 +237,7 @@ do_setup([], _HandlerId) ->
 -spec execute(
     EventName :: telemetry:event_name(),
     Metadata :: telemetry:event_metadata()
-) -> integer().
+) -> SystemTime :: integer().
 execute(EventName, Metadata) ->
     SystemTime = erlang:system_time(),
     spawn_execute(EventName, Metadata, #{system_time => SystemTime}),
@@ -245,12 +248,16 @@ execute(EventName, Metadata) ->
     EventName :: telemetry:event_name(),
     Metadata :: telemetry:event_metadata(),
     MeasurementsOrStartTime :: map() | integer()
-) -> ok.
+) -> SystemTime :: integer().
 execute(EventName, Metadata, StartTime) when is_integer(StartTime) ->
-    Duration = erlang:system_time() - StartTime,
-    spawn_execute(EventName, Metadata, #{duration => Duration});
+    SystemTime = erlang:system_time(),
+    Duration = SystemTime - StartTime,
+    spawn_execute(EventName, Metadata, #{duration => Duration}),
+    SystemTime;
 execute(EventName, Metadata, Measurements) when is_map(Measurements) ->
-    spawn_execute(EventName, Metadata, Measurements).
+    SystemTime = erlang:system_time(),
+    spawn_execute(EventName, Metadata, Measurements),
+    SystemTime.
 
 -doc false.
 -spec execute(
@@ -258,12 +265,14 @@ execute(EventName, Metadata, Measurements) when is_map(Measurements) ->
     Metadata :: telemetry:event_metadata(),
     StartTime :: integer(),
     MeasurementsOrException :: map() | exception()
-) -> ok.
+) -> SystemTime :: integer().
 execute(EventName, Metadata, StartTime, Measurements) when
     is_integer(StartTime), is_map(Measurements)
 ->
-    Duration = erlang:system_time() - StartTime,
-    spawn_execute(EventName, Metadata, Measurements#{duration => Duration});
+    SystemTime = erlang:system_time(),
+    Duration = SystemTime - StartTime,
+    spawn_execute(EventName, Metadata, Measurements#{duration => Duration}),
+    SystemTime;
 execute(EventName, Metadata, StartTime, {Class, Reason, Stacktrace}) when is_integer(StartTime) ->
     execute(
         EventName,
@@ -332,6 +341,8 @@ otel_attributes(RawOtelAttr) ->
         (workflow_type, V, Acc) -> [{~"temporal.workflow.type", BFn(V)} | Acc];
         (workflow_run_id, V, Acc) -> [{~"temporal.workflow.run_id", BFn(V)} | Acc];
         (execution_id, V, Acc) -> [{~"temporal.workflow.execution_id", BFn(V)} | Acc];
+        (marker_type, V, Acc) -> [{~"temporal.workflow.marker_type", BFn(V)} | Acc];
+        (marker_name, V, Acc) -> [{~"temporal.workflow.marker_name", BFn(V)} | Acc];
         % activity
         (activity_id, V, Acc) -> [{~"temporal.activity.id", BFn(V)} | Acc];
         (activity_type, V, Acc) -> [{~"temporal.activity.type", BFn(V)} | Acc];

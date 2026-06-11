@@ -161,6 +161,9 @@ Example measurements:
 - [temporal_sdk, workflow, execution, start]
 - [temporal_sdk, workflow, execution, stop]
 - [temporal_sdk, workflow, execution, exception]
+- [temporal_sdk, workflow, marker, start]
+- [temporal_sdk, workflow, marker, stop]
+- [temporal_sdk, workflow, marker, exception]
 
 ## Task Poller - `temporal_sdk_poller`
 

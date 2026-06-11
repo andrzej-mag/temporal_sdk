@@ -15,7 +15,7 @@ end).
 -define(EV(StateData, Event, MeasurementsOrStartTime),
     case ev_metadata(StateData) of
         #{disable_telemetry := true} ->
-            ok;
+            erlang:system_time();
         #{} ->
             temporal_sdk_telemetry:execute(
                 [ev_origin() | Event], ev_metadata(StateData), MeasurementsOrStartTime
@@ -26,10 +26,49 @@ end).
 -define(EV(StateData, Event, StartTime, MeasurementsOrException),
     case ev_metadata(StateData) of
         #{disable_telemetry := true} ->
-            ok;
+            erlang:system_time();
         #{} ->
             temporal_sdk_telemetry:execute(
                 [ev_origin() | Event], ev_metadata(StateData), StartTime, MeasurementsOrException
+            )
+    end
+).
+
+-define(EV_META(StateData, Event, CustomMetadata),
+    case ev_metadata(StateData) of
+        #{disable_telemetry := true} ->
+            erlang:system_time();
+        #{} ->
+            temporal_sdk_telemetry:execute(
+                [ev_origin() | Event],
+                maps:merge(ev_metadata(StateData), CustomMetadata)
+            )
+    end
+).
+
+-define(EV_META(StateData, Event, MeasurementsOrStartTime, CustomMetadata),
+    case ev_metadata(StateData) of
+        #{disable_telemetry := true} ->
+            erlang:system_time();
+        #{} ->
+            temporal_sdk_telemetry:execute(
+                [ev_origin() | Event],
+                maps:merge(ev_metadata(StateData), CustomMetadata),
+                MeasurementsOrStartTime
+            )
+    end
+).
+
+-define(EV_META(StateData, Event, StartTime, MeasurementsOrException, CustomMetadata),
+    case ev_metadata(StateData) of
+        #{disable_telemetry := true} ->
+            erlang:system_time();
+        #{} ->
+            temporal_sdk_telemetry:execute(
+                [ev_origin() | Event],
+                maps:merge(ev_metadata(StateData), CustomMetadata),
+                StartTime,
+                MeasurementsOrException
             )
     end
 ).

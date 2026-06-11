@@ -174,6 +174,11 @@
     },
     otel_pending_commands = [] :: [temporal_sdk_workflow:otel_command()],
     otel_started_cmds_spans = [] :: [opentelemetry:span_ctx()],
+    otel_started_markers_times = #{} :: #{
+        {MarkerType :: unicode:chardata() | atom(), MarkerName :: unicode:chardata() | atom()} => {
+            StartedAt :: integer(), EndedAt :: integer()
+        }
+    },
     ev_metadata :: map()
 }).
 -type state() :: #state{}.
@@ -1079,8 +1084,7 @@ handle_complete_task_enter(StateData) ->
                     {keep_state,
                         SD#state{
                             commands = Commands ++ CommandsRest,
-                            grpc_req_ref = {complete_task, RefOrErr},
-                            otel_started_cmds_spans = CommandsSpans
+                            grpc_req_ref = {complete_task, RefOrErr}
                         },
                         {{timeout, task_timeout}, cancel}};
                 false ->
@@ -1538,10 +1542,17 @@ handle_common(
     keep_state_and_data;
 %% -------------------------------------------------------------------------------------------------
 %% handle_common: marker
-handle_common(replay, cast, {?MSG_PRV, marker, record, Pid, Value}, #state{} = StateData) when
-    is_pid(Pid)
-->
-    #state{api_ctx = ApiCtx, index_table = IT, commands = Commands, open_locals_count = OLC} =
+%% Regular marker
+handle_common(
+    replay, cast, {?MSG_PRV, marker, record, Pid, Value, OtelT}, #state{} = StateData
+) ->
+    #state{
+        api_ctx = ApiCtx,
+        index_table = IT,
+        commands = Commands,
+        open_locals_count = OLC,
+        otel_started_markers_times = OSMT
+    } =
         StateData,
     MsgName = 'temporal.api.command.v1.RecordMarkerCommandAttributes',
     maybe
@@ -1561,7 +1572,10 @@ handle_common(replay, cast, {?MSG_PRV, marker, record, Pid, Value}, #state{} = S
         Cmd = temporal_sdk_api_command:record_marker_command(Attr),
         UpdatedCommands = lists:keyreplace(Pid, 1, Commands, {Idx, Cmd}),
         SD = StateData#state{
-            commands = UpdatedCommands, open_locals_count = OLC - 1, has_upserted_events = true
+            commands = UpdatedCommands,
+            open_locals_count = OLC - 1,
+            has_upserted_events = true,
+            otel_started_markers_times = OSMT#{{Type, Name} => OtelT}
         },
         handle_replay(SD)
     else
@@ -1574,6 +1588,10 @@ handle_common(replay, cast, {?MSG_PRV, marker, record, Pid, Value}, #state{} = S
         Err ->
             {next_state, fail_task, StateData#state{stop_reason = {error, Err, ?EVST}}}
     end;
+handle_common(
+    _State, cast, {?MSG_PRV, marker, record, _PidOrName, _Value, _OtelT}, #state{} = _StateData
+) ->
+    {keep_state_and_data, postpone};
 %% OTP message marker:
 %% For message marker there is only command appended on record marker value event,
 %% so we handle this in the execute state dedicated for the commands accumulation.
@@ -1583,7 +1601,7 @@ handle_common(
     cast,
     {?MSG_PRV, marker, record, Name0, Value},
     #state{is_replaying = false} = StateData
-) when not is_pid(Name0) ->
+) ->
     #state{api_ctx = ApiCtx, commands = Commands} = StateData,
     MsgName = 'temporal.api.command.v1.RecordMarkerCommandAttributes',
     {marker, Type, Name} =
@@ -1609,19 +1627,9 @@ handle_common(
     },
     SD = StateData#state{commands = Commands ++ [IdxCmd], has_upserted_events = true},
     {keep_state, SD};
-handle_common(replay, cast, {?MSG_PRV, marker, record, Name, Value}, #state{} = StateData) ->
-    {next_state, fail_task, StateData#state{
-        stop_reason =
-            {error,
-                #{
-                    reason =>
-                        "Invalid record marker return value type. Expected list of convertables.",
-                    invalid_value => Value,
-                    message_marker_name => Name
-                },
-                ?EVST}
-    }};
-handle_common(_State, cast, {?MSG_PRV, marker, record, _PidOrName, _Value}, #state{} = _StateData) ->
+handle_common(
+    _State, cast, {?MSG_PRV, marker, record, _PidOrName, _Value}, #state{} = _StateData
+) ->
     {keep_state_and_data, postpone};
 handle_common(_State, cast, {?MSG_PRV, marker, ignore, _Name}, #state{} = StateData) ->
     case check_message_limit(ignored, StateData) of
@@ -1635,6 +1643,7 @@ handle_common(
     #state{} = StateData
 ) when State =:= execute; State =:= replay ->
     {next_state, fail_task, StateData#state{stop_reason = {Source, Message, Stacktrace}}};
+%% regular or OTP message marker failure
 handle_common(
     State,
     cast,
@@ -1643,7 +1652,7 @@ handle_common(
 ) when State =:= execute; State =:= replay ->
     {next_state, fail_task, StateData#state{stop_reason = {Class, Reason, Stacktrace}}};
 %% -------------------------------------------------------------------------------------------------
-%% handle_common: OTP messages
+%% handle_common: spawn OTP message handler
 handle_common(_State, info, {?TEMPORAL_SDK_OTP_TAG, Name, Value}, #state{} = StateData) ->
     case check_message_limit(received, StateData) of
         {ok, SD} ->
@@ -2396,8 +2405,12 @@ spawn_activity({{{activity, _} = IK, #{activity_type := AType}}, _} = IdxCmd, SD
         }}
     end.
 
-spawn_marker({{{marker, _, _}, #{} = IK}, #{value_fun := MarkerValueFun}}, StateData) ->
+spawn_marker({{{marker, MT, MN}, #{} = IK}, #{value_fun := MarkerValueFun}}, StateData) ->
     #state{linked_pids = LP, open_locals_count = OLC} = StateData,
+    MarkerTelemetryMeta = #{marker_type => MT, marker_name => MN},
+    TStart = ?EV_META(StateData, [marker, start], MarkerTelemetryMeta),
+    OTS = temporal_sdk_telemetry:otel_native_to_timestamp(TStart),
+
     ExecutorPid = self(),
     Pid = spawn_link(
         fun() ->
@@ -2418,11 +2431,20 @@ spawn_marker({{{marker, _, _}, #{} = IK}, #{value_fun := MarkerValueFun}}, State
                                 {M, F, A} when is_atom(M), is_atom(F) -> apply(M, F, A)
                             end
                     end,
-                gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, record, self(), Result})
+                TEnd = ?EV_META(StateData, [marker, stop], TStart, MarkerTelemetryMeta),
+                OTE = temporal_sdk_telemetry:otel_native_to_timestamp(TEnd),
+                gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, record, self(), Result, {OTS, OTE}})
             catch
-                Class:Reason:StackT ->
+                Class:Reason:Stacktrace ->
+                    ?EV_META(
+                        StateData,
+                        [marker, exception],
+                        TStart,
+                        {Class, Reason, Stacktrace},
+                        MarkerTelemetryMeta
+                    ),
                     gen_statem:cast(
-                        ExecutorPid, {?MSG_PRV, marker, failed, self(), {Class, Reason, StackT}}
+                        ExecutorPid, {?MSG_PRV, marker, failed, self(), {Class, Reason, Stacktrace}}
                     )
             end
         end
@@ -3096,10 +3118,7 @@ otel_inject_commands_spans(IdxCmd, #state{otel_parent_ctx = undefined} = StateDa
     {StateData, [], CommandsWithoutSpans};
 otel_inject_commands_spans(
     [
-        {
-            {{activity, AId}, #{execution_id := EId, activity_type := AT, task_queue := TQ}} = _Idx,
-            Cmd
-        }
+        {{{activity, AId}, #{execution_id := EId, activity_type := AT, task_queue := TQ}}, Cmd}
         | TCmd
     ],
     StateData,
@@ -3131,8 +3150,7 @@ otel_inject_commands_spans(
 otel_inject_commands_spans(
     [
         {
-            {{child_workflow, WId}, #{execution_id := EId, workflow_type := WT, task_queue := TQ}} =
-                _Idx,
+            {{child_workflow, WId}, #{execution_id := EId, workflow_type := WT, task_queue := TQ}},
             Cmd
         }
         | TCmd
@@ -3163,10 +3181,23 @@ otel_inject_commands_spans(
     CmdWithSpan =
         Cmd#{attributes => {start_child_workflow_execution_command_attributes, CmdAttrWithSpan}},
     otel_inject_commands_spans(TCmd, SD, [Span | SAcc], [CmdWithSpan | CAcc]);
+otel_inject_commands_spans(
+    [{{{marker, MT, MN}, #{execution_id := EId}}, Cmd} | TCmd],
+    StateData,
+    SAcc,
+    CAcc
+) when MT =/= ~"message", MT =/= "message", MT =/= message ->
+    {StartSpan, SD} = do_start_marker_spans(MT, MN, EId, StateData),
+    otel_inject_commands_spans(TCmd, SD, [StartSpan | SAcc], [Cmd | CAcc]);
 otel_inject_commands_spans([{_Idx, Cmd} | TCmd], StateData, SAcc, CAcc) ->
     otel_inject_commands_spans(TCmd, StateData, SAcc, [Cmd | CAcc]);
 otel_inject_commands_spans([], StateData, SAcc, CAcc) ->
-    {StateData, lists:reverse(SAcc), lists:reverse(CAcc)}.
+    CommandsSpans = lists:reverse(SAcc),
+    {
+        StateData#state{otel_started_cmds_spans = CommandsSpans, otel_started_markers_times = #{}},
+        CommandsSpans,
+        lists:reverse(CAcc)
+    }.
 
 do_inject_cmd_span(ExecutionId, CmdAttr, SpanOpts, SpanName, MsgName, StateData) ->
     #state{
@@ -3178,12 +3209,7 @@ do_inject_cmd_span(ExecutionId, CmdAttr, SpanOpts, SpanName, MsgName, StateData)
         otel_time = OTi
     } = StateData,
     {_ESpan, ECtx, OE1} = fetch_execution_span(ExecutionId, OE, OEC, OTr, OTi, OA),
-    Span = otel_tracer:start_span(
-        ECtx,
-        OTr,
-        SpanName,
-        SpanOpts
-    ),
+    Span = otel_tracer:start_span(ECtx, OTr, SpanName, SpanOpts),
     Ctx = otel_tracer:set_current_span(ECtx, Span),
     TraceParent = otel_propagator_text_map:inject_from(Ctx, []),
     % eqwalizer:ignore
@@ -3192,3 +3218,41 @@ do_inject_cmd_span(ExecutionId, CmdAttr, SpanOpts, SpanName, MsgName, StateData)
         CmdAttr, TP, ?TASK_HEADER_KEY_OTEL_TRACE, MsgName, ApiCtx
     ),
     {Span, CmdAttrWithSpan, StateData#state{otel_executions = OE1}}.
+
+do_start_marker_spans(MT, MN, EId, StateData) ->
+    #state{
+        otel_tracer = OTr,
+        otel_executions = OE,
+        otel_executor_ctx = {_, OEC},
+        otel_attr = OA,
+        otel_time = OTi,
+        otel_started_markers_times = OSMT
+    } = StateData,
+    #{{MT, MN} := {OST, OET}} = OSMT,
+    Attr1 = #{
+        marker_type => MT,
+        marker_name => MN,
+        execution_id => temporal_sdk_telemetry:otel_serialize(EId)
+    },
+    Attr2 = temporal_sdk_telemetry:otel_attributes(Attr1),
+    Attr = maps:merge(OA, Attr2),
+    StartSpanName = temporal_sdk_telemetry:otel_name(?TEMPORAL_SDK_OTEL_START_MARKER, MN),
+    StartSpanOpts = #{
+        kind => ?SPAN_KIND_CLIENT,
+        start_time => temporal_sdk_telemetry:otel_timestamp(OTi),
+        attributes => Attr
+    },
+    {_ESpan, ECtx, OE1} = fetch_execution_span(EId, OE, OEC, OTr, OTi, OA),
+    % eqwalizer:ignore
+    StartSpan = otel_tracer:start_span(ECtx, OTr, StartSpanName, StartSpanOpts),
+    StartCtx = otel_tracer:set_current_span(ECtx, StartSpan),
+
+    RunSpanName = temporal_sdk_telemetry:otel_name(?TEMPORAL_SDK_OTEL_RUN_MARKER, MN),
+    RunSpanOpts = #{
+        kind => ?SPAN_KIND_CLIENT,
+        start_time => temporal_sdk_telemetry:otel_timestamp(OST, OTi),
+        attributes => Attr
+    },
+    RunSpan = otel_tracer:start_span(StartCtx, OTr, RunSpanName, RunSpanOpts),
+    otel_span:end_span(RunSpan, temporal_sdk_telemetry:otel_timestamp(OET, OTi)),
+    {StartSpan, StateData#state{otel_executions = OE1}}.
