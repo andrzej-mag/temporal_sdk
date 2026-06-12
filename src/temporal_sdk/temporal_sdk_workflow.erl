@@ -188,6 +188,7 @@
     | {session_execution, boolean()}
     | session_execution
     | {node_execution_fun, function()}
+    | {opentelemetry, false}
 ].
 -export_type([start_activity_opts/0]).
 
@@ -228,6 +229,7 @@
     | {mutable, record_marker_mutable_opts()}
     | mutable
     | {value_codec, marker_value_codec()}
+    | {opentelemetry, false}
 ].
 -export_type([record_marker_opts/0]).
 
@@ -277,6 +279,7 @@
     | {awaitable_event, cmd | initiate | start | close}
     | {wait, boolean()}
     | wait
+    | {opentelemetry, false}
 ].
 -export_type([start_child_workflow_opts/0]).
 
@@ -560,7 +563,8 @@
         last_failure => temporal_sdk_telemetry:exception(),
         heartbeat_timeout => pos_integer(),
         cancel_requested => true,
-        history => [map()]
+        history => [map()],
+        opentelemetry => false
     }
     | #{
         state := scheduled,
@@ -577,7 +581,8 @@
         heartbeat_timeout => pos_integer(),
         cancel_requested => true,
         history => [map()],
-        replay_id => activity_index_key()
+        replay_id => activity_index_key(),
+        opentelemetry => false
     }
     | #{
         state := started,
@@ -596,7 +601,8 @@
         cancel_requested => true,
         scheduled_event_id := event_id(),
         history => [map()],
-        replay_id => activity_index_key()
+        replay_id => activity_index_key(),
+        opentelemetry => false
     }
     | #{
         state := completed,
@@ -617,7 +623,8 @@
         started_event_id := event_id(),
         attempt := pos_integer(),
         history => [map()],
-        replay_id => activity_index_key()
+        replay_id => activity_index_key(),
+        opentelemetry => false
     }
     | #{
         state := canceled,
@@ -639,7 +646,8 @@
         attempt := pos_integer(),
         details := temporal_sdk:term_from_payloads(),
         history => [map()],
-        replay_id => activity_index_key()
+        replay_id => activity_index_key(),
+        opentelemetry => false
     }
     | #{
         state := failed,
@@ -661,7 +669,8 @@
         failure => temporal_sdk:failure_from_temporal(),
         retry_state := ?TEMPORAL_SPEC:'temporal.api.enums.v1.RetryState'(),
         history => [map()],
-        replay_id => activity_index_key()
+        replay_id => activity_index_key(),
+        opentelemetry => false
     }
     | #{
         state := timedout,
@@ -683,7 +692,8 @@
         failure => temporal_sdk:failure_from_temporal(),
         retry_state := ?TEMPORAL_SPEC:'temporal.api.enums.v1.RetryState'(),
         history => [map()],
-        replay_id => activity_index_key()
+        replay_id => activity_index_key(),
+        opentelemetry => false
     }.
 -export_type([activity_data/0]).
 
@@ -726,7 +736,8 @@
         mutations_count => non_neg_integer(),
         details := temporal_sdk:term_to_mapstring_payload(),
         value => temporal_sdk:term_to_payloads() | term(),
-        history => [map()]
+        history => [map()],
+        opentelemetry => false
     }
     | #{
         state := recorded,
@@ -737,7 +748,8 @@
         details := temporal_sdk:term_from_mapstring_payload(),
         value := temporal_sdk:term_from_payloads() | term(),
         history => [map()],
-        replay_id => marker_index_key()
+        replay_id => marker_index_key(),
+        opentelemetry => false
     }
     %% OTP message marker
     | #{
@@ -832,7 +844,8 @@
         namespace := unicode:chardata(),
         task_queue := unicode:chardata(),
         workflow_type := unicode:chardata() | atom(),
-        history => [map()]
+        history => [map()],
+        opentelemetry => false
     }
     | #{
         state := initiated,
@@ -842,7 +855,8 @@
         task_queue := unicode:chardata(),
         workflow_type := unicode:chardata() | atom(),
         history => [map()],
-        replay_id => child_workflow_index_key()
+        replay_id => child_workflow_index_key(),
+        opentelemetry => false
     }
     | #{
         state := initiate_failed,
@@ -854,7 +868,8 @@
         initiated_event_id := event_id(),
         cause := ?TEMPORAL_SPEC:'temporal.api.enums.v1.StartChildWorkflowExecutionFailedCause'(),
         history => [map()],
-        replay_id => child_workflow_index_key()
+        replay_id => child_workflow_index_key(),
+        opentelemetry => false
     }
     | #{
         state := started,
@@ -866,7 +881,8 @@
         initiated_event_id := event_id(),
         run_id := unicode:chardata(),
         history => [map()],
-        replay_id => child_workflow_index_key()
+        replay_id => child_workflow_index_key(),
+        opentelemetry => false
     }
     | #{
         state := completed,
@@ -880,7 +896,8 @@
         started_event_id := event_id(),
         result := temporal_sdk:term_from_payloads(),
         history => [map()],
-        replay_id => child_workflow_index_key()
+        replay_id => child_workflow_index_key(),
+        opentelemetry => false
     }
     | #{
         state := failed,
@@ -894,7 +911,8 @@
         started_event_id := event_id(),
         failure => temporal_sdk:failure_from_temporal(),
         history => [map()],
-        replay_id => child_workflow_index_key()
+        replay_id => child_workflow_index_key(),
+        opentelemetry => false
     }
     | #{
         state := canceled,
@@ -908,7 +926,8 @@
         started_event_id := event_id(),
         details := temporal_sdk:term_from_payloads(),
         history => [map()],
-        replay_id => child_workflow_index_key()
+        replay_id => child_workflow_index_key(),
+        opentelemetry => false
     }
     | #{
         state := timedout,
@@ -922,7 +941,8 @@
         started_event_id := event_id(),
         retry_state := ?TEMPORAL_SPEC:'temporal.api.enums.v1.RetryState'(),
         history => [map()],
-        replay_id => child_workflow_index_key()
+        replay_id => child_workflow_index_key(),
+        opentelemetry => false
     }
     | #{
         state := terminated,
@@ -935,7 +955,8 @@
         run_id := unicode:chardata(),
         started_event_id := event_id(),
         history => [map()],
-        replay_id => child_workflow_index_key()
+        replay_id => child_workflow_index_key(),
+        opentelemetry => false
     }.
 -export_type([child_workflow_data/0]).
 
@@ -1662,7 +1683,8 @@ start_activity(ActivityType, Input, Opts) ->
             {direct_execution, boolean, proplists:get_value(direct_result, Opts, false)},
             {direct_result, boolean, false},
             {session_execution, boolean, false},
-            {node_execution_fun, function, '$_optional'}
+            {node_execution_fun, function, '$_optional'},
+            {opentelemetry, boolean, '$_optional'}
         ],
     #{
         raw_request := RawRequest,
@@ -1778,12 +1800,17 @@ start_activity(ActivityType, Input, Opts) ->
         direct_execution => DExec,
         direct_result => DRes
     },
+    IndexValue2 =
+        case OptsAttr of
+            #{opentelemetry := false} -> IndexValue1#{opentelemetry => false};
+            _ -> IndexValue1
+        end,
     IndexValue =
         case OptsAttr of
             #{heartbeat_timeout := HT1} ->
-                IndexValue1#{heartbeat_timeout => temporal_sdk_utils_time:protobuf_to_msec(HT1)};
+                IndexValue2#{heartbeat_timeout => temporal_sdk_utils_time:protobuf_to_msec(HT1)};
             #{} ->
-                IndexValue1
+                IndexValue2
         end,
 
     case OptsAttr of
@@ -1877,7 +1904,8 @@ record_marker(MarkerValueFun, Opts) ->
         {type, any, DftType},
         {details, map, #{}},
         {mutable, [boolean, map], false},
-        {value_codec, [atom, tuple], none}
+        {value_codec, [atom, tuple], none},
+        {opentelemetry, boolean, '$_optional'}
     ],
     #{type := Type, details := Details} =
         OptsAttr =
@@ -1894,10 +1922,15 @@ record_marker(MarkerValueFun, Opts) ->
     CmdOpts = parse_mutable_opt(OptsAttr),
     Cmd = #{value_fun => MarkerValueFun, opts => CmdOpts},
     IndexValue1 = #{state => cmd, execution_id => ?EXECUTION_ID, details => Details},
+    IndexValue2 =
+        case CmdOpts of
+            #{opentelemetry := false} -> IndexValue1#{opentelemetry => false};
+            #{} -> IndexValue1
+        end,
     IndexValue =
         case CmdOpts of
-            #{mutable := false} -> IndexValue1;
-            #{mutable := M} -> IndexValue1#{mutable => M}
+            #{mutable := false} -> IndexValue2;
+            #{mutable := M} -> IndexValue2#{mutable => M}
         end,
     do_command(IdxKey, IdxKeyCasted, IndexValue, Cmd, OptsAttr).
 
@@ -2045,7 +2078,8 @@ start_child_workflow(TaskQueue, WorkflowType, Opts) ->
         {raw_request, map, #{}},
         {awaitable_id, [unicode, atom, map], DftId},
         {awaitable_event, atom, close},
-        {wait, boolean, false}
+        {wait, boolean, false},
+        {opentelemetry, boolean, '$_optional'}
     ],
     case temporal_sdk_utils_opts:build(DefaultOpts, Opts, ?API_CTX) of
         {ok, #{namespace := NS} = FullOpts} ->
@@ -2072,13 +2106,18 @@ start_child_workflow(TaskQueue, WorkflowType, Opts) ->
                 task_queue => #{name => TaskQueue},
                 workflow_id => WIdC
             },
-            IdxValue = #{
+            IdxValue1 = #{
                 state => cmd,
                 execution_id => ?EXECUTION_ID,
                 task_queue => TaskQueue,
                 workflow_type => WorkflowType,
                 namespace => NS
             },
+            IdxValue =
+                case FullOpts of
+                    #{opentelemetry := false} -> IdxValue1#{opentelemetry => false};
+                    _ -> IdxValue1
+                end,
             Cmd = temporal_sdk_api_command:start_child_workflow_command(Req),
             do_command(IdxKey, IdxKeyCasted, IdxValue, Cmd, FullOpts);
         Err ->

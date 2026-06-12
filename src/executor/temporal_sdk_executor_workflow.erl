@@ -3133,6 +3133,8 @@ otel_end_commands_spans(Err, Spans) ->
 otel_inject_commands_spans(IdxCmd, #state{otel_parent_ctx = undefined} = StateData, [], []) ->
     {_Awaitables, CommandsWithoutSpans} = lists:unzip(IdxCmd),
     {StateData, [], CommandsWithoutSpans};
+otel_inject_commands_spans([{{_IK, #{opentelemetry := false}}, Cmd} | TCmd], StateData, SAcc, CAcc) ->
+    otel_inject_commands_spans(TCmd, StateData, SAcc, [Cmd | CAcc]);
 otel_inject_commands_spans(
     [
         {{{activity, AId}, #{execution_id := EId, activity_type := AT, task_queue := TQ}}, Cmd}
