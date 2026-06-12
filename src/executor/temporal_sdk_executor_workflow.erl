@@ -3120,14 +3120,14 @@ otel_end_executions_spans(StateData) ->
     StateData#state{otel_executions = maps:filtermap(Fn, OE)}.
 
 otel_end_commands_spans({ok, _Response}, Spans) ->
-    [otel_span:end_span(S) || S <- Spans],
+    spawn(fun() -> [otel_span:end_span(S) || S <- Spans] end),
     ok;
 otel_end_commands_spans(Err, Spans) ->
     Fn = fun(S) ->
         temporal_sdk_telemetry:otel_set_error(S, complete_task_error, Err),
         otel_span:end_span(S)
     end,
-    [Fn(S) || S <- Spans],
+    spawn(fun() -> [Fn(S) || S <- Spans] end),
     ok.
 
 otel_inject_commands_spans(IdxCmd, #state{otel_parent_ctx = undefined} = StateData, [], []) ->
@@ -3264,12 +3264,15 @@ do_start_marker_spans(MT, MN, EId, StateData) ->
     StartSpan = otel_tracer:start_span(ECtx, OTr, StartSpanName, StartSpanOpts),
     StartCtx = otel_tracer:set_current_span(ECtx, StartSpan),
 
-    RunSpanName = temporal_sdk_telemetry:otel_name(?TEMPORAL_SDK_OTEL_RUN_MARKER, MN),
-    RunSpanOpts = #{
-        kind => ?SPAN_KIND_CLIENT,
-        start_time => temporal_sdk_telemetry:otel_timestamp(OST, OTi),
-        attributes => Attr
-    },
-    RunSpan = otel_tracer:start_span(StartCtx, OTr, RunSpanName, RunSpanOpts),
-    otel_span:end_span(RunSpan, temporal_sdk_telemetry:otel_timestamp(OET, OTi)),
+    spawn(fun() ->
+        RunSpanName = temporal_sdk_telemetry:otel_name(?TEMPORAL_SDK_OTEL_RUN_MARKER, MN),
+        RunSpanOpts = #{
+            kind => ?SPAN_KIND_CLIENT,
+            start_time => temporal_sdk_telemetry:otel_timestamp(OST, OTi),
+            attributes => Attr
+        },
+        RunSpan = otel_tracer:start_span(StartCtx, OTr, RunSpanName, RunSpanOpts),
+        otel_span:end_span(RunSpan, temporal_sdk_telemetry:otel_timestamp(OET, OTi))
+    end),
+
     {StartSpan, StateData#state{otel_executions = OE1}}.
