@@ -2461,6 +2461,8 @@ spawn_message_marker(Name, Value, StateData) ->
         local_handlers = LocalHandlers,
         proc_label = ProcLabel
     } = StateData,
+    MarkerMeta = #{marker_type => ~"message", marker_name => Name},
+    TStart = ?EV_META(StateData, [marker, start], MarkerMeta),
     HC = build_handler_context(StateData),
     ExecutorPid = self(),
     HandlerProcLabel = temporal_sdk_utils_path:string_path([ProcLabel, handle_message]),
@@ -2469,6 +2471,8 @@ spawn_message_marker(Name, Value, StateData) ->
             case lists:member(handle_message, LocalHandlers) of
                 true ->
                     {record, V} = handle_message(HC, Name, Value),
+                    MM = MarkerMeta#{marker_state => no_callback},
+                    ?EV_META(StateData, [marker, stop], TStart, MM),
                     gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, record, Name, V});
                 false ->
                     proc_lib:set_label(HandlerProcLabel),
@@ -2476,16 +2480,29 @@ spawn_message_marker(Name, Value, StateData) ->
                     try
                         case EMod:handle_message(HC, Name, Value) of
                             {record, V} ->
+                                MM = MarkerMeta#{marker_state => recorded},
+                                ?EV_META(StateData, [marker, stop], TStart, MM),
                                 gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, record, Name, V});
                             {fail, {_, _, _} = R} ->
+                                MM = MarkerMeta#{marker_state => fail_requested},
+                                ?EV_META(StateData, [marker, stop], TStart, MM),
                                 gen_statem:cast(
                                     ExecutorPid, {?MSG_PRV, marker, fail_task, Name, R}
                                 );
                             ignore ->
+                                MM = MarkerMeta#{marker_state => ignored},
+                                ?EV_META(StateData, [marker, stop], TStart, MM),
                                 gen_statem:cast(ExecutorPid, {?MSG_PRV, marker, ignore, Name})
                         end
                     catch
                         Class:Reason:StackT ->
+                            ?EV_META(
+                                StateData,
+                                [marker, exception],
+                                TStart,
+                                {Class, Reason, StackT},
+                                MarkerMeta
+                            ),
                             gen_statem:cast(
                                 ExecutorPid,
                                 {?MSG_PRV, marker, failed, self(), {Class, Reason, StackT}}
