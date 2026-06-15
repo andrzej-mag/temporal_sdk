@@ -1576,7 +1576,10 @@ do_replay_workflow(Cluster, WorkflowMod, JsonBinary, Opts) ->
             temporal_sdk_api_context:add_workflow_opts(AC2, Task, WorkflowMod)
         ),
         {ok, T} ?= task_overwrite(O, ApiContext, Task),
-        {ok, Pid} ?= temporal_sdk_executor_workflow:start(ApiContext, T, self()),
+        {ok, Pid} ?=
+            temporal_sdk_executor_workflow:start(
+                ApiContext, T, self(), temporal_sdk_telemetry:otel_timestamp()
+            ),
         {ok, Pid, Timeout}
     end.
 

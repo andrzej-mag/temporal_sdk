@@ -34,7 +34,8 @@ handle_execute(ApiContext, Task) ->
                 Cluster, WorkerOpts, TaskName
             ),
         AC = temporal_sdk_api_context:add_activity_opts(ApiContext, Task, Mod),
-        {ok, _Pid} ?= temporal_sdk_executor_activity:start(AC, Task),
+        {ok, _Pid} ?=
+            temporal_sdk_executor_activity:start(AC, Task, temporal_sdk_telemetry:otel_timestamp()),
         {ok, started}
     end.
 

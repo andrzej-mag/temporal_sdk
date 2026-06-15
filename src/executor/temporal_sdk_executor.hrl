@@ -8,7 +8,6 @@
 -define(INDEX_TABLE_KEY, '$__temporal_sdk_executor_index_table').
 -define(COMMANDS_KEY, '$__temporal_sdk_executor_execution_commands').
 -define(AWAIT_COUNTER_KEY, '$__temporal_sdk_executor_await_counter').
--define(OTEL_DELTA_TIME, '$__temporal_sdk_executor_otel_delta_time').
 
 -define(MSG_API, '$__temporal_sdk_executor_message_api').
 -define(MSG_PRV, '$__temporal_sdk_executor_message_private').

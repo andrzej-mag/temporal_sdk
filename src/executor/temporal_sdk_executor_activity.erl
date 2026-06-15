@@ -5,8 +5,8 @@
 -moduledoc false.
 
 -export([
-    start/2,
-    start_link/2
+    start/3,
+    start_link/3
 ]).
 -export([
     init/1,
@@ -67,7 +67,6 @@
     handle_cancel_pid = undefined :: undefined | pid(),
     %% --------------- telemetry
     started_at = 0 :: integer(),
-    otel_delta_time :: undefined | pos_integer(),
     otel_span_ctx :: undefined | {opentelemetry:span_ctx(), otel_ctx:t()},
     ev_metadata :: map()
 }).
@@ -78,25 +77,27 @@
 
 -spec start(
     ApiContext :: temporal_sdk_api:context(),
-    TemporalTask :: temporal_sdk_activity:task()
+    TemporalTask :: temporal_sdk_activity:task(),
+    OtelPollTime :: integer()
 ) -> {ok, pid()} | {error, term()}.
-start(ApiContext, TemporalTask) ->
-    case gen_statem:start(?MODULE, [ApiContext, TemporalTask, undefined], []) of
+start(ApiContext, TemporalTask, OtelPollTime) ->
+    case gen_statem:start(?MODULE, [ApiContext, TemporalTask, undefined, OtelPollTime], []) of
         ignore -> {error, "Activity executor start ignored."};
         Ret -> Ret
     end.
 
 -spec start_link(
     ApiContext :: temporal_sdk_api:context(),
-    SyntheticTask :: temporal_sdk_activity:task()
+    SyntheticTask :: temporal_sdk_activity:task(),
+    OtelPollTime :: integer()
 ) -> {ok, pid()} | {error, term()}.
-start_link(ApiContext, SyntheticTask) ->
-    case gen_statem:start_link(?MODULE, [ApiContext, SyntheticTask, self()], []) of
+start_link(ApiContext, SyntheticTask, OtelPollTime) ->
+    case gen_statem:start_link(?MODULE, [ApiContext, SyntheticTask, self(), OtelPollTime], []) of
         ignore -> {error, "Activity executor start ignored."};
         Ret -> Ret
     end.
 
-init([ApiContext, Task, WorkflowExecutorPid]) ->
+init([ApiContext, Task, WorkflowExecutorPid, OtelPollTime]) ->
     process_flag(trap_exit, true),
 
     #{
@@ -140,13 +141,14 @@ init([ApiContext, Task, WorkflowExecutorPid]) ->
 
     StartedTimeNanos = temporal_sdk_utils_time:protobuf_to_nanos(StartedTime),
     {OtelParentCtx, UserHeaderData} = fetch_header_data(Task, ApiContext),
-    {OtelDT, OtelSpanCtx} =
+    OtelSpanCtx =
         case OtelParentCtx of
             undefined ->
-                {undefined, undefined};
+                undefined;
             _ ->
-                OtelStartedTime = temporal_sdk_telemetry:otel_native_to_timestamp(StartedTimeNanos),
-                DeltaTime = OtelStartedTime - temporal_sdk_telemetry:otel_timestamp(),
+                SrvStartedTime = temporal_sdk_telemetry:otel_native_to_timestamp(
+                    StartedTimeNanos
+                ),
                 OtelTracer = opentelemetry:get_application_tracer(?MODULE),
                 OtelAttr = temporal_sdk_telemetry:otel_attributes(#{
                     namespace => Namespace,
@@ -158,13 +160,20 @@ init([ApiContext, Task, WorkflowExecutorPid]) ->
                     workflow_run_id => WorkflowRunId
                 }),
                 SpanOpts = #{
-                    kind => ?SPAN_KIND_SERVER, start_time => OtelStartedTime, attributes => OtelAttr
+                    kind => ?SPAN_KIND_SERVER, start_time => OtelPollTime, attributes => OtelAttr
                 },
                 SpanName =
                     temporal_sdk_telemetry:otel_name(?TEMPORAL_SDK_OTEL_RUN_ACTIVITY, ActivityType),
                 Span = otel_tracer:start_span(OtelParentCtx, OtelTracer, SpanName, SpanOpts),
                 Ctx = otel_tracer:set_current_span(OtelParentCtx, Span),
-                {DeltaTime, {Span, Ctx}}
+
+                EventName = temporal_sdk_telemetry:otel_name(
+                    ?TEMPORAL_SDK_OTEL_START_ACTIVITY_TASK, ActivityType
+                ),
+                Event = opentelemetry:event(SrvStartedTime, EventName, OtelAttr),
+                % eqwalizer:ignore
+                true = otel_span:add_events(Span, [Event]),
+                {Span, Ctx}
         end,
 
     EvMetadata =
@@ -221,7 +230,6 @@ init([ApiContext, Task, WorkflowExecutorPid]) ->
         %% handle_cancel_pid = undefined
         %% --------------- telemetry
         %% started_at = 0
-        otel_delta_time = OtelDT,
         otel_span_ctx = OtelSpanCtx,
         ev_metadata = EvMetadata
     },
@@ -248,7 +256,6 @@ terminate(Reason, _State, StateData) ->
         started_at = StartedAt,
         stop_reason = StopReason,
         closed_state = ClosedState,
-        otel_delta_time = OtelDeltaTime,
         otel_span_ctx = OtelSpanCtx
     } = StateData,
     SD = cleanup(StateData#state{ev_metadata = EvMetadata#{closed_state => ClosedState}}),
@@ -266,21 +273,21 @@ terminate(Reason, _State, StateData) ->
         normal -> ?EV(SD, [executor, stop], StartedAt);
         R -> ?EV(SD, [executor, exception], StartedAt, {error, R, []})
     end,
-    end_otel_span(StopReason, Reason, OtelDeltaTime, OtelSpanCtx).
+    end_otel_span(StopReason, Reason, OtelSpanCtx).
 
-end_otel_span(_StopReason, _Reason, undefined, undefined) ->
+end_otel_span(_StopReason, _Reason, undefined) ->
     ok;
-end_otel_span(normal, normal, OtelDeltaTime, {Span, _Ctx}) ->
-    otel_span:end_span(Span, temporal_sdk_telemetry:otel_timestamp(OtelDeltaTime));
-end_otel_span(StopReason, normal, OtelDeltaTime, {Span, _Ctx}) ->
+end_otel_span(normal, normal, {Span, _Ctx}) ->
+    otel_span:end_span(Span, temporal_sdk_telemetry:otel_timestamp());
+end_otel_span(StopReason, normal, {Span, _Ctx}) ->
     temporal_sdk_telemetry:otel_set_error(Span, run_activity_error, StopReason),
-    otel_span:end_span(Span, temporal_sdk_telemetry:otel_timestamp(OtelDeltaTime));
-end_otel_span(normal, Reason, OtelDeltaTime, {Span, _Ctx}) ->
+    otel_span:end_span(Span, temporal_sdk_telemetry:otel_timestamp());
+end_otel_span(normal, Reason, {Span, _Ctx}) ->
     temporal_sdk_telemetry:otel_set_error(Span, run_activity_error, Reason),
-    otel_span:end_span(Span, temporal_sdk_telemetry:otel_timestamp(OtelDeltaTime));
-end_otel_span(StopReason, Reason, OtelDeltaTime, {Span, _Ctx}) ->
+    otel_span:end_span(Span, temporal_sdk_telemetry:otel_timestamp());
+end_otel_span(StopReason, Reason, {Span, _Ctx}) ->
     temporal_sdk_telemetry:otel_set_error(Span, run_activity_error, [StopReason, Reason]),
-    otel_span:end_span(Span, temporal_sdk_telemetry:otel_timestamp(OtelDeltaTime)).
+    otel_span:end_span(Span, temporal_sdk_telemetry:otel_timestamp()).
 
 callback_mode() ->
     [state_functions, state_enter].
@@ -733,7 +740,6 @@ spawn_execution(StateData) ->
         task = Task,
         execution_module = ExecutionModule,
         proc_label = ProcLabel,
-        otel_delta_time = OtelDeltaTime,
         otel_span_ctx = OtelSpanCtx
     } = StateData,
     ExecutorPid = self(),
@@ -744,7 +750,7 @@ spawn_execution(StateData) ->
 
     spawn_link(fun() ->
         proc_lib:set_label(ExecutionProcLabel),
-        temporal_sdk_executor:set_executor_dict(ExecutorPid, OtelDeltaTime),
+        temporal_sdk_executor:set_executor_dict(ExecutorPid),
         case OtelSpanCtx of
             undefined -> ok;
             {_Span, Ctx} -> otel_ctx:attach(Ctx)

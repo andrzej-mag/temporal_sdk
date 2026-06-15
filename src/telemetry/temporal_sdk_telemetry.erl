@@ -26,13 +26,13 @@
     otel_name/2,
     otel_attributes/1,
     otel_timestamp/0,
-    otel_timestamp/1,
-    otel_timestamp/2,
+    otel_timestamp_from_protobuf/1,
     otel_native_to_timestamp/1,
     otel_set_error/3,
     otel_serialize/1
 ]).
 
+-include("proto.hrl").
 -include_lib("kernel/include/logger.hrl").
 -include_lib("opentelemetry_api/include/opentelemetry.hrl").
 
@@ -355,14 +355,11 @@ otel_attributes(RawOtelAttr) ->
 -spec otel_timestamp() -> integer().
 otel_timestamp() -> opentelemetry:timestamp().
 
--doc false.
--spec otel_timestamp(DeltaTime :: undefined | integer()) -> undefined | integer().
-otel_timestamp(undefined) -> undefined;
-otel_timestamp(DeltaTime) -> opentelemetry:timestamp() + DeltaTime.
-
--doc false.
--spec otel_timestamp(TimeStamp :: integer(), DeltaTime :: integer()) -> integer().
-otel_timestamp(TimeStamp, DeltaTime) -> TimeStamp + DeltaTime.
+-spec otel_timestamp_from_protobuf(ProtobufDuration :: ?TEMPORAL_SPEC:'google.protobuf.Duration'()) ->
+    integer().
+otel_timestamp_from_protobuf(ProtobufDuration) ->
+    Nanos = temporal_sdk_utils_time:protobuf_to_nanos(ProtobufDuration),
+    erlang:convert_time_unit(Nanos, nanosecond, native) - erlang:time_offset().
 
 -doc false.
 -spec otel_native_to_timestamp(NativeTime :: integer()) -> integer().

@@ -57,7 +57,11 @@ has_valid_history(Invalid) ->
     }}.
 
 do_handle_execute([], ApiCtx, Task) ->
-    case temporal_sdk_executor_workflow:start(ApiCtx, Task, undefined) of
+    case
+        temporal_sdk_executor_workflow:start(
+            ApiCtx, Task, undefined, temporal_sdk_telemetry:otel_timestamp()
+        )
+    of
         {ok, _Pid} -> {ok, sticky_miss};
         Err -> Err
     end;

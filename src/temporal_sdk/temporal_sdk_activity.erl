@@ -24,9 +24,7 @@
     remaining_time/1,
 
     get_data/0,
-    set_data/1,
-
-    otel_timestamp/0
+    set_data/1
 ]).
 
 -import(temporal_sdk_executor, [
@@ -35,8 +33,6 @@
 ]).
 
 -include("proto.hrl").
-
--define(OTEL_DELTA_TIME, temporal_sdk_executor:get_otel_delta_time()).
 
 -type task() :: ?TEMPORAL_SPEC:'temporal.api.workflowservice.v1.PollActivityTaskQueueResponse'().
 -export_type([task/0]).
@@ -226,7 +222,3 @@ get_data() ->
 -spec set_data(TaskData :: term()) -> ok.
 set_data(TaskData) ->
     cast({set_data, TaskData}).
-
--spec otel_timestamp() -> undefined | pos_integer().
-otel_timestamp() ->
-    temporal_sdk_telemetry:otel_timestamp(?OTEL_DELTA_TIME).

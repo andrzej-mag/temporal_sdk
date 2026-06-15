@@ -68,13 +68,10 @@ header(ApiCtx, Task) ->
         ApiCtx
     ).
 
+-spec otel_start_time(Task :: temporal_sdk_workflow:task()) -> integer().
 otel_start_time(Task) ->
     #{event_time := ET} = lists:last(history_events(Task)),
-    Nanos = temporal_sdk_utils_time:protobuf_to_nanos(ET),
-    {
-        erlang:convert_time_unit(Nanos, nanosecond, native) - erlang:time_offset(),
-        opentelemetry:timestamp()
-    }.
+    temporal_sdk_telemetry:otel_timestamp_from_protobuf(ET).
 
 -spec task_from_history(History :: ?TEMPORAL_SPEC:'temporal.api.history.v1.History'()) ->
     {ok, temporal_sdk_workflow:task()}

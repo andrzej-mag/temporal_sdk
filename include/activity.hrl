@@ -23,7 +23,5 @@
     remaining_time/1,
 
     get_data/0,
-    set_data/1,
-
-    otel_timestamp/0
+    set_data/1
 ]).

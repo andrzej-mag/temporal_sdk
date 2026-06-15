@@ -4,7 +4,7 @@
 -moduledoc false.
 
 -export([
-    set_executor_dict/2,
+    set_executor_dict/1,
     set_executor_dict/7,
     set_handler_dict/3,
     get_executor/0,
@@ -16,7 +16,6 @@
     get_index_table/0,
     get_await_counter/0,
     get_commands/0,
-    get_otel_delta_time/0,
     set_commands/1,
     inc_await_counter/0
 ]).
@@ -30,10 +29,9 @@
 
 -include("temporal_sdk_executor.hrl").
 
--spec set_executor_dict(ExecutorPid :: pid(), OtelDeltaTime :: pos_integer()) -> term().
-set_executor_dict(ExecutorPid, OtelDeltaTime) ->
-    put(?PID_KEY, ExecutorPid),
-    put(?OTEL_DELTA_TIME, OtelDeltaTime).
+-spec set_executor_dict(ExecutorPid :: pid()) -> term().
+set_executor_dict(ExecutorPid) ->
+    put(?PID_KEY, ExecutorPid).
 
 -spec set_executor_dict(
     ExecutorPid :: pid(),
@@ -99,9 +97,6 @@ get_await_counter() -> get_dictkey(?AWAIT_COUNTER_KEY).
 
 -spec get_commands() -> [temporal_sdk_workflow:index_command()].
 get_commands() -> get_dictkey(?COMMANDS_KEY).
-
--spec get_otel_delta_time() -> undefined | pos_integer().
-get_otel_delta_time() -> get_dictkey(?OTEL_DELTA_TIME).
 
 -spec set_commands(Commands :: [temporal_sdk_workflow:index_command()]) ->
     [temporal_sdk_workflow:index_command()].
