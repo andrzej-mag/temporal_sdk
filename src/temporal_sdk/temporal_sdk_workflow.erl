@@ -117,7 +117,8 @@
 
 %% OpenTelemetry commands
 -export([
-    otel_add_event/2
+    otel_add_event/2,
+    otel_set_attributes/1
 ]).
 
 -import(temporal_sdk_executor, [
@@ -1348,7 +1349,9 @@
 -export_type([command/0]).
 
 -doc false.
--type otel_command() :: {{{add_event}, map()}, otel_command}.
+-type otel_command() ::
+    {{{otel_add_event}, map()}, otel_command}
+    | {{{otel_set_attributes}, map()}, otel_command}.
 -export_type([otel_command/0]).
 
 -doc false.
@@ -2958,7 +2961,15 @@ otel_add_event(Name, Attributes) ->
         attributes => Attributes,
         started_at => temporal_sdk_telemetry:otel_timestamp()
     },
-    {add_event} = do_command({add_event}, {add_event}, IdxVal, otel_command, #{}),
+    {otel_add_event} = do_command({otel_add_event}, {otel_add_event}, IdxVal, otel_command, #{}),
+    ok.
+
+-spec otel_set_attributes(Attributes :: opentelemetry:attributes_map()) -> ok.
+otel_set_attributes(Attributes) ->
+    IdxVal = #{execution_id => ?EXECUTION_ID, attributes => Attributes},
+    {otel_set_attributes} = do_command(
+        {otel_set_attributes}, {otel_set_attributes}, IdxVal, otel_command, #{}
+    ),
     ok.
 
 %% -------------------------------------------------------------------------------------------------

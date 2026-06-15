@@ -116,5 +116,6 @@
 
 %% OpenTelemetry commands
 -import(temporal_sdk_workflow, [
-    otel_add_event/2
+    otel_add_event/2,
+    otel_set_attributes/1
 ]).

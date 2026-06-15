@@ -3058,7 +3058,7 @@ otel_run_otel_commands(StateData) ->
     OE2 = do_otel_run_commands(NOPCmds, OE1, OEC, OTr, OA),
     StateData#state{commands = FCmds, otel_pending_commands = [], otel_executions = OE2}.
 
-do_otel_run_commands([{{{add_event}, Data}, otel_command} | TCmds], OE, OEC, OTr, OA) ->
+do_otel_run_commands([{{{otel_add_event}, Data}, otel_command} | TCmds], OE, OEC, OTr, OA) ->
     #{name := Name, attributes := Attributes, started_at := Timestamp, execution_id := EId} = Data,
     Event = opentelemetry:event(Timestamp, Name, Attributes),
     OE2 =
@@ -3071,6 +3071,11 @@ do_otel_run_commands([{{{add_event}, Data}, otel_command} | TCmds], OE, OEC, OTr
                 OE1
         end,
     do_otel_run_commands(TCmds, OE2, OEC, OTr, OA);
+do_otel_run_commands([{{{otel_set_attributes}, Data}, otel_command} | TCmds], OE, OEC, OTr, OA) ->
+    #{attributes := Attributes, execution_id := EId} = Data,
+    {Span, _Ctx, OE1} = fetch_execution_span(EId, OE, OEC, OTr, OA),
+    true = otel_span:set_attributes(Span, Attributes),
+    do_otel_run_commands(TCmds, OE1, OEC, OTr, OA);
 do_otel_run_commands([], OE, _OPC, _OTr, _OA) ->
     OE.
 
