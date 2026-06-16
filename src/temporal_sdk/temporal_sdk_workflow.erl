@@ -118,7 +118,9 @@
 %% OpenTelemetry commands
 -export([
     otel_add_event/2,
-    otel_set_attributes/1
+    otel_set_attributes/1,
+    otel_set_baggage/3,
+    otel_clear_baggage/0
 ]).
 
 -import(temporal_sdk_executor, [
@@ -1351,7 +1353,9 @@
 -doc false.
 -type otel_command() ::
     {{{otel_add_event}, map()}, otel_command}
-    | {{{otel_set_attributes}, map()}, otel_command}.
+    | {{{otel_set_attributes}, map()}, otel_command}
+    | {{{otel_set_baggage}, map()}, otel_command}
+    | {{{otel_clear_baggage}, map()}, otel_command}.
 -export_type([otel_command/0]).
 
 -doc false.
@@ -1555,7 +1559,8 @@
         attempt := pos_integer(),
         memo => temporal_sdk:term_from_mapstring_payload(),
         search_attributes => temporal_sdk:term_from_mapstring_payload(),
-        header := temporal_sdk:term_from_mapstring_payload()
+        header := temporal_sdk:term_from_mapstring_payload(),
+        opentelemetry_baggage := otel_baggage:t()
     }
     %% Provisional context workflow info for tasks polled from sticky queue
     | #{attempt := pos_integer()}.
@@ -2967,9 +2972,26 @@ otel_add_event(Name, Attributes) ->
 -spec otel_set_attributes(Attributes :: opentelemetry:attributes_map()) -> ok.
 otel_set_attributes(Attributes) ->
     IdxVal = #{execution_id => ?EXECUTION_ID, attributes => Attributes},
-    {otel_set_attributes} = do_command(
-        {otel_set_attributes}, {otel_set_attributes}, IdxVal, otel_command, #{}
-    ),
+    {otel_set_attributes} =
+        do_command({otel_set_attributes}, {otel_set_attributes}, IdxVal, otel_command, #{}),
+    ok.
+
+-spec otel_set_baggage(
+    Key :: otel_baggage:key(),
+    Value :: otel_baggage:value(),
+    Metadata :: [unicode:unicode_binary() | {unicode:unicode_binary(), unicode:unicode_binary()}]
+) -> ok.
+otel_set_baggage(Key, Value, Metadata) ->
+    IdxVal = #{execution_id => ?EXECUTION_ID, key => Key, value => Value, metadata => Metadata},
+    {otel_set_baggage} =
+        do_command({otel_set_baggage}, {otel_set_baggage}, IdxVal, otel_command, #{}),
+    ok.
+
+-spec otel_clear_baggage() -> ok.
+otel_clear_baggage() ->
+    IdxVal = #{execution_id => ?EXECUTION_ID},
+    {otel_clear_baggage} =
+        do_command({otel_clear_baggage}, {otel_clear_baggage}, IdxVal, otel_command, #{}),
     ok.
 
 %% -------------------------------------------------------------------------------------------------

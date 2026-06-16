@@ -10,7 +10,7 @@
     otel_start_time/1,
     task_from_history/1,
     is_history_closed/1,
-    build_context_workflow_info/3,
+    build_context_workflow_info/4,
     task_token/1,
     workflow_execution/1,
     workflow_execution_workflow_id/1,
@@ -131,10 +131,11 @@ do_is_history_closed(#{}) ->
 -spec build_context_workflow_info(
     temporal_sdk_api:context(),
     temporal_sdk_workflow:task(),
-    temporal_sdk:term_from_mapstring_payload()
+    temporal_sdk:term_from_mapstring_payload(),
+    otel_baggage:t()
 ) ->
     temporal_sdk_workflow:context_workflow_info().
-build_context_workflow_info(ApiContext, Task, UserHeaderData) ->
+build_context_workflow_info(ApiContext, Task, UserHeaderData, OtelBaggage) ->
     #{
         workflow_execution := WorkflowExecution,
         workflow_execution_task_queue := #{name := WorkflowExecutionTaskQueue}
@@ -192,7 +193,8 @@ build_context_workflow_info(ApiContext, Task, UserHeaderData) ->
         workflow_run_timeout_msec => WorkflowRunTimeoutMsec,
         workflow_task_timeout_msec => WorkflowTaskTimeoutMsec,
         attempt => Attempt,
-        header => UserHeaderData
+        header => UserHeaderData,
+        opentelemetry_baggage => OtelBaggage
     }.
 
 -doc false.

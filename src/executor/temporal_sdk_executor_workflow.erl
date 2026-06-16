@@ -2795,6 +2795,7 @@ init_state_data(TaskType, ApiContext, Task, CallerPid, OtelPollTime) ->
     IsReplaying = PreviousStartedEventId > 0 orelse StartedEventId > 3,
     OtelTracer = opentelemetry:get_application_tracer(?MODULE),
     {OtelParentCtx, UserHeaderData} = fetch_header_data(TaskType, Task, ApiContext),
+    OtelBaggage = otel_baggage:get_all(OtelParentCtx),
     OtelSrvStartTime = otel_fetch_srv_start_time(OtelParentCtx, IsReplaying, Task),
     OtelAttr = temporal_sdk_telemetry:otel_attributes(#{
         namespace => Namespace,
@@ -2813,7 +2814,7 @@ init_state_data(TaskType, ApiContext, Task, CallerPid, OtelPollTime) ->
                 #{attempt => 1};
             _ ->
                 temporal_sdk_api_workflow_task:build_context_workflow_info(
-                    ApiContext, Task, UserHeaderData
+                    ApiContext, Task, UserHeaderData, OtelBaggage
                 )
         end,
 
@@ -3054,7 +3055,7 @@ otel_run_otel_commands(StateData) ->
         (_) -> false
     end,
     {NOPCmds, FCmds} = lists:partition(Fn, Cmds),
-    OE1 = do_otel_run_commands(OPCmds, OE, OEC, OTr, OA),
+    OE1 = do_otel_run_commands(lists:reverse(OPCmds), OE, OEC, OTr, OA),
     OE2 = do_otel_run_commands(NOPCmds, OE1, OEC, OTr, OA),
     StateData#state{commands = FCmds, otel_pending_commands = [], otel_executions = OE2}.
 
@@ -3076,6 +3077,16 @@ do_otel_run_commands([{{{otel_set_attributes}, Data}, otel_command} | TCmds], OE
     {Span, _Ctx, OE1} = fetch_execution_span(EId, OE, OEC, OTr, OA),
     true = otel_span:set_attributes(Span, Attributes),
     do_otel_run_commands(TCmds, OE1, OEC, OTr, OA);
+do_otel_run_commands([{{{otel_set_baggage}, Data}, otel_command} | TCmds], OE, OEC, OTr, OA) ->
+    #{execution_id := EId, key := Key, value := Value, metadata := Metadata} = Data,
+    {Span, Ctx, #{EId := {_, _, State}} = OE1} = fetch_execution_span(EId, OE, OEC, OTr, OA),
+    NCtx = otel_baggage:set_to(Ctx, Key, Value, Metadata),
+    do_otel_run_commands(TCmds, OE1#{EId := {Span, NCtx, State}}, OEC, OTr, OA);
+do_otel_run_commands([{{{otel_clear_baggage}, Data}, otel_command} | TCmds], OE, OEC, OTr, OA) ->
+    #{execution_id := EId} = Data,
+    {Span, Ctx, #{EId := {_, _, State}} = OE1} = fetch_execution_span(EId, OE, OEC, OTr, OA),
+    NCtx = otel_baggage:clear(Ctx),
+    do_otel_run_commands(TCmds, OE1#{EId := {Span, NCtx, State}}, OEC, OTr, OA);
 do_otel_run_commands([], OE, _OPC, _OTr, _OA) ->
     OE.
 
