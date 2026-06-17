@@ -2061,8 +2061,12 @@ start_child_workflow(TaskQueue, WorkflowType, Opts) ->
     MsgName = 'temporal.api.command.v1.StartChildWorkflowExecutionCommandAttributes',
     DftId =
         case proplists:is_defined(workflow_id, Opts) of
-            true -> '$_optional';
-            false -> WorkflowType
+            true ->
+                '$_optional';
+            false ->
+                #{task_opts := #{workflow_type := PWT}} = ?API_CTX,
+                Pfx = temporal_sdk_utils_path:string_path([PWT, ?EXECUTION_ID, ?AWAIT_COUNTER]),
+                #{id => WorkflowType, prefix => Pfx, postfix => true}
         end,
     DefaultOpts = [
         {namespace, unicode, "default"},
