@@ -2883,8 +2883,8 @@ set_workflow_result(WorkflowResult) -> cast_id({set_workflow_result, WorkflowRes
 -spec await_open_before_close(IsEnabled :: boolean()) -> ok.
 await_open_before_close(IsEnabled) -> cast_id({await_open_before_close, IsEnabled}).
 
--doc {file, "../../docs/temporal_sdk/workflow/evict_workflow-0.md"}.
 -doc #{group => "SDK commands"}.
+-doc {file, "../../docs/temporal_sdk/workflow/evict_workflow-0.md"}.
 -spec evict_workflow() -> ok | no_return().
 evict_workflow() -> cast_id(evict_workflow).
 
@@ -2960,6 +2960,7 @@ select_history(HistoryPatternSpec, Limit) when is_integer(Limit) ->
 %% OpenTelemetry commands
 
 -doc #{group => "OpenTelemetry commands"}.
+-doc {file, "../../docs/temporal_sdk/workflow/otel_add_event-2.md"}.
 -spec otel_add_event(
     Name :: opentelemetry:event_name(), Attributes :: opentelemetry:attributes_map()
 ) -> ok.
@@ -2973,6 +2974,8 @@ otel_add_event(Name, Attributes) ->
     {otel_add_event} = do_command({otel_add_event}, {otel_add_event}, IdxVal, otel_command, #{}),
     ok.
 
+-doc #{group => "OpenTelemetry commands"}.
+-doc {file, "../../docs/temporal_sdk/workflow/otel_set_attributes-1.md"}.
 -spec otel_set_attributes(Attributes :: opentelemetry:attributes_map()) -> ok.
 otel_set_attributes(Attributes) ->
     IdxVal = #{execution_id => ?EXECUTION_ID, attributes => Attributes},
@@ -2980,6 +2983,8 @@ otel_set_attributes(Attributes) ->
         do_command({otel_set_attributes}, {otel_set_attributes}, IdxVal, otel_command, #{}),
     ok.
 
+-doc #{group => "OpenTelemetry commands"}.
+-doc {file, "../../docs/temporal_sdk/workflow/otel_set_baggage-3.md"}.
 -spec otel_set_baggage(
     Key :: otel_baggage:key(),
     Value :: otel_baggage:value(),
@@ -2991,6 +2996,8 @@ otel_set_baggage(Key, Value, Metadata) ->
         do_command({otel_set_baggage}, {otel_set_baggage}, IdxVal, otel_command, #{}),
     ok.
 
+-doc #{group => "OpenTelemetry commands"}.
+-doc {file, "../../docs/temporal_sdk/workflow/otel_clear_baggage-0.md"}.
 -spec otel_clear_baggage() -> ok.
 otel_clear_baggage() ->
     IdxVal = #{execution_id => ?EXECUTION_ID},
