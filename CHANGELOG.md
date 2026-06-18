@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.20](https://github.com/andrzej-mag/temporal_sdk/compare/v0.2.2..v0.2.20) - 2026-06-18
+
+### ⚙️ Miscellaneous
+
+- Fix hex package SemVer - ([0222102](https://github.com/andrzej-mag/temporal_sdk/commit/02221021783451ea1a22cbbcfbcbd215fe6567cd))
+
 ## [0.2.2](https://github.com/andrzej-mag/temporal_sdk/compare/v0.2.11..v0.2.2) - 2026-06-18
 
 ### 🚀 Features
