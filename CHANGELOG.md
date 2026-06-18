@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.2.2](https://github.com/andrzej-mag/temporal_sdk/compare/v0.2.11..v0.2.2) - 2026-06-18
+
+### 🚀 Features
+
+- Add OpenTelemetry baggage - ([4e14cb3](https://github.com/andrzej-mag/temporal_sdk/commit/4e14cb3baae8e0b0193a6bf62a7aa4fa44a4c030))
+- Add temporal_sdk_workflow:otel_set_attributes/1 - ([5e9092a](https://github.com/andrzej-mag/temporal_sdk/commit/5e9092aac809731ee7ae6b58e2c13ac2071f644c))
+- Add temporal_sdk_workflow cmds opentelemetry=>false - ([a9bf329](https://github.com/andrzej-mag/temporal_sdk/commit/a9bf329e2e425099e687c51f6bfe290693b591b8))
+- Add telemetry for message markers - ([77abab8](https://github.com/andrzej-mag/temporal_sdk/commit/77abab818c377253cbe41e15c9812c14add72dee))
+- Add WF marker telemetry and otel span - ([fdec93f](https://github.com/andrzej-mag/temporal_sdk/commit/fdec93fb16571195a3be9b70db3d7e1aafb5678b))
+- Add child WF otel ctx propagation - ([b44b56a](https://github.com/andrzej-mag/temporal_sdk/commit/b44b56a37de14f7bef505e94d8cf8160ebd87aac))
+- Add OpenTelemetry base - ([ecb3c49](https://github.com/andrzej-mag/temporal_sdk/commit/ecb3c4992f4137be687cc08cefd6e12c5b5b2c0f))
+
+### 🐛 Bug Fixes
+
+- Fix otel timestamps - ([0e97fd8](https://github.com/andrzej-mag/temporal_sdk/commit/0e97fd8a0fdce235bfd72287bd518b29781f95bf))
+- Fix temporal_sdk_workflow:start_execution/3 typespecs - ([82a24e4](https://github.com/andrzej-mag/temporal_sdk/commit/82a24e4dafa99b923b837bfe392bbee53f9ae645))
+
+### 📚 Documentation
+
+- Update architecture.md - ([0a44337](https://github.com/andrzej-mag/temporal_sdk/commit/0a44337b828e8bbd2b18555ea6121055b948e6f3))
+- Add OpenTelemetry documentation - ([b209392](https://github.com/andrzej-mag/temporal_sdk/commit/b2093929f002423b22903b0436760d0b2014471d))
+
+### 🧪 Testing
+
+- Fix issues diagnosed by elp - ([10256e0](https://github.com/andrzej-mag/temporal_sdk/commit/10256e0ccfaefb052f3c4a606032e0b140251ca5))
+
+### ⚙️ Miscellaneous
+
+- Rename "Erlang and Elixir SDK" to "Erlang/Elixir SDK" - ([8e961ec](https://github.com/andrzej-mag/temporal_sdk/commit/8e961ec1c9290bf245275d6addc8af0bb8d76c6c))
+- Improve child WF default workflow_id - ([c7f0bd8](https://github.com/andrzej-mag/temporal_sdk/commit/c7f0bd8b25f5cae2a1e6ad6eeffe39b48b2e4d20))
+- Use local time in OpenTelemetry spans - ([db55b14](https://github.com/andrzej-mag/temporal_sdk/commit/db55b141dd3bcd10ef13781e2a61712ab26511a4))
+- Improve otel span performance - ([d41d421](https://github.com/andrzej-mag/temporal_sdk/commit/d41d421245b69c9e8a399232798c1a5bdb3371de))
+
 ## [0.2.11](https://github.com/andrzej-mag/temporal_sdk/compare/v0.2.1..v0.2.11) - 2026-05-18
 
 ### 🐛 Bug Fixes
