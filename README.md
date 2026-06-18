@@ -8,7 +8,7 @@
 orchestration engine used to execute asynchronous, long-running business logic in a scalable
 and resilient way.
 
-Temporal Erlang and Elixir SDK is a framework for authoring workflows and activities using the
+Temporal Erlang/Elixir SDK is a framework for authoring workflows and activities using the
 Erlang and Elixir programming languages.
 
 ## Quick Start (Elixir)
@@ -103,7 +103,7 @@ For development and testing purposes it is recommended to run the
 
 ## License
 
-Temporal Erlang and Elixir SDK is distributed under the [Business Source License (BSL)](LICENSE.txt).
+Temporal Erlang/Elixir SDK is distributed under the [Business Source License (BSL)](LICENSE.txt).
 
 For more information on the use of the BSL generally, please visit the
 [Adopting and Developing Business Source License FAQ](https://mariadb.com/bsl-faq-adopting/).
