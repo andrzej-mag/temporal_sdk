@@ -1,15 +1,12 @@
 [![Hex Version](https://img.shields.io/hexpm/v/temporal_sdk?style=for-the-badge)](https://hex.pm/packages/temporal_sdk)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-informational?style=for-the-badge)](https://hexdocs.pm/temporal_sdk)
 
-> Project status: work in progress - under active development.
+> Project status: work in progress.
 > The [TODO.md](TODO.md) file can be considered as a project progress tracker.
 
-[Temporal](https://temporal.io/) is a distributed, scalable, durable, and highly available
-orchestration engine used to execute asynchronous, long-running business logic in a scalable
-and resilient way.
-
-Temporal Erlang/Elixir SDK is a framework for authoring workflows and activities using the
-Erlang and Elixir programming languages.
+[Temporal](https://temporal.io/) is a durable execution system that transparently makes your code
+durable, fault-tolerant, and simple. Unofficial Temporal Erlang/Elixir SDK is a framework for authoring
+workflows and activities using the Erlang and Elixir programming languages.
 
 The Erlang/Elixir SDK is a native Temporal SDK implemented in Erlang, with a lightweight Elixir wrapper.
 SDK doesn't use any NIFs or ports.
@@ -145,31 +142,4 @@ For development and testing purposes it is recommended to run the
 
 ## License
 
-Temporal Erlang/Elixir SDK is distributed under the [Business Source License (BSL)](LICENSE.txt).
-
-For more information on the use of the BSL generally, please visit the
-[Adopting and Developing Business Source License FAQ](https://mariadb.com/bsl-faq-adopting/).
-
-## Pricing
-
-The software monthly subscription fee is €100 (plus VAT/tax where applicable) per production application
-that uses this SDK as a dependency.
-
-To subscribe or manage your subscription, please visit the [Subscription Management Link TBA].
-
-## Sponsoring
-
-The Temporal Erlang/Elixir SDK is under active development. Financial sponsorship helps sustain work
-on this project.
-To discuss sponsorship, contact me via the links on my
-[hex.pm profile](https://hex.pm/users/andrzej-mag) or open a thread in
-[GitHub Discussions](https://github.com/andrzej-mag/temporal_sdk/discussions).
-
-## Contributing
-
-Contributors must agree to the [Individual Contributor License Agreement](ICLA.txt).
-When creating your first pull request, please copy and paste the following acknowledgment as your first commit message:
-
-```text
-I have read the Individual Contributor License Agreement (ICLA) and hereby sign the ICLA.
-```
+Unofficial Temporal Erlang/Elixir SDK is distributed under the [MIT License](LICENSE.txt).
