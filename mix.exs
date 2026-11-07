@@ -4,8 +4,8 @@ defmodule TemporalSdk.MixProject do
   @source_url "https://github.com/andrzej-mag/temporal_sdk"
 
   @elixir_deps [
-    {:dialyxir, "~> 1.4.0", only: [:dev, :test], runtime: false},
-    {:ex_doc, "~> 0.40.0", only: :dev, runtime: false}
+    {:dialyxir, "~> 1.4.8", only: [:dev, :test], runtime: false},
+    {:ex_doc, "~> 0.40.4", only: :dev, runtime: false}
   ]
 
   @shared_deps_opts [
